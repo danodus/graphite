@@ -12,8 +12,8 @@ module top(
     output logic            done_strobe_o
     );
 
-    logic [31:0] z_op0, z_op1, z_op2;
-    logic done_op0, done_op1, done_op2;
+    logic [31:0] z_op0, z_op1, z_op2, z_op3;
+    logic done_op0, done_op1, done_op2, done_op3;
 
     float_to_int float_to_int(
         .clk(clk),
@@ -42,10 +42,21 @@ module top(
         .exec_strobe_i(op == 2 && exec_strobe_i),
         .done_strobe_o(done_op2)
     );
+    
+    multiplier multiplier(
+        .clk(clk),
+        .reset_i(reset_i),
+        .a_value_i(a_value_i),
+        .b_value_i(b_value_i),
+        .z_value_o(z_op3),
+        .exec_strobe_i(op == 3 && exec_strobe_i),
+        .done_strobe_o(done_op3)
+    );
+    
 
     always_comb begin
-        z_value_o = op == 2 ? z_op2 : op == 1 ? z_op1 : z_op0;
-        done_strobe_o = done_op0 | done_op1 | done_op2;
+        z_value_o = op == 3 ? z_op3 : op == 2 ? z_op2 : op == 1 ? z_op1 : z_op0;
+        done_strobe_o = done_op0 | done_op1 | done_op2 | done_op3;
     end
 
 endmodule
