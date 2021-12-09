@@ -85,7 +85,29 @@ bool test_multiplier(Vtop* top, float v0, float v1) {
     float r = *(reinterpret_cast<float*>(&ri));
     float e = v0 * v1;
     if (e != r) {
-        std::cout << "adder failure with " << v0 << " * " << v1 << " - expected: " << e << ", received: " << r << "\n";
+        std::cout << "multiplier failure with " << v0 << " * " << v1 << " - expected: " << e << ", received: " << r
+                  << "\n";
+        return false;
+    }
+
+    return true;
+}
+
+bool test_divider(Vtop* top, float v0, float v1) {
+    top->op = 4;
+    top->a_value_i = *(reinterpret_cast<int*>(&v0));
+    top->b_value_i = *(reinterpret_cast<int*>(&v1));
+    top->exec_strobe_i = 1;
+    while (!top->contextp()->gotFinish() && !top->done_strobe_o) pulse_clk(top);
+    top->exec_strobe_i = 0;
+    pulse_clk(top);
+
+    int ri = top->z_value_o;
+    float r = *(reinterpret_cast<float*>(&ri));
+    float e = v0 / v1;
+    if (e != r) {
+        std::cout << "divider failure with " << v0 << " / " << v1 << " - expected: " << e << ", received: " << r
+                  << "\n";
         return false;
     }
 
@@ -131,6 +153,9 @@ int main(int argc, char** argv, char** env) {
     success = test_adder(top, 12.3456e-24f, 43.2321e18f);
     success = test_multiplier(top, 12.3456e-24f, 43.2321e18f);
     success = test_multiplier(top, 0.0f, 43.2321e18f);
+    success = test_divider(top, 12.3456e-24f, 43.2321e18f);
+    success = test_divider(top, 12.3456e-24f, 0.0f);
+    success = test_divider(top, 0.0f, 43.2321e18f);
 
     top->final();
 
