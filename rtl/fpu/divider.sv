@@ -27,6 +27,7 @@ module divider(
 
         case (state)
             IDLE: begin
+                done_strobe_o <= 0;
                 if (exec_strobe_i)
                     state <= UNPACK;
             end
@@ -226,10 +227,7 @@ module divider(
 
             DONE: begin
                 done_strobe_o <= 1;
-                if (done_strobe_o) begin
-                    done_strobe_o <= 0;
-                    state         <= IDLE;
-                end
+                state         <= IDLE;
             end
 
         endcase
