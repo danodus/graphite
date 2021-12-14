@@ -1,9 +1,19 @@
+#include <SDL.h>
 #include <verilated.h>
 
+#include <deque>
 #include <iostream>
 #include <limits>
 
 #include "Vtop.h"
+
+#define OP_NOP 0
+#define OP_CLEAR 1
+
+struct Command {
+    uint16_t opcode : 4;
+    uint16_t param : 12;
+};
 
 void pulse_clk(Vtop* top) {
     top->contextp()->timeInc(1);
@@ -15,153 +25,99 @@ void pulse_clk(Vtop* top) {
     top->eval();
 }
 
-bool test_float_to_int(Vtop* top, float v) {
-    top->op = 0;
-    top->a_value_i = *(reinterpret_cast<int*>(&v));
-    top->exec_strobe_i = 1;
-    while (!top->contextp()->gotFinish() && !top->done_strobe_o) pulse_clk(top);
-    top->exec_strobe_i = 0;
-    pulse_clk(top);
-
-    int r = top->z_value_o;
-    int e = static_cast<int>(v);
-    if (e != r) {
-        std::cout << "float_to_int failure with float " << v << " - expected: " << e << ", received: " << r << "\n";
-        return false;
-    }
-
-    return true;
-}
-
-bool test_int_to_float(Vtop* top, int v) {
-    top->op = 1;
-    top->a_value_i = v;
-    top->exec_strobe_i = 1;
-    while (!top->contextp()->gotFinish() && !top->done_strobe_o) pulse_clk(top);
-    top->exec_strobe_i = 0;
-    pulse_clk(top);
-
-    int ri = top->z_value_o;
-    float r = *(reinterpret_cast<float*>(&ri));
-    float e = static_cast<float>(v);
-    if (e != r) {
-        std::cout << "int_to_float failure with int " << v << " - expected: " << e << ", received: " << r << "\n";
-        return false;
-    }
-
-    return true;
-}
-
-bool test_adder(Vtop* top, float v0, float v1) {
-    top->op = 2;
-    top->a_value_i = *(reinterpret_cast<int*>(&v0));
-    top->b_value_i = *(reinterpret_cast<int*>(&v1));
-    top->exec_strobe_i = 1;
-    while (!top->contextp()->gotFinish() && !top->done_strobe_o) pulse_clk(top);
-    top->exec_strobe_i = 0;
-    pulse_clk(top);
-
-    int ri = top->z_value_o;
-    float r = *(reinterpret_cast<float*>(&ri));
-    float e = v0 + v1;
-    if (e != r) {
-        std::cout << "adder failure with " << v0 << " + " << v1 << " - expected: " << e << ", received: " << r << "\n";
-        return false;
-    }
-
-    return true;
-}
-
-bool test_multiplier(Vtop* top, float v0, float v1) {
-    top->op = 3;
-    top->a_value_i = *(reinterpret_cast<int*>(&v0));
-    top->b_value_i = *(reinterpret_cast<int*>(&v1));
-    top->exec_strobe_i = 1;
-    while (!top->contextp()->gotFinish() && !top->done_strobe_o) pulse_clk(top);
-    top->exec_strobe_i = 0;
-    pulse_clk(top);
-
-    int ri = top->z_value_o;
-    float r = *(reinterpret_cast<float*>(&ri));
-    float e = v0 * v1;
-    if (e != r) {
-        std::cout << "multiplier failure with " << v0 << " * " << v1 << " - expected: " << e << ", received: " << r
-                  << "\n";
-        return false;
-    }
-
-    return true;
-}
-
-bool test_divider(Vtop* top, float v0, float v1) {
-    top->op = 4;
-    top->a_value_i = *(reinterpret_cast<int*>(&v0));
-    top->b_value_i = *(reinterpret_cast<int*>(&v1));
-    top->exec_strobe_i = 1;
-    while (!top->contextp()->gotFinish() && !top->done_strobe_o) pulse_clk(top);
-    top->exec_strobe_i = 0;
-    pulse_clk(top);
-
-    int ri = top->z_value_o;
-    float r = *(reinterpret_cast<float*>(&ri));
-    float e = v0 / v1;
-    if (e != r) {
-        std::cout << "divider failure with " << v0 << " / " << v1 << " - expected: " << e << ", received: " << r
-                  << "\n";
-        return false;
-    }
-
-    return true;
-}
-
 int main(int argc, char** argv, char** env) {
+    SDL_Init(SDL_INIT_VIDEO);
+
+    SDL_Window* window =
+        SDL_CreateWindow("Graphite", SDL_WINDOWPOS_UNDEFINED_DISPLAY(1), SDL_WINDOWPOS_UNDEFINED, 640, 480, 0);
+
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+
+    const size_t vram_size = 128 * 128;
+    uint16_t* vram_data = new uint16_t[vram_size];
+    for (size_t i = 0; i < vram_size; ++i) vram_data[i] = 0xFF00;
+
+    SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB4444, SDL_TEXTUREACCESS_STREAMING, 128, 128);
+
     const std::unique_ptr<VerilatedContext> contextp{new VerilatedContext};
 
     Vtop* top = new Vtop{contextp.get(), "TOP"};
 
     top->reset_i = 1;
-
-    contextp->timeInc(1);
-    top->clk = 0;
-    top->eval();
-
-    contextp->timeInc(1);
-    top->clk = 1;
-    top->eval();
-
-    contextp->timeInc(1);
-    top->clk = 0;
-    top->eval();
+    pulse_clk(top);
 
     top->reset_i = 0;
 
-    bool success = true;
+    std::deque<Command> commands;
+    Command c;
+    c.opcode = OP_NOP;
+    c.param = 0;
+    commands.push_back(c);
 
-    std::vector<float> values{
-        0.0f, 1.0f, -1.0f, 42.0f, std::numeric_limits<float>::min(), std::numeric_limits<float>::max()};
-    for (auto v : values) {
-        success = test_float_to_int(top, v);
-        if (!success) break;
-    }
+    bool quit = false;
+    while (!contextp->gotFinish() && !quit) {
+        SDL_Event e;
 
-    std::vector<int> values2{0, 1, -1, 42, std::numeric_limits<int>::min(), std::numeric_limits<int>::max()};
-    for (auto v : values2) {
-        success = test_int_to_float(top, v);
-        if (!success) break;
-    }
+        if (top->cmd_axis_tready_o) {
+            while (SDL_PollEvent(&e)) {
+                if (e.type == SDL_QUIT) {
+                    quit = true;
+                    continue;
+                } else if (e.type == SDL_KEYUP) {
+                    switch (e.key.keysym.sym) {
+                        case SDLK_1:
+                            c.opcode = OP_CLEAR;
+                            c.param = 0x0F0;
+                            commands.push_back(c);
+                            break;
+                    }
+                }
+            }
+        }
 
-    success = test_adder(top, 12.3456e-24f, 43.2321e18f);
-    success = test_multiplier(top, 12.3456e-24f, 43.2321e18f);
-    success = test_multiplier(top, 0.0f, 43.2321e18f);
-    success = test_divider(top, 12.3456e-24f, 43.2321e18f);
-    success = test_divider(top, 12.3456e-24f, 0.0f);
-    success = test_divider(top, 0.0f, 43.2321e18f);
+        if (commands.size() > 0) {
+            auto c = commands.front();
+            commands.pop_front();
+            top->cmd_axis_tdata_i = (c.opcode << 12) | c.param;
+            top->cmd_axis_tvalid_i = 1;
+        }
+
+        if (top->vram_sel_o && top->vram_wr_o) {
+            assert(top->vram_addr_o < 128 * 128);
+            vram_data[top->vram_addr_o] = top->vram_data_out_o;
+        }
+
+        if (top->cmd_axis_tready_o) {
+            void* p;
+            int pitch;
+            SDL_LockTexture(texture, NULL, &p, &pitch);
+            assert(pitch == 128 * 2);
+            memcpy(p, vram_data, 128 * 128 * 2);
+            SDL_UnlockTexture(texture);
+
+            int draw_w, draw_h;
+            SDL_GL_GetDrawableSize(window, &draw_w, &draw_h);
+
+            int scale_x, scale_y;
+            scale_x = draw_w / 640;
+            scale_y = draw_h / 480;
+
+            SDL_Rect vga_r = {0, 0, scale_x * 640, scale_y * 480};
+            SDL_RenderCopy(renderer, texture, NULL, &vga_r);
+
+            SDL_RenderPresent(renderer);
+        }
+
+        pulse_clk(top);
+        top->cmd_axis_tvalid_i = 0;
+    };
 
     top->final();
 
     delete top;
 
-    if (success) std::cout << "Success!\n";
+    SDL_DestroyTexture(texture);
+    SDL_Quit();
 
-    return success ? 0 : 1;
+    return 0;
 }
