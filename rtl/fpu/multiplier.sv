@@ -84,8 +84,8 @@ module multiplier(
                     z_value_o[22:0]  <= 0;
                     state    <= DONE;
                 end
-                // if a is zero return zero
-                else if (a_e == -127 && a_m == 0) begin
+                // if b is zero return zero
+                else if (b_e == -127 && b_m == 0) begin
                     z_value_o[31]    <= a_s ^ b_s;
                     z_value_o[30:23] <= 0;
                     z_value_o[22:0]  <= 0;
