@@ -1,14 +1,19 @@
 #include <SDL.h>
+#include <Vtop.h>
 #include <verilated.h>
 
 #include <deque>
 #include <iostream>
 #include <limits>
 
-#include "Vtop.h"
-
 #define OP_NOP 0
-#define OP_CLEAR 1
+#define OP_SET_X0 1
+#define OP_SET_Y0 2
+#define OP_SET_X1 3
+#define OP_SET_Y1 4
+#define OP_SET_COLOR 5
+#define OP_CLEAR 6
+#define OP_DRAW_LINE 7
 
 struct Command {
     uint16_t opcode : 4;
@@ -66,8 +71,31 @@ int main(int argc, char** argv, char** env) {
                 } else if (e.type == SDL_KEYUP) {
                     switch (e.key.keysym.sym) {
                         case SDLK_1:
+                            c.opcode = OP_SET_COLOR;
+                            c.param = 0x00F;
+                            commands.push_back(c);
                             c.opcode = OP_CLEAR;
-                            c.param = 0x0F0;
+                            c.param = 0x000;
+                            commands.push_back(c);
+                            break;
+                        case SDLK_2:
+                            c.opcode = OP_SET_COLOR;
+                            c.param = 0xFFF;
+                            commands.push_back(c);
+                            c.opcode = OP_SET_X0;
+                            c.param = 10;
+                            commands.push_back(c);
+                            c.opcode = OP_SET_Y0;
+                            c.param = 10;
+                            commands.push_back(c);
+                            c.opcode = OP_SET_X1;
+                            c.param = 100;
+                            commands.push_back(c);
+                            c.opcode = OP_SET_Y1;
+                            c.param = 50;
+                            commands.push_back(c);
+                            c.opcode = OP_DRAW_LINE;
+                            c.param = 0;
                             commands.push_back(c);
                             break;
                     }
@@ -75,11 +103,13 @@ int main(int argc, char** argv, char** env) {
             }
         }
 
-        if (commands.size() > 0) {
-            auto c = commands.front();
-            commands.pop_front();
-            top->cmd_axis_tdata_i = (c.opcode << 12) | c.param;
-            top->cmd_axis_tvalid_i = 1;
+        if (top->cmd_axis_tready_o) {
+            if (commands.size() > 0) {
+                auto c = commands.front();
+                commands.pop_front();
+                top->cmd_axis_tdata_i = (c.opcode << 12) | c.param;
+                top->cmd_axis_tvalid_i = 1;
+            }
         }
 
         if (top->vram_sel_o && top->vram_wr_o) {

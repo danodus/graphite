@@ -19,5 +19,6 @@ make run
 ```
 
 Press 1 to clear the framebuffer.
+Press 2 to draw a line.
 
 
