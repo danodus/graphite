@@ -20,5 +20,8 @@ make run
 
 Press 1 to clear the framebuffer.
 Press 2 to draw a line.
+Press 3 to draw a cube.
+Press 4 to draw a teapot.
+
 
 
