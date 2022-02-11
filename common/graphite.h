@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#define FIXED_POINT 0
+#define FIXED_POINT 1
 
 #define _FRACTION_MASK(scale) (0xffffffff >> (32 - scale))
 #define _WHOLE_MASK(scale) (0xffffffff ^ FRACTION_MASK(scale))
