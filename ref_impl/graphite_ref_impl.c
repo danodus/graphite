@@ -12,7 +12,11 @@ static int screen_scale = 4;
 static SDL_Renderer* renderer;
 
 void draw_pixel(int x, int y, int color) {
-    SDL_SetRenderDrawColor(renderer, color, color, color, SDL_ALPHA_OPAQUE);
+    float r = (float)((color >> 8) & 0xF) / 15.0f;
+    float g = (float)((color >> 4) & 0xF) / 15.0f;
+    float b = (float)((color >> 0) & 0xF) / 15.0f;
+
+    SDL_SetRenderDrawColor(renderer, r * 255, g * 255, b * 255, SDL_ALPHA_OPAQUE);
     SDL_RenderDrawPoint(renderer, x, y);
 }
 
@@ -58,8 +62,9 @@ int main(int argc, char* argv[]) {
 
     float theta = 0.0f;
 
-    model_t* teapot_model = load_teapot();
     model_t* cube_model = load_cube();
+    model_t* teapot_model = load_teapot();
+    model_t* current_model = cube_model;
 
     unsigned int time = SDL_GetTicks();
 
@@ -99,8 +104,8 @@ int main(int argc, char* argv[]) {
         mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
 
         // Draw cube
-        draw_model(screen_width, screen_height, &vec_camera, cube_model, &mat_world, &mat_proj, &mat_view, true, true,
-                   NULL);
+        draw_model(screen_width, screen_height, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, true,
+                   true, NULL);
 
         SDL_RenderPresent(renderer);
 
@@ -141,6 +146,12 @@ int main(int argc, char* argv[]) {
                         break;
                     case SDL_SCANCODE_D:
                         yaw += 2.0f * elapsed_time;
+                        break;
+                    case SDL_SCANCODE_1:
+                        current_model = cube_model;
+                        break;
+                    case SDL_SCANCODE_2:
+                        current_model = teapot_model;
                         break;
                     default:
                         // do nothing

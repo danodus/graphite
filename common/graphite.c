@@ -583,7 +583,7 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
 
             if (is_wireframe) {
                 xd_draw_triangle(INT(t->p[0].x), INT(t->p[0].y), INT(t->p[1].x), INT(t->p[1].y), INT(t->p[2].x),
-                                 INT(t->p[2].y), 255);
+                                 INT(t->p[2].y), 0xFFF);
             }
         }
     }
