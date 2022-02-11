@@ -127,7 +127,8 @@ int triangle_clip_against_plane(vec3d plane_p, vec3d plane_n, triangle_t* in_tri
         return 0;  // no returned triangles are valid
     }
 
-    if (nb_inside_points == 3) {
+    // TODO: Partial clipping is currently disabled due to improper winding order with new triangles.
+    if (true /*nb_inside_points == 3*/) {
         // all points lie in the inside of plane, so do nothing and allow the triangle to simply pass through
         *out_tri1 = *in_tri;
 
@@ -172,8 +173,8 @@ int triangle_clip_against_plane(vec3d plane_p, vec3d plane_n, triangle_t* in_tri
         // The first triangle consists of the two inside points and a new point determined by the location where one
         // side of the triangle intersects with the plane
         out_tri1->p[0] = *inside_points[0];
-        out_tri1->p[1] = *inside_points[1];
         out_tri1->t[0] = *inside_texcoords[0];
+        out_tri1->p[1] = *inside_points[1];
         out_tri1->t[1] = *inside_texcoords[1];
         out_tri1->p[2] = vector_intersect_plane(&plane_p, &plane_n, inside_points[0], outside_points[0], &t);
         out_tri1->t[2].u = MUL(t, outside_texcoords[0]->u - inside_texcoords[0]->u) + inside_texcoords[0]->u;
