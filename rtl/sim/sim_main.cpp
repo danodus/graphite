@@ -17,9 +17,12 @@
 #define OP_SET_Y0 2
 #define OP_SET_X1 3
 #define OP_SET_Y1 4
-#define OP_SET_COLOR 5
-#define OP_CLEAR 6
-#define OP_DRAW_LINE 7
+#define OP_SET_X2 5
+#define OP_SET_Y2 6
+#define OP_SET_COLOR 7
+#define OP_CLEAR 8
+#define OP_DRAW_LINE 9
+#define OP_DRAW_TRIANGLE 10
 
 struct Command {
     uint16_t opcode : 4;
@@ -77,12 +80,40 @@ void xd_draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2, int color)
     xd_draw_line(x2, y2, x0, y0, color);
 }
 
-void xd_draw_filled_triangle(int x0, int y0, int x1, int y1, int x2, int y2, int color) {}
+void xd_draw_filled_triangle(int x0, int y0, int x1, int y1, int x2, int y2, int color) {
+    Command c;
+    c.opcode = OP_SET_COLOR;
+    c.param = color | color << 4 | color << 8;
+    g_commands.push_back(c);
+    c.opcode = OP_SET_X0;
+    c.param = x0;
+    g_commands.push_back(c);
+    c.opcode = OP_SET_Y0;
+    c.param = y0;
+    g_commands.push_back(c);
+    c.opcode = OP_SET_X1;
+    c.param = x1;
+    g_commands.push_back(c);
+    c.opcode = OP_SET_Y1;
+    c.param = y1;
+    g_commands.push_back(c);
+    c.opcode = OP_SET_X2;
+    c.param = x2;
+    g_commands.push_back(c);
+    c.opcode = OP_SET_Y2;
+    c.param = y2;
+    g_commands.push_back(c);
+    c.opcode = OP_DRAW_TRIANGLE;
+    c.param = 0;
+    g_commands.push_back(c);
+}
 
 void xd_draw_filled_rectangle(int x0, int y0, int x1, int y1, int color) {}
 
 void xd_draw_textured_triangle(int x0, int y0, fx32 u0, fx32 v0, int x1, int y1, fx32 u1, fx32 v1, int x2, int y2,
-                               fx32 u2, fx32 v2, texture_t* tex) {}
+                               fx32 u2, fx32 v2, texture_t* tex) {
+    xd_draw_filled_triangle(x0, y0, x1, y1, x2, y2, 0x555);
+}
 
 void draw_model(model_t* model) {
     vec3d vec_up = {FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
@@ -177,6 +208,10 @@ int main(int argc, char** argv, char** env) {
                             break;
                         case SDLK_4:
                             draw_model(teapot_model);
+                            break;
+                        case SDLK_5:
+                            xd_draw_filled_triangle(50, 100, 100, 100, 80, 10, 0xFFF);
+                            xd_draw_triangle(50, 100, 100, 100, 80, 10, 0xF00);
                             break;
                     }
                 }

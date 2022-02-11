@@ -22,9 +22,9 @@ module graphite #(
     output      logic [15:0]                 vram_data_out_o
     );
 
-    enum { WAIT_COMMAND, PROCESS_COMMAND, CLEAR, DRAW } state;
+    enum { WAIT_COMMAND, PROCESS_COMMAND, CLEAR, DRAW_LINE, DRAW_TRIANGLE, DRAW_TRIANGLE2, DRAW_TRIANGLE3, DRAW_TRIANGLE4, DRAW_TRIANGLE5 } state;
 
-    logic signed [11:0] x0, y0, x1, y1;
+    logic signed [11:0] x0, y0, x1, y1, x2, y2;
     logic signed [11:0] x, y;
     logic signed [11:0] x_line, y_line;
     logic        [15:0] color;
@@ -33,6 +33,7 @@ module graphite #(
     // FPU
     //
 
+    /*
     logic [3:0]  fpu_op;
     logic [31:0] fpu_a_value;
     logic [31:0] fpu_b_value;
@@ -51,12 +52,14 @@ module graphite #(
         .exec_strobe_i(fpu_exec_strobe),
         .done_strobe_o(fpu_done_strobe)
     );
+    */
 
     //
     // Edge function
     // z = (c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0])
     //
 
+    /*
     logic [31:0] a[2], b[2], c[2];
     logic [31:0] z;
     logic exec_strobe, done_strobe;
@@ -81,6 +84,7 @@ module graphite #(
         .fpu_exec_strobe_o(fpu_exec_strobe),
         .fpu_done_strobe_i(fpu_done_strobe)
     );
+    */
 
     //
     // Draw line
@@ -108,6 +112,35 @@ module graphite #(
         .busy_o(busy_line),                // line drawing request in progress
         .done_o(done_line)                 // line complete (high for one tick)
     );
+
+    //
+    // Draw triangle
+    //
+
+    logic signed [31:0] w0, w1, w2;
+
+    logic signed [11:0] min_x, min_y, max_x, max_y;
+
+    function logic signed [11:0] min(logic signed [11:0] a, logic signed [11:0] b);
+        min = (a <= b) ? a : b;
+    endfunction
+
+    function logic signed [11:0] max(logic signed [11:0] a, logic signed [11:0] b);
+        max = (a >= b) ? a : b;
+    endfunction
+
+    function logic signed [11:0] min3(logic signed [11:0] a, logic signed [11:0] b, logic signed [11:0] c);
+        min3 = min(a, min(b, c));
+    endfunction
+
+    function logic signed [11:0] max3(logic signed [11:0] a, logic signed [11:0] b, logic signed [11:0] c);
+        max3 = max(a, max(b, c));
+    endfunction
+
+    function logic signed [31:0] edge_function(logic signed [31:0] a[2], logic signed [31:0] b[2], logic signed [31:0] c[2]);
+        edge_function = (c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0]);
+    endfunction
+
 
     assign cmd_axis_tready_o = state == WAIT_COMMAND;
 
@@ -141,6 +174,14 @@ module graphite #(
                         y1 <= cmd_axis_tdata_i[11:0];
                         state <= WAIT_COMMAND;
                     end
+                    OP_SET_X2: begin
+                        x2 <= cmd_axis_tdata_i[11:0];
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_Y2: begin
+                        y2 <= cmd_axis_tdata_i[11:0];
+                        state <= WAIT_COMMAND;
+                    end
                     OP_SET_COLOR: begin
                         color <= {4'hF, cmd_axis_tdata_i[OP_POS - 1:0]};
                         state <= WAIT_COMMAND;
@@ -157,7 +198,18 @@ module graphite #(
                     OP_DRAW_LINE: begin
                         $display("Draw line opcode received");
                         start_line      <= 1;
-                        state           <= DRAW;
+                        state           <= DRAW_LINE;
+                    end
+                    OP_DRAW_TRIANGLE: begin
+                        $display("Draw triangle opcode received");
+                        vram_addr_o     <= 16'h0;
+                        vram_data_out_o <= color;
+                        vram_mask_o     <= 4'hF;
+                        min_x <= min3(x0, x1, x2);
+                        min_y <= min3(y0, y1, y2);
+                        max_x <= max3(x0, x1, x2);
+                        max_y <= max3(y0, y1, y2);
+                        state           <= DRAW_TRIANGLE;
                     end
                     default:
                         state <= WAIT_COMMAND;
@@ -174,11 +226,59 @@ module graphite #(
                 end
             end
 
-            DRAW: begin
+            DRAW_LINE: begin
                 if (done_line) begin
                     vram_sel_o      <= 1'b0;
                     vram_wr_o       <= 1'b0;
                     state           <= WAIT_COMMAND;
+                end
+            end
+
+            DRAW_TRIANGLE: begin
+                x <= min_x;
+                y <= min_y;
+                vram_addr_o <= vram_addr_o + {4'd0, min_y} * FB_WIDTH + {4'd0, min_x};
+                state <= DRAW_TRIANGLE2;
+            end
+
+            DRAW_TRIANGLE2: begin
+                w0 <= edge_function('{{20'd0, x1}, {20'd0, y1}}, '{{20'd0, x2}, {20'd0, y2}}, '{{20'd0, x}, {20'd0, y}});
+                w1 <= edge_function('{{20'd0, x2}, {20'd0, y2}}, '{{20'd0, x0}, {20'd0, y0}}, '{{20'd0, x}, {20'd0, y}});
+                w2 <= edge_function('{{20'd0, x0}, {20'd0, y0}}, '{{20'd0, x1}, {20'd0, y1}}, '{{20'd0, x}, {20'd0, y}});
+
+                state <= DRAW_TRIANGLE3;
+            end
+
+            DRAW_TRIANGLE3: begin
+                if (w0 >= 0 && w1 >= 0 && w2 >= 0) begin
+                    vram_sel_o      <= 1'b1;
+                    vram_wr_o       <= 1'b1;
+                end
+
+                state <= DRAW_TRIANGLE4;
+            end
+
+            DRAW_TRIANGLE4: begin
+                vram_sel_o <= 1'b0;
+                vram_wr_o  <= 1'b0;
+
+                if (x < max_x) begin
+                    x <= x + 1;
+                    vram_addr_o <= vram_addr_o + 1;
+                end else begin
+                    x <= min_x;
+                    y <= y + 1;
+                    vram_addr_o <= vram_addr_o + {4'd0, (FB_WIDTH[11:0] - max_x) + min_x};
+                end
+
+                state <= DRAW_TRIANGLE5;
+            end
+
+            DRAW_TRIANGLE5: begin
+                if (y >= max_y) begin
+                    state       <= WAIT_COMMAND;
+                end else begin
+                    state       <= DRAW_TRIANGLE2;
                 end
             end
 
