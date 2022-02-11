@@ -119,8 +119,39 @@ void sw_draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2, int color)
     sw_draw_line(x2, y2, x0, y0, color);
 }
 
+int edge_function(int a[2], int b[2], int c[2]) {
+    return (c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0]);
+}
+
+int min(int a, int b) { return (a <= b) ? a : b; }
+
+int max(int a, int b) { return (a >= b) ? a : b; }
+
+int min3(int a, int b, int c) { return min(a, min(b, c)); }
+
+int max3(int a, int b, int c) { return max(a, max(b, c)); }
+
 void sw_draw_filled_triangle(int x0, int y0, int x1, int y1, int x2, int y2, int color) {
-    // TODO
+    int v0[2] = {x0, y0};
+    int v1[2] = {x1, y1};
+    int v2[2] = {x2, y2};
+
+    int min_x = min3(x0, x1, x2);
+    int min_y = min3(y0, y1, y2);
+    int max_x = max3(x0, x1, x2);
+    int max_y = max3(y0, y1, y2);
+
+    for (int y = min_y; y <= max_y; ++y)
+        for (int x = min_x; x <= max_x; ++x) {
+            int pixel_sample[2] = {x, y};
+
+            int w0 = edge_function(v1, v2, pixel_sample);
+            int w1 = edge_function(v2, v0, pixel_sample);
+            int w2 = edge_function(v0, v1, pixel_sample);
+            if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
+                (*g_draw_pixel_fn)(x, y, color);
+            }
+        }
 }
 
 void sw_draw_filled_rectangle(int x0, int y0, int x1, int y1, int color) {
@@ -141,6 +172,8 @@ int texture_sample_color(texture_t* tex, fx32 u, fx32 v) {
 void sw_draw_textured_triangle(int x0, int y0, fx32 u0, fx32 v0, int x1, int y1, fx32 u1, fx32 v1, int x2, int y2,
                                fx32 u2, fx32 v2, texture_t* tex) {
     // TODO
+    // For now, only render a non-textured filled triangle
+    sw_draw_filled_triangle(x0, y0, x1, y1, x2, y2, 128);
 }
 
 #pragma GCC diagnostic pop
