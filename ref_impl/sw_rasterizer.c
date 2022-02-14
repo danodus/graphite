@@ -1,6 +1,11 @@
+// Ref.: https://gamedev.stackexchange.com/questions/23743/whats-the-most-efficient-way-to-find-barycentric-coordinates
+
 #include "sw_rasterizer.h"
 
 #include <stdbool.h>
+
+#define RMUL(x, y) (((int)(x >> SCALE) * (int)(y)))
+#define RDIV(x, y) (((int)(x)) / (int)((y) >> SCALE))
 
 static draw_pixel_fn_t g_draw_pixel_fn;
 
@@ -179,11 +184,10 @@ void sw_draw_textured_triangle(int x0, int y0, fx32 u0, fx32 v0, int x1, int y1,
     fx32 vv1[2] = {FXI(x1), FXI(y1)};
     fx32 vv2[2] = {FXI(x2), FXI(y2)};
 
-    /*
-    fx32 c0[3] = {FX(1.0f), FX(0.0f), FX(0.0f)};
-    fx32 c1[3] = {FX(0.0f), FX(1.0f), FX(0.0f)};
-    fx32 c2[3] = {FX(0.0f), FX(0.0f), FX(1.0f)};
-    */
+    // fx32 c0[3] = {FX(1.0f), FX(0.0f), FX(0.0f)};
+    // fx32 c1[3] = {FX(0.0f), FX(1.0f), FX(0.0f)};
+    // fx32 c2[3] = {FX(0.0f), FX(0.0f), FX(1.0f)};
+
     fx32 c0[3] = {u0, v0, FX(0.0f)};
     fx32 c1[3] = {u1, v1, FX(0.0f)};
     fx32 c2[3] = {u2, v2, FX(0.0f)};
@@ -194,6 +198,7 @@ void sw_draw_textured_triangle(int x0, int y0, fx32 u0, fx32 v0, int x1, int y1,
     int max_y = max3(y0, y1, y2);
 
     fx32 area = edge_function_fx32(vv0, vv1, vv2);
+    fx32 inv_area = area > FX(0.0f) ? RDIV(FX(1.0f), area) : FX(0.0f);
 
     for (int y = min_y; y <= max_y; ++y)
         for (int x = min_x; x <= max_x; ++x) {
@@ -203,20 +208,19 @@ void sw_draw_textured_triangle(int x0, int y0, fx32 u0, fx32 v0, int x1, int y1,
             fx32 w1 = edge_function_fx32(vv2, vv0, pixel_sample);
             fx32 w2 = edge_function_fx32(vv0, vv1, pixel_sample);
             if (w0 >= FX(0.0f) && w1 >= FX(0.0f) && w2 >= FX(0.0f)) {
-                if (area > FX(0.0f)) {
-                    w0 = _DIV2(w0, area, SCALE, 6);
-                    w1 = _DIV2(w1, area, SCALE, 6);
-                    w2 = _DIV2(w2, area, SCALE, 6);
+                if (inv_area > FX(0.0f)) {
+                    w0 = RMUL(w0, inv_area);
+                    w1 = RMUL(w1, inv_area);
+                    w2 = RMUL(w2, inv_area);
                     fx32 r = MUL(w0, c0[0]) + MUL(w1, c1[0]) + MUL(w2, c2[0]);
                     fx32 g = MUL(w0, c0[1]) + MUL(w1, c1[1]) + MUL(w2, c2[1]);
                     fx32 b = MUL(w0, c0[2]) + MUL(w1, c1[2]) + MUL(w2, c2[2]);
-                    /*
                     int rr = INT(MUL(r, FX(15.0f)));
                     int gg = INT(MUL(g, FX(15.0f)));
                     int bb = INT(MUL(b, FX(15.0f)));
                     (*g_draw_pixel_fn)(x, y, rr << 8 | gg << 4 | bb);
-                    */
-                    (*g_draw_pixel_fn)(x, y, texture_sample_color(tex, r, g));
+
+                    //(*g_draw_pixel_fn)(x, y, texture_sample_color(tex, r, g));
                 }
             }
         }

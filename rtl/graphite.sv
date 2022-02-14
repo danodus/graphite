@@ -22,7 +22,7 @@ module graphite #(
     output      logic [15:0]                 vram_data_out_o
     );
 
-    enum { WAIT_COMMAND, PROCESS_COMMAND, CLEAR, DRAW_LINE, DRAW_TRIANGLE, DRAW_TRIANGLE2, DRAW_TRIANGLE3, DRAW_TRIANGLE4, DRAW_TRIANGLE5 } state;
+    enum { WAIT_COMMAND, PROCESS_COMMAND, CLEAR, DRAW_LINE, DRAW_TRIANGLE, DRAW_TRIANGLE2, DRAW_TRIANGLE3, DRAW_TRIANGLE4, DRAW_TRIANGLE5, DRAW_TRIANGLE6, DRAW_TRIANGLE7, DRAW_TRIANGLE8 } state;
 
     logic signed [11:0] x0, y0, x1, y1, x2, y2;
     logic signed [11:0] x, y;
@@ -117,9 +117,29 @@ module graphite #(
     // Draw triangle
     //
 
+    logic signed [31:0] v0[2], v1[2], v2[2];
+    logic signed [31:0] p[2];
     logic signed [31:0] w0, w1, w2;
-
+    logic signed [31:0] area, inv_area;
+    logic signed [31:0] r, g, b, rr, gg, bb;
+    
+    logic signed [31:0] c0[3] = '{32'd1 << 16, 32'd0, 32'd0};
+    logic signed [31:0] c1[3] = '{32'd0, 32'd1 << 16, 32'd0};
+    logic signed [31:0] c2[3] = '{32'd0, 32'd0, 32'd1 << 16};
+    
     logic signed [11:0] min_x, min_y, max_x, max_y;
+
+    function logic signed [31:0] mul(logic signed [31:0] x, logic signed [31:0] y);
+        mul = (x >> 8) * (y >> 8);
+    endfunction
+
+    function logic signed [31:0] rmul(logic signed [31:0] x, logic signed [31:0] y);
+        rmul = (x >> 16) * y;
+    endfunction
+
+    function logic signed [31:0] rdiv(logic signed [31:0] x, logic signed [31:0] y);
+        rdiv = x / (y >> 16);
+    endfunction
 
     function logic signed [11:0] min(logic signed [11:0] a, logic signed [11:0] b);
         min = (a <= b) ? a : b;
@@ -138,9 +158,14 @@ module graphite #(
     endfunction
 
     function logic signed [31:0] edge_function(logic signed [31:0] a[2], logic signed [31:0] b[2], logic signed [31:0] c[2]);
-        edge_function = (c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0]);
+        edge_function = mul(c[0] - a[0], b[1] - a[1]) - mul(c[1] - a[1], b[0] - a[0]);
     endfunction
 
+    assign v0 = '{{20'd0, x0} << 16, {20'd0, y0} << 16};
+    assign v1 = '{{20'd0, x1} << 16, {20'd0, y1} << 16};
+    assign v2 = '{{20'd0, x2} << 16, {20'd0, y2} << 16};
+    
+    assign p = '{{20'd0, x} << 16, {20'd0, y} << 16};
 
     assign cmd_axis_tready_o = state == WAIT_COMMAND;
 
@@ -209,6 +234,7 @@ module graphite #(
                         min_y <= min3(y0, y1, y2);
                         max_x <= max3(x0, x1, x2);
                         max_y <= max3(y0, y1, y2);
+                        area  <= edge_function(v0, v1, v2);
                         state           <= DRAW_TRIANGLE;
                     end
                     default:
@@ -235,6 +261,7 @@ module graphite #(
             end
 
             DRAW_TRIANGLE: begin
+                inv_area <= area > 0 ? rdiv(32'd1 << 16, area) : 32'd0;
                 x <= min_x;
                 y <= min_y;
                 vram_addr_o <= vram_addr_o + {4'd0, min_y} * FB_WIDTH + {4'd0, min_x};
@@ -242,23 +269,46 @@ module graphite #(
             end
 
             DRAW_TRIANGLE2: begin
-                w0 <= edge_function('{{20'd0, x1}, {20'd0, y1}}, '{{20'd0, x2}, {20'd0, y2}}, '{{20'd0, x}, {20'd0, y}});
-                w1 <= edge_function('{{20'd0, x2}, {20'd0, y2}}, '{{20'd0, x0}, {20'd0, y0}}, '{{20'd0, x}, {20'd0, y}});
-                w2 <= edge_function('{{20'd0, x0}, {20'd0, y0}}, '{{20'd0, x1}, {20'd0, y1}}, '{{20'd0, x}, {20'd0, y}});
+                w0 <= edge_function(v1, v2, p);
+                w1 <= edge_function(v2, v0, p);
+                w2 <= edge_function(v0, v1, p);
 
                 state <= DRAW_TRIANGLE3;
             end
 
             DRAW_TRIANGLE3: begin
-                if (w0 >= 0 && w1 >= 0 && w2 >= 0) begin
-                    vram_sel_o      <= 1'b1;
-                    vram_wr_o       <= 1'b1;
+                if (w0 >= 0 && w1 >= 0 && w2 >= 0 && inv_area > 0) begin
+                    w0 <= rmul(w0, inv_area);
+                    w1 <= rmul(w1, inv_area);
+                    w2 <= rmul(w2, inv_area);
+                    state <= DRAW_TRIANGLE4;
+                end else begin
+                    state <= DRAW_TRIANGLE7;
                 end
-
-                state <= DRAW_TRIANGLE4;
             end
 
             DRAW_TRIANGLE4: begin
+                r <= mul(w0, c0[0]) + mul(w1, c1[0]) + mul(w2, c2[0]);
+                g <= mul(w0, c0[1]) + mul(w1, c1[1]) + mul(w2, c2[1]);
+                b <= mul(w0, c0[2]) + mul(w1, c1[2]) + mul(w2, c2[2]);
+                state <= DRAW_TRIANGLE5;
+            end
+
+            DRAW_TRIANGLE5: begin
+                rr <= mul(r, 32'd15 << 16) >> 16;
+                gg <= mul(g, 32'd15 << 16) >> 16;
+                bb <= mul(b, 32'd15 << 16) >> 16;
+                state <= DRAW_TRIANGLE6;
+            end
+
+            DRAW_TRIANGLE6: begin
+                vram_data_out_o <= {4'hF, rr[3:0], gg[3:0], bb[3:0]};
+                vram_sel_o      <= 1'b1;
+                vram_wr_o       <= 1'b1;
+                state <= DRAW_TRIANGLE7;
+            end
+
+            DRAW_TRIANGLE7: begin
                 vram_sel_o <= 1'b0;
                 vram_wr_o  <= 1'b0;
 
@@ -271,10 +321,10 @@ module graphite #(
                     vram_addr_o <= vram_addr_o + {4'd0, (FB_WIDTH[11:0] - max_x) + min_x};
                 end
 
-                state <= DRAW_TRIANGLE5;
+                state <= DRAW_TRIANGLE8;
             end
 
-            DRAW_TRIANGLE5: begin
+            DRAW_TRIANGLE8: begin
                 if (y >= max_y) begin
                     state       <= WAIT_COMMAND;
                 end else begin
