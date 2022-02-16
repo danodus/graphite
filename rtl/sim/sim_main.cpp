@@ -12,17 +12,22 @@
 #define FB_WIDTH 128
 #define FB_HEIGHT 128
 
-#define OP_NOP 0
-#define OP_SET_X0 1
-#define OP_SET_Y0 2
-#define OP_SET_X1 3
-#define OP_SET_Y1 4
-#define OP_SET_X2 5
-#define OP_SET_Y2 6
-#define OP_SET_COLOR 7
-#define OP_CLEAR 8
-#define OP_DRAW_LINE 9
-#define OP_DRAW_TRIANGLE 10
+#define OP_SET_X0 0
+#define OP_SET_Y0 1
+#define OP_SET_X1 2
+#define OP_SET_Y1 3
+#define OP_SET_X2 4
+#define OP_SET_Y2 5
+#define OP_SET_U0 6
+#define OP_SET_V0 7
+#define OP_SET_U1 8
+#define OP_SET_V1 9
+#define OP_SET_U2 10
+#define OP_SET_V2 11
+#define OP_SET_COLOR 12
+#define OP_CLEAR 13
+#define OP_DRAW_LINE 14
+#define OP_DRAW_TRIANGLE 15
 
 struct Command {
     uint16_t opcode : 4;
@@ -112,7 +117,49 @@ void xd_draw_filled_rectangle(int x0, int y0, int x1, int y1, int color) {}
 
 void xd_draw_textured_triangle(int x0, int y0, fx32 u0, fx32 v0, int x1, int y1, fx32 u1, fx32 v1, int x2, int y2,
                                fx32 u2, fx32 v2, texture_t* tex) {
-    xd_draw_filled_triangle(x0, y0, x1, y1, x2, y2, 0x555);
+    Command c;
+    c.opcode = OP_SET_COLOR;
+    c.param = 0x555;
+    g_commands.push_back(c);
+    c.opcode = OP_SET_X0;
+    c.param = x0;
+    g_commands.push_back(c);
+    c.opcode = OP_SET_Y0;
+    c.param = y0;
+    g_commands.push_back(c);
+    c.opcode = OP_SET_X1;
+    c.param = x1;
+    g_commands.push_back(c);
+    c.opcode = OP_SET_Y1;
+    c.param = y1;
+    g_commands.push_back(c);
+    c.opcode = OP_SET_X2;
+    c.param = x2;
+    g_commands.push_back(c);
+    c.opcode = OP_SET_Y2;
+    c.param = y2;
+    g_commands.push_back(c);
+    c.opcode = OP_SET_U0;
+    c.param = u0 >> 5;
+    g_commands.push_back(c);
+    c.opcode = OP_SET_V0;
+    c.param = v0 >> 5;
+    g_commands.push_back(c);
+    c.opcode = OP_SET_U1;
+    c.param = u1 >> 5;
+    g_commands.push_back(c);
+    c.opcode = OP_SET_V1;
+    c.param = v1 >> 5;
+    g_commands.push_back(c);
+    c.opcode = OP_SET_U2;
+    c.param = u2 >> 5;
+    g_commands.push_back(c);
+    c.opcode = OP_SET_V2;
+    c.param = v2 >> 5;
+    g_commands.push_back(c);
+    c.opcode = OP_DRAW_TRIANGLE;
+    c.param = 0;
+    g_commands.push_back(c);
 }
 
 void draw_model(model_t* model) {
@@ -210,7 +257,8 @@ int main(int argc, char** argv, char** env) {
                             draw_model(teapot_model);
                             break;
                         case SDLK_5:
-                            xd_draw_filled_triangle(50, 100, 100, 100, 80, 10, 0xFFF);
+                            xd_draw_textured_triangle(50, 100, FX(0.0f), FX(0.0f), 100, 100, FX(1.0f), FX(0.0f), 80, 10,
+                                                      FX(0.0f), FX(1.0f), NULL);
                             xd_draw_triangle(50, 100, 100, 100, 80, 10, 0xF00);
                             break;
                     }

@@ -28,6 +28,7 @@ module graphite #(
     logic signed [11:0] x, y;
     logic signed [11:0] x_line, y_line;
     logic        [15:0] color;
+    logic signed [31:0] u0, v0, u1, v1, u2, v2;
 
     //
     // FPU
@@ -117,53 +118,31 @@ module graphite #(
     // Draw triangle
     //
 
-    logic signed [31:0] v0[2], v1[2], v2[2];
+    logic signed [31:0] vv0[2], vv1[2], vv2[2];
     logic signed [31:0] p[2];
     logic signed [31:0] w0, w1, w2;
     logic signed [31:0] area, inv_area;
     logic signed [31:0] r, g, b, rr, gg, bb;
     
-    logic signed [31:0] c0[3] = '{32'd1 << 16, 32'd0, 32'd0};
-    logic signed [31:0] c1[3] = '{32'd0, 32'd1 << 16, 32'd0};
-    logic signed [31:0] c2[3] = '{32'd0, 32'd0, 32'd1 << 16};
+    logic signed [31:0] c0[3];
+    logic signed [31:0] c1[3];
+    logic signed [31:0] c2[3];
     
     logic signed [11:0] min_x, min_y, max_x, max_y;
 
-    function logic signed [31:0] mul(logic signed [31:0] x, logic signed [31:0] y);
-        mul = (x >> 8) * (y >> 8);
-    endfunction
-
-    function logic signed [31:0] rmul(logic signed [31:0] x, logic signed [31:0] y);
-        rmul = (x >> 16) * y;
-    endfunction
-
-    function logic signed [31:0] rdiv(logic signed [31:0] x, logic signed [31:0] y);
-        rdiv = x / (y >> 16);
-    endfunction
-
-    function logic signed [11:0] min(logic signed [11:0] a, logic signed [11:0] b);
-        min = (a <= b) ? a : b;
-    endfunction
-
-    function logic signed [11:0] max(logic signed [11:0] a, logic signed [11:0] b);
-        max = (a >= b) ? a : b;
-    endfunction
-
-    function logic signed [11:0] min3(logic signed [11:0] a, logic signed [11:0] b, logic signed [11:0] c);
-        min3 = min(a, min(b, c));
-    endfunction
-
-    function logic signed [11:0] max3(logic signed [11:0] a, logic signed [11:0] b, logic signed [11:0] c);
-        max3 = max(a, max(b, c));
-    endfunction
+    reciprocal area_reciprocal(.x_i(area), .z_o(inv_area));
 
     function logic signed [31:0] edge_function(logic signed [31:0] a[2], logic signed [31:0] b[2], logic signed [31:0] c[2]);
         edge_function = mul(c[0] - a[0], b[1] - a[1]) - mul(c[1] - a[1], b[0] - a[0]);
     endfunction
 
-    assign v0 = '{{20'd0, x0} << 16, {20'd0, y0} << 16};
-    assign v1 = '{{20'd0, x1} << 16, {20'd0, y1} << 16};
-    assign v2 = '{{20'd0, x2} << 16, {20'd0, y2} << 16};
+    assign vv0 = '{{20'd0, x0} << 16, {20'd0, y0} << 16};
+    assign vv1 = '{{20'd0, x1} << 16, {20'd0, y1} << 16};
+    assign vv2 = '{{20'd0, x2} << 16, {20'd0, y2} << 16};
+
+    assign c0 = '{u0, v0, 32'd0};
+    assign c1 = '{u1, v1, 32'd0};
+    assign c2 = '{u2, v2, 32'd0};
     
     assign p = '{{20'd0, x} << 16, {20'd0, y} << 16};
 
@@ -179,10 +158,6 @@ module graphite #(
 
             PROCESS_COMMAND: begin
                 case (cmd_axis_tdata_i[OP_POS+:OP_SIZE])
-                    OP_NOP: begin
-                        $display("NOP opcode received");
-                        state <= WAIT_COMMAND;
-                    end
                     OP_SET_X0: begin
                         x0 <= cmd_axis_tdata_i[11:0];
                         state <= WAIT_COMMAND;
@@ -205,6 +180,30 @@ module graphite #(
                     end
                     OP_SET_Y2: begin
                         y2 <= cmd_axis_tdata_i[11:0];
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_U0: begin
+                        u0 <= {15'b0, cmd_axis_tdata_i[11:0], 5'b0};
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_V0: begin
+                        v0 <= {15'b0, cmd_axis_tdata_i[11:0], 5'b0};
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_U1: begin
+                        u1 <= {15'b0, cmd_axis_tdata_i[11:0], 5'b0};
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_V1: begin
+                        v1 <= {15'b0, cmd_axis_tdata_i[11:0], 5'b0};
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_U2: begin
+                        u2 <= {15'b0, cmd_axis_tdata_i[11:0], 5'b0};
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_V2: begin
+                        v2 <= {15'b0, cmd_axis_tdata_i[11:0], 5'b0};
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_COLOR: begin
@@ -234,7 +233,7 @@ module graphite #(
                         min_y <= min3(y0, y1, y2);
                         max_x <= max3(x0, x1, x2);
                         max_y <= max3(y0, y1, y2);
-                        area  <= edge_function(v0, v1, v2);
+                        area  <= edge_function(vv0, vv1, vv2);
                         state           <= DRAW_TRIANGLE;
                     end
                     default:
@@ -261,7 +260,6 @@ module graphite #(
             end
 
             DRAW_TRIANGLE: begin
-                inv_area <= area > 0 ? rdiv(32'd1 << 16, area) : 32'd0;
                 x <= min_x;
                 y <= min_y;
                 vram_addr_o <= vram_addr_o + {4'd0, min_y} * FB_WIDTH + {4'd0, min_x};
@@ -269,9 +267,9 @@ module graphite #(
             end
 
             DRAW_TRIANGLE2: begin
-                w0 <= edge_function(v1, v2, p);
-                w1 <= edge_function(v2, v0, p);
-                w2 <= edge_function(v0, v1, p);
+                w0 <= edge_function(vv1, vv2, p);
+                w1 <= edge_function(vv2, vv0, p);
+                w2 <= edge_function(vv0, vv1, p);
 
                 state <= DRAW_TRIANGLE3;
             end
