@@ -31,63 +31,6 @@ module graphite #(
     logic signed [31:0] u0, v0, u1, v1, u2, v2;
 
     //
-    // FPU
-    //
-
-    /*
-    logic [3:0]  fpu_op;
-    logic [31:0] fpu_a_value;
-    logic [31:0] fpu_b_value;
-    logic [31:0] fpu_z_value;
-    logic        fpu_exec_strobe;
-    logic        fpu_done_strobe;
-
-    fpu fpu(
-        .clk(clk),
-        .reset_i(reset_i),
-        .op_i(fpu_op),
-        .a_value_i(fpu_a_value),
-        .b_value_i(fpu_b_value),
-        .z_value_o(fpu_z_value),
-
-        .exec_strobe_i(fpu_exec_strobe),
-        .done_strobe_o(fpu_done_strobe)
-    );
-    */
-
-    //
-    // Edge function
-    // z = (c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0])
-    //
-
-    /*
-    logic [31:0] a[2], b[2], c[2];
-    logic [31:0] z;
-    logic exec_strobe, done_strobe;
-
-    edge_function edge_function(
-        .clk(clk),
-        .reset_i(reset_i),
-
-        .a_i(a),
-        .b_i(b),
-        .c_i(c),
-        .z_o(z),
-
-        .exec_strobe_i(exec_strobe),
-        .done_strobe_o(done_strobe),
-
-        // FPU
-        .fpu_op_o(fpu_op),
-        .fpu_a_value_o(fpu_a_value),
-        .fpu_b_value_o(fpu_b_value),
-        .fpu_z_value_i(fpu_z_value),
-        .fpu_exec_strobe_o(fpu_exec_strobe),
-        .fpu_done_strobe_i(fpu_done_strobe)
-    );
-    */
-
-    //
     // Draw line
     //
 

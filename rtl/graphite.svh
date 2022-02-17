@@ -1,14 +1,6 @@
 `ifndef GRAPHITE_SVH
 `define GRAPHITE_SVH
 
-// FPU
-
-localparam FPU_OP_INT_TO_FLOAT    = 0;
-localparam FPU_OP_FLOAT_TO_INT    = 1;
-localparam FPU_OP_ADD             = 2;
-localparam FPU_OP_MULTIPLY        = 3;
-localparam FPU_OP_DIVIDE          = 4;
-
 // 4 OP | 12 Immediate
 
 localparam OP_SET_X0        = 0;

@@ -4,7 +4,8 @@ Graphite is a FPGA based open source graphics processing unit.
 
 ## Features
 
-- Single precision floating point unit (IEEE-754)
+- Draw line;
+- Draw textured triangle.
 
 ## Requirements
 

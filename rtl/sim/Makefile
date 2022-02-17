@@ -9,7 +9,7 @@ clean:
 	rm -rf obj_dir
 
 sim: top.sv sim_main.cpp ../../common/graphite.c ../../common/graphite.h ../../common/cube.c ../../common/cube.h ../../common/teapot.c ../../common/teapot.h
-	$(VERILATOR) -cc --exe $(CFLAGS) $(LDFLAGS) top.sv sim_main.cpp ../../common/graphite.c ../../common/cube.c ../../common/teapot.c -I.. -I../fpu
+	$(VERILATOR) -cc --exe $(CFLAGS) $(LDFLAGS) top.sv sim_main.cpp ../../common/graphite.c ../../common/cube.c ../../common/teapot.c -I..
 	$(MAKE) -j 4 -C obj_dir -f Vtop.mk
 
 run: sim
