@@ -136,9 +136,9 @@ module graphite #(
         edge_function = mul(c[0] - a[0], b[1] - a[1]) - mul(c[1] - a[1], b[0] - a[0]);
     endfunction
 
-    assign vv0 = '{{20'd0, x0} << 16, {20'd0, y0} << 16};
-    assign vv1 = '{{20'd0, x1} << 16, {20'd0, y1} << 16};
-    assign vv2 = '{{20'd0, x2} << 16, {20'd0, y2} << 16};
+    assign vv0 = '{{{20{x0[11]}}, x0} << 16, {{20{y0[11]}}, y0} << 16};
+    assign vv1 = '{{{20{x1[11]}}, x1} << 16, {{20{y1[11]}}, y1} << 16};
+    assign vv2 = '{{{20{x2[11]}}, x2} << 16, {{20{y2[11]}}, y2} << 16};
 
     assign c0 = '{u0, v0, 32'd0};
     assign c1 = '{u1, v1, 32'd0};
