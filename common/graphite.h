@@ -9,7 +9,7 @@
 #define _FRACTION_MASK(scale) (0xffffffff >> (32 - scale))
 #define _WHOLE_MASK(scale) (0xffffffff ^ FRACTION_MASK(scale))
 
-#define _FLOAT_TO_FIXED(x, scale) ((x) * (float)(1 << scale))
+#define _FLOAT_TO_FIXED(x, scale) ((int)((x) * (float)(1 << scale)))
 #define _FIXED_TO_FLOAT(x, scale) ((float)(x) / (double)(1 << scale))
 #define _INT_TO_FIXED(x, scale) ((x) << scale)
 #define _FIXED_TO_INT(x, scale) ((x) >> scale)

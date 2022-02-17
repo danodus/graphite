@@ -29,6 +29,12 @@
 #define OP_DRAW 14
 #define OP_SWAP 15
 
+#if FIXED_POINT
+#define TEXCOORD_PARAM(x) ((x) >> 5)
+#else
+#define TEXCOORD_PARAM(x) (_FLOAT_TO_FIXED(x, 16) >> 5)
+#endif
+
 struct Command {
     uint16_t opcode : 4;
     uint16_t param : 12;
@@ -140,22 +146,22 @@ void xd_draw_textured_triangle(int x0, int y0, fx32 u0, fx32 v0, int x1, int y1,
     c.param = y2;
     g_commands.push_back(c);
     c.opcode = OP_SET_U0;
-    c.param = u0 >> 5;
+    c.param = TEXCOORD_PARAM(u0);
     g_commands.push_back(c);
     c.opcode = OP_SET_V0;
-    c.param = v0 >> 5;
+    c.param = TEXCOORD_PARAM(v0);
     g_commands.push_back(c);
     c.opcode = OP_SET_U1;
-    c.param = u1 >> 5;
+    c.param = TEXCOORD_PARAM(u1);
     g_commands.push_back(c);
     c.opcode = OP_SET_V1;
-    c.param = v1 >> 5;
+    c.param = TEXCOORD_PARAM(v1);
     g_commands.push_back(c);
     c.opcode = OP_SET_U2;
-    c.param = u2 >> 5;
+    c.param = TEXCOORD_PARAM(u2);
     g_commands.push_back(c);
     c.opcode = OP_SET_V2;
-    c.param = v2 >> 5;
+    c.param = TEXCOORD_PARAM(v2);
     g_commands.push_back(c);
     c.opcode = OP_DRAW;
     c.param = 1;
