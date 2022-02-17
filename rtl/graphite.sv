@@ -229,10 +229,10 @@ module graphite #(
                         vram_addr_o     <= 16'h0;
                         vram_data_out_o <= color;
                         vram_mask_o     <= 4'hF;
-                        min_x <= min3(x0, x1, x2);
-                        min_y <= min3(y0, y1, y2);
-                        max_x <= max3(x0, x1, x2);
-                        max_y <= max3(y0, y1, y2);
+                        min_x <= max(min3(x0, x1, x2), 0);
+                        min_y <= max(min3(y0, y1, y2), 0);
+                        max_x <= min(max3(x0, x1, x2), FB_WIDTH - 1);
+                        max_y <= min(max3(y0, y1, y2), FB_HEIGHT - 1);
                         area  <= edge_function(vv0, vv1, vv2);
                         state           <= DRAW_TRIANGLE;
                     end
@@ -345,7 +345,7 @@ module graphite #(
             start_line <= 1'b0;
 
         if (drawing_line) begin
-            if (x_line < FB_WIDTH && y_line < FB_HEIGHT) begin
+            if (x_line >= 0 && y_line >= 0 && x_line < FB_WIDTH && y_line < FB_HEIGHT) begin
                 vram_addr_o     <= {4'b0, y_line} * FB_WIDTH + {4'b0, x_line};
                 vram_data_out_o <= color;
                 vram_mask_o     <= 4'hF;
