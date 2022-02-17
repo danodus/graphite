@@ -122,7 +122,9 @@ module graphite #(
     logic signed [31:0] p[2];
     logic signed [31:0] w0, w1, w2;
     logic signed [31:0] area, inv_area;
-    logic signed [31:0] r, g, b, rr, gg, bb;
+    logic signed [31:0] r, g, b;
+
+    logic [11:0] tex_sample;
     
     logic signed [31:0] c0[3];
     logic signed [31:0] c1[3];
@@ -134,6 +136,13 @@ module graphite #(
 
     function logic signed [31:0] edge_function(logic signed [31:0] a[2], logic signed [31:0] b[2], logic signed [31:0] c[2]);
         edge_function = mul(c[0] - a[0], b[1] - a[1]) - mul(c[1] - a[1], b[0] - a[0]);
+    endfunction
+
+    function logic [11:0] get_texture_sample(logic signed [31:0] u, logic signed [31:0] v);
+        if (u < (32768) && v < (32768)) get_texture_sample = 12'hF00;
+        else if (u >= (32768) && v < (32768)) get_texture_sample = 12'h0F0;
+        else if (u < (32768) && v >= (32768)) get_texture_sample = 12'h00F;
+        else get_texture_sample = 12'hFF0;
     endfunction
 
     assign vv0 = '{{{20{x0[11]}}, x0} << 16, {{20{y0[11]}}, y0} << 16};
@@ -211,7 +220,6 @@ module graphite #(
                         state <= WAIT_COMMAND;
                     end
                     OP_CLEAR: begin
-                        $display("Clear opcode received");
                         vram_addr_o     <= 16'h0;
                         vram_data_out_o <= color;
                         vram_mask_o     <= 4'hF;
@@ -220,12 +228,10 @@ module graphite #(
                         state           <= CLEAR;
                     end
                     OP_DRAW_LINE: begin
-                        $display("Draw line opcode received");
                         start_line      <= 1;
                         state           <= DRAW_LINE;
                     end
                     OP_DRAW_TRIANGLE: begin
-                        $display("Draw triangle opcode received");
                         vram_addr_o     <= 16'h0;
                         vram_data_out_o <= color;
                         vram_mask_o     <= 4'hF;
@@ -293,14 +299,12 @@ module graphite #(
             end
 
             DRAW_TRIANGLE5: begin
-                rr <= mul(r, 32'd15 << 16) >> 16;
-                gg <= mul(g, 32'd15 << 16) >> 16;
-                bb <= mul(b, 32'd15 << 16) >> 16;
+                tex_sample = get_texture_sample(r, g);
                 state <= DRAW_TRIANGLE6;
             end
 
             DRAW_TRIANGLE6: begin
-                vram_data_out_o <= {4'hF, rr[3:0], gg[3:0], bb[3:0]};
+                vram_data_out_o <= {4'hF, tex_sample[11:8], tex_sample[7:4], tex_sample[3:0]};
                 vram_sel_o      <= 1'b1;
                 vram_wr_o       <= 1'b1;
                 state <= DRAW_TRIANGLE7;

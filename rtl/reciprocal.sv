@@ -5,7 +5,7 @@ module reciprocal(
     input wire logic [31:0] x_i,
     output     logic [31:0] z_o
 );
-    localparam NB_BITS_PER_SUBDIVISION = 4;
+    localparam NB_BITS_PER_SUBDIVISION = 2;
     localparam NB_SUBDIVISIONS = 65536 / (2 ** NB_BITS_PER_SUBDIVISION);
     localparam ADJ_BITS = 16 + NB_BITS_PER_SUBDIVISION;
 

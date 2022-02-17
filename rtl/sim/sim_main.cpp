@@ -162,14 +162,23 @@ void xd_draw_textured_triangle(int x0, int y0, fx32 u0, fx32 v0, int x1, int y1,
     g_commands.push_back(c);
 }
 
-void draw_model(model_t* model) {
+void clear() {
+    Command c;
+    c.opcode = OP_SET_COLOR;
+    c.param = 0x333;
+    g_commands.push_back(c);
+    c.opcode = OP_CLEAR;
+    c.param = 0x000;
+    g_commands.push_back(c);
+}
+
+void draw_model(model_t* model, float theta) {
     vec3d vec_up = {FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
     vec3d vec_camera = {FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
 
     // Projection matrix
     mat4x4 mat_proj = matrix_make_projection(FB_WIDTH, FB_HEIGHT, 60.0f);
 
-    float theta = 1.0f;
     float yaw = 0.0f;
 
     vec3d vec_target = {FX(0.0f), FX(0.0f), FX(1.0f), FX(1.0f)};
@@ -228,11 +237,20 @@ int main(int argc, char** argv, char** env) {
     model_t* teapot_model = load_teapot();
     model_t* cube_model = load_cube();
 
+    float theta = 0.0f;
+    bool anim = false;
+
     bool quit = false;
     while (!contextp->gotFinish() && !quit) {
         SDL_Event e;
 
         if (top->cmd_axis_tready_o && g_commands.size() == 0) {
+            if (anim) {
+                clear();
+                draw_model(cube_model, theta);
+                theta += 0.01f;
+            }
+
             while (SDL_PollEvent(&e)) {
                 if (e.type == SDL_QUIT) {
                     quit = true;
@@ -240,27 +258,24 @@ int main(int argc, char** argv, char** env) {
                 } else if (e.type == SDL_KEYUP) {
                     switch (e.key.keysym.sym) {
                         case SDLK_1:
-                            c.opcode = OP_SET_COLOR;
-                            c.param = 0x00F;
-                            g_commands.push_back(c);
-                            c.opcode = OP_CLEAR;
-                            c.param = 0x000;
-                            g_commands.push_back(c);
+                            clear();
                             break;
                         case SDLK_2:
                             xd_draw_line(10, 10, 100, 50, 0xFFF);
                             break;
                         case SDLK_3:
-                            draw_model(cube_model);
+                            draw_model(cube_model, 0.1);
                             break;
                         case SDLK_4:
-                            draw_model(teapot_model);
+                            draw_model(teapot_model, 0.1);
                             break;
                         case SDLK_5:
                             xd_draw_textured_triangle(50, 100, FX(0.0f), FX(0.0f), 100, 100, FX(1.0f), FX(0.0f), 80, 10,
                                                       FX(0.0f), FX(1.0f), NULL);
                             xd_draw_triangle(50, 100, 100, 100, 80, 10, 0xF00);
                             break;
+                        case SDLK_SPACE:
+                            anim = !anim;
                     }
                 }
             }
