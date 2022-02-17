@@ -26,8 +26,8 @@
 #define OP_SET_V2 11
 #define OP_SET_COLOR 12
 #define OP_CLEAR 13
-#define OP_DRAW_LINE 14
-#define OP_DRAW_TRIANGLE 15
+#define OP_DRAW 14
+#define OP_SWAP 15
 
 struct Command {
     uint16_t opcode : 4;
@@ -74,7 +74,7 @@ void xd_draw_line(int x0, int y0, int x1, int y1, int color) {
     c.opcode = OP_SET_Y1;
     c.param = y1;
     g_commands.push_back(c);
-    c.opcode = OP_DRAW_LINE;
+    c.opcode = OP_DRAW;
     c.param = 0;
     g_commands.push_back(c);
 }
@@ -108,8 +108,8 @@ void xd_draw_filled_triangle(int x0, int y0, int x1, int y1, int x2, int y2, int
     c.opcode = OP_SET_Y2;
     c.param = y2;
     g_commands.push_back(c);
-    c.opcode = OP_DRAW_TRIANGLE;
-    c.param = 0;
+    c.opcode = OP_DRAW;
+    c.param = 1;
     g_commands.push_back(c);
 }
 
@@ -157,8 +157,8 @@ void xd_draw_textured_triangle(int x0, int y0, fx32 u0, fx32 v0, int x1, int y1,
     c.opcode = OP_SET_V2;
     c.param = v2 >> 5;
     g_commands.push_back(c);
-    c.opcode = OP_DRAW_TRIANGLE;
-    c.param = 0;
+    c.opcode = OP_DRAW;
+    c.param = 1;
     g_commands.push_back(c);
 }
 
@@ -169,6 +169,13 @@ void clear() {
     g_commands.push_back(c);
     c.opcode = OP_CLEAR;
     c.param = 0x000;
+    g_commands.push_back(c);
+}
+
+void swap() {
+    Command c;
+    c.opcode = OP_SWAP;
+    c.param = 0;
     g_commands.push_back(c);
 }
 
@@ -248,6 +255,7 @@ int main(int argc, char** argv, char** env) {
     mat4x4 mat_proj = matrix_make_projection(FB_WIDTH, FB_HEIGHT, 60.0f);
 
     bool anim = false;
+    bool wireframe = false;
 
     bool quit = false;
 
@@ -287,8 +295,10 @@ int main(int argc, char** argv, char** env) {
             mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
 
             // Draw cube
-            draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, true, true,
-                       NULL);
+            draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, true,
+                       wireframe, NULL);
+
+            swap();
 
             float elapsed_time = (float)(SDL_GetTicks() - time) / 1000.0f;
             time = SDL_GetTicks();
@@ -310,6 +320,8 @@ int main(int argc, char** argv, char** env) {
                         case SDL_SCANCODE_SPACE:
                             anim = !anim;
                             break;
+                        case SDL_SCANCODE_TAB:
+                            wireframe = !wireframe;
                         default:
                             break;
                     }
@@ -342,7 +354,7 @@ int main(int argc, char** argv, char** env) {
             vram_data[top->vram_addr_o] = top->vram_data_out_o;
         }
 
-        if (top->cmd_axis_tready_o && g_commands.size() == 0) {
+        if (top->swap_o) {
             void* p;
             int pitch;
             SDL_LockTexture(texture, NULL, &p, &pitch);

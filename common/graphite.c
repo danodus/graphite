@@ -577,13 +577,13 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
             // rasterize triangle
             fx32 col = MUL(t->col.x, FX(255.0f));
 
-            xd_draw_textured_triangle(INT(t->p[0].x), INT(t->p[0].y), t->t[0].u, t->t[0].v, INT(t->p[1].x),
-                                      INT(t->p[1].y), t->t[1].u, t->t[1].v, INT(t->p[2].x), INT(t->p[2].y), t->t[2].u,
-                                      t->t[2].v, texture);
-
             if (is_wireframe) {
                 xd_draw_triangle(INT(t->p[0].x), INT(t->p[0].y), INT(t->p[1].x), INT(t->p[1].y), INT(t->p[2].x),
                                  INT(t->p[2].y), 0xFFF);
+            } else {
+                xd_draw_textured_triangle(INT(t->p[0].x), INT(t->p[0].y), t->t[0].u, t->t[0].v, INT(t->p[1].x),
+                                          INT(t->p[1].y), t->t[1].u, t->t[1].v, INT(t->p[2].x), INT(t->p[2].y),
+                                          t->t[2].u, t->t[2].v, texture);
             }
         }
     }

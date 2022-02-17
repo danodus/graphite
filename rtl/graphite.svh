@@ -17,8 +17,8 @@ localparam OP_SET_U2        = 10;
 localparam OP_SET_V2        = 11;
 localparam OP_SET_COLOR     = 12;
 localparam OP_CLEAR         = 13;
-localparam OP_DRAW_LINE     = 14;
-localparam OP_DRAW_TRIANGLE = 15;
+localparam OP_DRAW          = 14;
+localparam OP_SWAP          = 15;
 
 
 localparam OP_POS   = 12;

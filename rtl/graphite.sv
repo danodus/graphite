@@ -19,7 +19,9 @@ module graphite #(
     output      logic                        vram_wr_o,
     output      logic  [3:0]                 vram_mask_o,
     output      logic [15:0]                 vram_addr_o,
-    output      logic [15:0]                 vram_data_out_o
+    output      logic [15:0]                 vram_data_out_o,
+
+    output      logic                        swap_o
     );
 
     enum { WAIT_COMMAND, PROCESS_COMMAND, CLEAR, DRAW_LINE, DRAW_TRIANGLE, DRAW_TRIANGLE2, DRAW_TRIANGLE3, DRAW_TRIANGLE4, DRAW_TRIANGLE5, DRAW_TRIANGLE6, DRAW_TRIANGLE7, DRAW_TRIANGLE8 } state;
@@ -104,6 +106,7 @@ module graphite #(
 
         case (state)
             WAIT_COMMAND: begin
+                swap_o <= 1'b0;
                 if (cmd_axis_tvalid_i)
                     state <= PROCESS_COMMAND;
             end
@@ -170,20 +173,27 @@ module graphite #(
                         vram_wr_o       <= 1'b1;
                         state           <= CLEAR;
                     end
-                    OP_DRAW_LINE: begin
-                        start_line      <= 1;
-                        state           <= DRAW_LINE;
+                    OP_DRAW: begin
+                        if (cmd_axis_tdata_i[11:0] == 0) begin
+                            // Draw line
+                            start_line      <= 1;
+                            state           <= DRAW_LINE;
+                        end else begin
+                            // Draw triangle
+                            vram_addr_o     <= 16'h0;
+                            vram_data_out_o <= color;
+                            vram_mask_o     <= 4'hF;
+                            min_x <= max(min3(x0, x1, x2), 0);
+                            min_y <= max(min3(y0, y1, y2), 0);
+                            max_x <= min(max3(x0, x1, x2), FB_WIDTH - 1);
+                            max_y <= min(max3(y0, y1, y2), FB_HEIGHT - 1);
+                            area  <= edge_function(vv0, vv1, vv2);
+                            state           <= DRAW_TRIANGLE;
+                        end
                     end
-                    OP_DRAW_TRIANGLE: begin
-                        vram_addr_o     <= 16'h0;
-                        vram_data_out_o <= color;
-                        vram_mask_o     <= 4'hF;
-                        min_x <= max(min3(x0, x1, x2), 0);
-                        min_y <= max(min3(y0, y1, y2), 0);
-                        max_x <= min(max3(x0, x1, x2), FB_WIDTH - 1);
-                        max_y <= min(max3(y0, y1, y2), FB_HEIGHT - 1);
-                        area  <= edge_function(vv0, vv1, vv2);
-                        state           <= DRAW_TRIANGLE;
+                    OP_SWAP: begin
+                        swap_o <= 1'b1;
+                        state <= WAIT_COMMAND;
                     end
                     default:
                         state <= WAIT_COMMAND;
@@ -280,6 +290,7 @@ module graphite #(
         endcase
 
         if (reset_i) begin
+            swap_o            <= 1'b0;
             vram_sel_o        <= 1'b0;
             start_line        <= 1'b0;
             state             <= WAIT_COMMAND;

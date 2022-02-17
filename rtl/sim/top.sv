@@ -17,7 +17,9 @@ module top #(
     output      logic                        vram_wr_o,
     output      logic  [3:0]                 vram_mask_o,
     output      logic [15:0]                 vram_addr_o,
-    output      logic [15:0]                 vram_data_out_o
+    output      logic [15:0]                 vram_data_out_o,
+
+    output      logic                        swap_o
     );
 
     logic        vram_sel;
@@ -48,7 +50,8 @@ module top #(
         .vram_wr_o(vram_wr_o),
         .vram_mask_o(vram_mask_o),
         .vram_addr_o(vram_addr_o),
-        .vram_data_out_o(vram_data_out_o)
+        .vram_data_out_o(vram_data_out_o),
+        .swap_o(swap_o)
     );
 
 endmodule
