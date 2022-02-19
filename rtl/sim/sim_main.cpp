@@ -265,6 +265,8 @@ int main(int argc, char** argv, char** env) {
 
     bool quit = false;
 
+    bool dump = false;
+
     unsigned int time = SDL_GetTicks();
 
     while (!contextp->gotFinish() && !quit) {
@@ -303,8 +305,15 @@ int main(int argc, char** argv, char** env) {
             // Draw cube
             draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, true,
                        wireframe, NULL);
-
             swap();
+
+            if (dump) {
+                for (auto cmd : g_commands) {
+                    printf("    send_command(ser, b'\\x%02x\\x%02x')\n", cmd.opcode << 4 | cmd.param >> 8,
+                           cmd.param & 0xff);
+                }
+                dump = false;
+            }
 
             float elapsed_time = (float)(SDL_GetTicks() - time) / 1000.0f;
             time = SDL_GetTicks();
@@ -328,6 +337,10 @@ int main(int argc, char** argv, char** env) {
                             break;
                         case SDL_SCANCODE_TAB:
                             wireframe = !wireframe;
+                            break;
+                        case SDL_SCANCODE_SLASH:
+                            dump = true;
+                            break;
                         default:
                             break;
                     }
