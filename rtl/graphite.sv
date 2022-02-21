@@ -1,50 +1,19 @@
 `include "graphite.svh"
 
-module edge_function(
-    input wire logic clk,
-    input wire logic reset_i,
-    input wire logic signed [31:0] a0,
-    input wire logic signed [31:0] a1,
-    input wire logic signed [31:0] b0,
-    input wire logic signed [31:0] b1,
-    input wire logic signed [31:0] c0,
-    input wire logic signed [31:0] c1,
-    output logic signed [31:0] z,
-    input wire logic start_i,
-    output logic done_o
+module dsp_mul(
+    input wire logic signed [31:0] p0,
+    input wire logic signed [31:0] p1,
+    output     logic signed [31:0] z
 );
+    assign z = mul(p0, p1);
+endmodule
 
-    logic signed [31:0] t1, t2;
-
-    enum {IDLE, CALC_T1, CALC_T2, CALC_E} state;
-
-    always_ff @(posedge clk) begin
-        case (state)
-            IDLE: begin
-                done_o <= 1'b0;
-                if (start_i)
-                    state <= CALC_T1;
-            end
-            CALC_T1: begin
-                t1 <= mul(c0 - a0, b1 - a1);
-                state <= CALC_T2;
-            end
-            CALC_T2: begin
-                t2 <= mul(c1 - a1, b0 - a0);
-                state <= CALC_E;
-            end
-            CALC_E: begin
-                z <= t1 - t2;
-                done_o <= 1'b1;
-                state <= IDLE;
-            end
-        endcase
-
-        if (reset_i) begin
-            state <= IDLE;
-            done_o <= 1'b0;
-        end
-    end
+module dsp_rmul(
+    input wire logic signed [31:0] p0,
+    input wire logic signed [31:0] p1,
+    output     logic signed [31:0] z
+);
+    assign z = rmul(p0, p1);
 endmodule
 
 module graphite #(
@@ -71,8 +40,12 @@ module graphite #(
     output      logic                        swap_o
     );
 
-    enum { WAIT_COMMAND, PROCESS_COMMAND, CLEAR, DRAW_LINE, DRAW_TRIANGLE, DRAW_TRIANGLE2, DRAW_TRIANGLE3, DRAW_TRIANGLE3B, DRAW_TRIANGLE3C, DRAW_TRIANGLE3D, DRAW_TRIANGLE4, DRAW_TRIANGLE5, DRAW_TRIANGLE6, DRAW_TRIANGLE7, DRAW_TRIANGLE8, DRAW_TRIANGLE9,
-        DRAW_TRIANGLE_WAIT_EDGE, DRAW_TRIANGLE_WAIT_EDGE2, DRAW_TRIANGLE_WAIT_EDGE3, DRAW_TRIANGLE_WAIT_EDGE4 
+    enum { WAIT_COMMAND, PROCESS_COMMAND, CLEAR, DRAW_LINE,
+           DRAW_TRIANGLE, DRAW_TRIANGLEB, DRAW_TRIANGLEC, DRAW_TRIANGLED, DRAW_TRIANGLEE,
+           DRAW_TRIANGLE2,
+           DRAW_TRIANGLE3, DRAW_TRIANGLE3B, DRAW_TRIANGLE3C, DRAW_TRIANGLE3D, DRAW_TRIANGLE3E, DRAW_TRIANGLE3F, DRAW_TRIANGLE3G, DRAW_TRIANGLE3H, DRAW_TRIANGLE3I, DRAW_TRIANGLE3J,
+           DRAW_TRIANGLE4, DRAW_TRIANGLE4B, DRAW_TRIANGLE4C, DRAW_TRIANGLE4D, DRAW_TRIANGLE4E, DRAW_TRIANGLE4F, DRAW_TRIANGLE4G, DRAW_TRIANGLE4H, DRAW_TRIANGLE4I, DRAW_TRIANGLE4J, DRAW_TRIANGLE4K, DRAW_TRIANGLE4L,
+           DRAW_TRIANGLE5, DRAW_TRIANGLE6, DRAW_TRIANGLE7, DRAW_TRIANGLE8, DRAW_TRIANGLE9
     } state;
 
     logic signed [11:0] x0, y0, x1, y1, x2, y2;
@@ -124,21 +97,26 @@ module graphite #(
     logic signed [31:0] c10, c11, c12;
     logic signed [31:0] c20, c21, c22;
 
-    logic signed [31:0] edge_a0;
-    logic signed [31:0] edge_a1;
-    logic signed [31:0] edge_b0;
-    logic signed [31:0] edge_b1;
-    logic signed [31:0] edge_c0;
-    logic signed [31:0] edge_c1;
-    logic signed [31:0] edge_z;
-    logic edge_start;
-    logic edge_done;
+    logic signed [31:0] dsp_mul_p0, dsp_mul_p1, dsp_mul_z;
+    logic signed [31:0] dsp_rmul_p0, dsp_rmul_p1, dsp_rmul_z;
 
-    edge_function edge_function(.clk(clk), .reset_i(reset_i), .a0(edge_a0), .a1(edge_a1), .b0(edge_b0), .b1(edge_b1), .c0(edge_c0), .c1(edge_c1), .z(edge_z), .start_i(edge_start), .done_o(edge_done));
-    
+    logic signed [31:0] t0, t1, t2;
+
+    dsp_mul dsp_mul(
+        .p0(dsp_mul_p0),
+        .p1(dsp_mul_p1),
+        .z(dsp_mul_z)
+    );
+
+    dsp_rmul dsp_rmul(
+        .p0(dsp_rmul_p0),
+        .p1(dsp_rmul_p1),
+        .z(dsp_rmul_z)
+    );
+
     logic signed [11:0] min_x, min_y, max_x, max_y;
 
-    reciprocal area_reciprocal(.x_i(area), .z_o(inv_area));
+    reciprocal area_reciprocal(.clk(clk), .x_i(area), .z_o(inv_area));
 
     //function logic signed [31:0] edge_function(logic signed [31:0] a0, logic signed [31:0] a1, logic signed [31:0] b0, logic signed [31:0] b1, logic signed [31:0] c0, logic signed [31:0] c1);
     //    edge_function = mul(c0 - a0, b1 - a1) - mul(c1 - a1, b0 - a0);
@@ -261,15 +239,7 @@ module graphite #(
                             min_y <= min3(y0, y1, y2);
                             max_x <= max3(x0, x1, x2);
                             max_y <= max3(y0, y1, y2);
-
-                            edge_a0 <= vv00;
-                            edge_a1 <= vv01;
-                            edge_b0 <= vv10;
-                            edge_b1 <= vv11;
-                            edge_c0 <= vv20;
-                            edge_c1 <= vv21;
-                            edge_start <= 1'b1;
-                            state <= DRAW_TRIANGLE_WAIT_EDGE;
+                            state <= DRAW_TRIANGLE;
                         end
                     end
                     OP_SWAP: begin
@@ -299,19 +269,39 @@ module graphite #(
                 end
             end
 
-            DRAW_TRIANGLE_WAIT_EDGE: begin
-                edge_start <= 1'b0;
-                if (edge_done) begin
-                    area  <= edge_z;
-                    state <= DRAW_TRIANGLE;
-                end
-            end
-
             DRAW_TRIANGLE: begin
                 min_x <= max(min_x, 0);
                 min_y <= max(min_y, 0);
                 max_x <= min(max_x, FB_WIDTH - 1);
                 max_y <= min(max_y, FB_HEIGHT - 1);
+                state <= DRAW_TRIANGLEB;
+            end
+
+            DRAW_TRIANGLEB: begin
+                // area = edge_function(vv0, vv1, vv2)
+
+                // area = mul(c0 - a0, b1 - a1) - mul(c1 - a1, b0 - a0)
+                // t0 = mul(c0 - a0, b1 - a1)
+                dsp_mul_p0 <= vv20 - vv00;
+                dsp_mul_p1 <= vv11 - vv01;
+                state <= DRAW_TRIANGLEC;
+            end
+
+            DRAW_TRIANGLEC: begin
+                t0 <= dsp_mul_z;
+                // t1 = mul(c1 - a1, b0 - a0)
+                dsp_mul_p0 <= vv21 - vv01;
+                dsp_mul_p1 <= vv10 - vv00;
+                state <= DRAW_TRIANGLED;
+            end
+
+            DRAW_TRIANGLED: begin
+                t1 <= dsp_mul_z;
+                state <= DRAW_TRIANGLEE;
+            end
+
+            DRAW_TRIANGLEE: begin
+                area = t0 - t1;
                 state <= DRAW_TRIANGLE2;
             end
 
@@ -323,76 +313,172 @@ module graphite #(
             end
 
             DRAW_TRIANGLE3: begin
-                edge_a0 <= vv10;
-                edge_a1 <= vv11;
-                edge_b0 <= vv20;
-                edge_b1 <= vv21;
-                edge_c0 <= p0;
-                edge_c1 <= p1;
-                edge_start <= 1'b1;
-                state <= DRAW_TRIANGLE_WAIT_EDGE2;
-            end
-
-            DRAW_TRIANGLE_WAIT_EDGE2: begin
-                edge_start <= 1'b0;
-                if (edge_done) begin
-                    w0    <= edge_z;
-                    state <= DRAW_TRIANGLE3B;
-                end
+                // w0 = edge_function(vv1, vv2, p);
+                // w0 = mul(c0 - a0, b1 - a1) - mul(c1 - a1, b0 - a0)
+                // t0 = mul(c0 - a0, b1 - a1)
+                dsp_mul_p0 <= p0 - vv10;
+                dsp_mul_p1 <= vv21 - vv11;
+                state <= DRAW_TRIANGLE3B;
             end
 
             DRAW_TRIANGLE3B: begin
-                edge_a0 <= vv20;
-                edge_a1 <= vv21;
-                edge_b0 <= vv00;
-                edge_b1 <= vv01;
-                edge_start <= 1'b1;
-                state <= DRAW_TRIANGLE_WAIT_EDGE3;
-            end
-
-            DRAW_TRIANGLE_WAIT_EDGE3: begin
-                edge_start <= 1'b0;
-                if (edge_done) begin
-                    w1    <= edge_z;
-                    state <= DRAW_TRIANGLE3C;
-                end
+                t0 <= dsp_mul_z;
+                // t1 = mul(c1 - a1, b0 - a0)
+                dsp_mul_p0 <= p1 - vv11;
+                dsp_mul_p1 <= vv20 - vv10;
+                state <= DRAW_TRIANGLE3C;
             end
 
             DRAW_TRIANGLE3C: begin
-                edge_a0 <= vv00;
-                edge_a1 <= vv01;
-                edge_b0 <= vv10;
-                edge_b1 <= vv11;
-                edge_start <= 1'b1;
-                state <= DRAW_TRIANGLE_WAIT_EDGE4;
+                t1 <= dsp_mul_z;
+                state <= DRAW_TRIANGLE3D;
             end
 
-            DRAW_TRIANGLE_WAIT_EDGE4: begin
-                edge_start <= 1'b0;
-                if (edge_done) begin
-                    w2  <= edge_z;
-                    state <= DRAW_TRIANGLE4;
-                end
-            end          
+            DRAW_TRIANGLE3D: begin
+                w0 <= t0 - t1;
+
+                // w1 = edge_function(vv2, vv0, p);
+                // w1 = mul(c0 - a0, b1 - a1) - mul(c1 - a1, b0 - a0)
+                // t0 = mul(c0 - a0, b1 - a1)
+                dsp_mul_p0 <= p0 - vv20;
+                dsp_mul_p1 <= vv01 - vv21;
+                state <= DRAW_TRIANGLE3E;
+            end
+
+            DRAW_TRIANGLE3E: begin
+                t0 <= dsp_mul_z;
+                // t1 = mul(c1 - a1, b0 - a0)
+                dsp_mul_p0 <= p1 - vv21;
+                dsp_mul_p1 <= vv00 - vv20;
+                state <= DRAW_TRIANGLE3F;
+            end
+
+            DRAW_TRIANGLE3F: begin
+                t1 <= dsp_mul_z;
+                state <= DRAW_TRIANGLE3G;
+            end
+
+            DRAW_TRIANGLE3G: begin
+                w1 <= t0 - t1;
+
+                // w2 = edge_function(vv0, vv1, p);
+                // w2 = mul(c0 - a0, b1 - a1) - mul(c1 - a1, b0 - a0)
+                // t0 = mul(c0 - a0, b1 - a1)
+                dsp_mul_p0 <= p0 - vv00;
+                dsp_mul_p1 <= vv11 - vv01;
+                state <= DRAW_TRIANGLE3H;
+            end
+
+            DRAW_TRIANGLE3H: begin
+                t0 <= dsp_mul_z;
+                // t1 = mul(c1 - a1, b0 - a0)
+                dsp_mul_p0 <= p1 - vv01;
+                dsp_mul_p1 <= vv10 - vv00;
+                state <= DRAW_TRIANGLE3I;
+            end
+
+            DRAW_TRIANGLE3I: begin
+                t1 <= dsp_mul_z;
+                state <= DRAW_TRIANGLE3J;
+            end
+
+            DRAW_TRIANGLE3J: begin
+                w2 <= t0 - t1;
+                state <= DRAW_TRIANGLE4;
+            end
 
             DRAW_TRIANGLE4: begin
                 if (w0 >= 0 && w1 >= 0 && w2 >= 0/* && inv_area > 0*/) begin
-
-                    //w0 <= rmul(w0, inv_area);
-                    //w1 <= rmul(w1, inv_area);
-                    //w2 <= rmul(w2, inv_area);
-                    //state <= DRAW_TRIANGLE5;
-                    state <= DRAW_TRIANGLE7;
+                    //state <= DRAW_TRIANGLE7;
+                    // w0 = rmul(w0, inv_area)
+                    dsp_rmul_p0 <= w0;
+                    dsp_rmul_p1 <= inv_area;
+                    state <= DRAW_TRIANGLE4B;
                 end else begin
                     state <= DRAW_TRIANGLE8;
                 end
             end
 
-            DRAW_TRIANGLE5: begin
-                r <= mul(w0, c00) + mul(w1, c10) + mul(w2, c20);
-                g <= mul(w0, c01) + mul(w1, c11) + mul(w2, c21);
-                b <= mul(w0, c02) + mul(w1, c12) + mul(w2, c22);
+            DRAW_TRIANGLE4B: begin
+                w0 <= dsp_rmul_z;
+                // w1 = rmul(w1, inv_area)
+                dsp_rmul_p0 <= w1;
+                state <= DRAW_TRIANGLE4C;
+            end
+
+            DRAW_TRIANGLE4C: begin
+                w1 <= dsp_rmul_z;
+                // w2 = rmul(w2, inv_area)
+                dsp_rmul_p0 <= w2;
+                state <= DRAW_TRIANGLE4D;
+            end
+
+            DRAW_TRIANGLE4D: begin
+                w2 <= dsp_rmul_z;
+                // r = mul(w0, c00) + mul(w1, c10) + mul(w2, c20)
+                // t0 = mul(w0, c00)
+                dsp_mul_p0 <= w0;
+                dsp_mul_p1 <= c00;
+                state <= DRAW_TRIANGLE4E;
+            end
+
+            DRAW_TRIANGLE4E: begin
+                t0 <= dsp_mul_z;
+                // t1 = mul(w1, c10)
+                dsp_mul_p0 <= w1;
+                dsp_mul_p1 <= c10;
+                state <= DRAW_TRIANGLE4F;
+            end
+
+            DRAW_TRIANGLE4F: begin
+                t1 <= dsp_mul_z;
+                // t2 = mul(w2, c20)
+                dsp_mul_p0 <= w2;
+                dsp_mul_p1 <= c20;
+                state <= DRAW_TRIANGLE4G;
+            end
+
+            DRAW_TRIANGLE4G: begin
+                t2 <= dsp_mul_z;
+                state <= DRAW_TRIANGLE4H;
+            end
+
+            DRAW_TRIANGLE4H: begin
+                r <= t0 + t1 + t2;
+                // g = mul(w0, c01) + mul(w1, c11) + mul(w2, c21)
+                // t0 = mul(w0, c01)
+                dsp_mul_p0 <= w0;
+                dsp_mul_p1 <= c01;
+                state <= DRAW_TRIANGLE4I;
+            end
+
+            DRAW_TRIANGLE4I: begin
+                t0 <= dsp_mul_z;
+                // t1 = mul(w1, c11)
+                dsp_mul_p0 <= w1;
+                dsp_mul_p1 <= c11;
+                state <= DRAW_TRIANGLE4J;
+            end
+
+            DRAW_TRIANGLE4J: begin
+                t1 <= dsp_mul_z;
+                // t2 = mul(w2, c21)
+                dsp_mul_p0 <= w2;
+                dsp_mul_p1 <= c21;
+                state <= DRAW_TRIANGLE4K;
+            end
+
+            DRAW_TRIANGLE4K: begin
+                t2 <= dsp_mul_z;
+                state <= DRAW_TRIANGLE4L;
+            end
+
+            DRAW_TRIANGLE4L: begin
+                g <= t0 + t1 + t2;
                 state <= DRAW_TRIANGLE6;
+            end
+
+            DRAW_TRIANGLE5: begin
             end
 
             DRAW_TRIANGLE6: begin
@@ -401,8 +487,8 @@ module graphite #(
             end
 
             DRAW_TRIANGLE7: begin
-                vram_data_out_o <= {16'hFFFF};
-                //vram_data_out_o <= {4'hF, tex_sample[11:8], tex_sample[7:4], tex_sample[3:0]};
+                //vram_data_out_o <= {16'hFFFF};
+                vram_data_out_o <= {4'hF, tex_sample[11:8], tex_sample[7:4], tex_sample[3:0]};
                 vram_sel_o      <= 1'b1;
                 vram_wr_o       <= 1'b1;
                 state <= DRAW_TRIANGLE8;
@@ -450,7 +536,6 @@ module graphite #(
             swap_o            <= 1'b0;
             vram_sel_o        <= 1'b0;
             start_line        <= 1'b0;
-            edge_start        <= 1'b0;
             state             <= WAIT_COMMAND;
         end
     end

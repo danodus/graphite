@@ -2,6 +2,7 @@
 
 // f(x) = 1/x
 module reciprocal(
+    input wire logic clk,
     input wire logic [31:0] x_i,
     output     logic [31:0] z_o
 );
@@ -19,7 +20,7 @@ module reciprocal(
     function logic [31:0] interpolated(logic [31:0] x);
         interpolated = rmul(x - {x[31:ADJ_BITS], {(ADJ_BITS){1'b0}}}, m_lut[x[31:ADJ_BITS]]) + b_lut[x[31:ADJ_BITS]];
     endfunction
-/*
+
     initial begin
         m_lut[0] = 32'd0;
         b_lut[0] = 32'd1 << 16;
@@ -35,10 +36,10 @@ module reciprocal(
         //    $display("%d, %d, %d", i, reciprocal_value(i << 16), interpolated(i << 16));
         //end
     end
-*/
-    always_comb begin
-        z_o = reciprocal_value(x_i);
-        //z_o = interpolated(x_i);
+
+    always_ff @(posedge clk) begin
+        //z_o = reciprocal_value(x_i);
+        z_o = interpolated(x_i);
         //z_o = 32'd0;
     end
 
