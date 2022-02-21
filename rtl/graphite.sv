@@ -400,21 +400,21 @@ module graphite #(
             end
 
             DRAW_TRIANGLE4B: begin
-                w0 <= dsp_rmul_z;
+                w0 <= dsp_rmul_z >> 8;
                 // w1 = rmul(w1, inv_area)
                 dsp_rmul_p0 <= w1;
                 state <= DRAW_TRIANGLE4C;
             end
 
             DRAW_TRIANGLE4C: begin
-                w1 <= dsp_rmul_z;
+                w1 <= dsp_rmul_z >> 8;
                 // w2 = rmul(w2, inv_area)
                 dsp_rmul_p0 <= w2;
                 state <= DRAW_TRIANGLE4D;
             end
 
             DRAW_TRIANGLE4D: begin
-                w2 <= dsp_rmul_z;
+                w2 <= dsp_rmul_z >> 8;
                 // r = mul(w0, c00) + mul(w1, c10) + mul(w2, c20)
                 // t0 = mul(w0, c00)
                 dsp_mul_p0 <= w0;
