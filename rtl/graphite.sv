@@ -388,14 +388,15 @@ module graphite #(
             end
 
             DRAW_TRIANGLE4: begin
-                if (w0 >= 0 && w1 >= 0 && w2 >= 0/* && inv_area > 0*/) begin
+                // if w0 < 0, w1 < 0 or w2 < 0
+                if (w0[31] || w1[31] || w2[31]) begin
+                    state <= DRAW_TRIANGLE8;
+                end else begin
                     //state <= DRAW_TRIANGLE7;
                     // w0 = rmul(w0, inv_area)
                     dsp_rmul_p0 <= w0;
                     dsp_rmul_p1 <= inv_area;
                     state <= DRAW_TRIANGLE4B;
-                end else begin
-                    state <= DRAW_TRIANGLE8;
                 end
             end
 
