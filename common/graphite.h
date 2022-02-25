@@ -1,3 +1,7 @@
+// graphite.h
+// Copyright (c) 2021-2022 Daniel Cliche
+// SPDX-License-Identifier: MIT
+
 #ifndef GRAPHITE_H
 #define GRAPHITE_H
 
@@ -67,7 +71,7 @@ typedef float fx32;
 #endif
 
 typedef struct {
-    fx32 u, v;
+    fx32 u, v, w;
 } vec2d;
 
 typedef struct {

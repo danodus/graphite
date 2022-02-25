@@ -1,6 +1,6 @@
-# Graphite - Open Source Graphics Processing Unit
+# Graphite
 
-Graphite is a FPGA based open source graphics processing unit.
+Graphite is a FPGA based open source 3D graphics accelerator.
 
 ## Features
 

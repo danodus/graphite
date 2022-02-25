@@ -1,3 +1,10 @@
+// graphite.c
+// Copyright (c) 2021-2022 Daniel Cliche
+// SPDX-License-Identifier: MIT
+
+// Ref.: One Lone Coder's 3D Graphics Engine tutorial available on YouTube
+//       and https://www.scratchapixel.com/lessons/3d-basic-rendering/rasterization-practical-implementation
+
 #include "graphite.h"
 
 #include <math.h>
@@ -5,10 +12,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-void xd_draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2, int color);
-void xd_draw_filled_triangle(int x0, int y0, int x1, int y1, int x2, int y2, int color);
-void xd_draw_textured_triangle(int x0, int y0, fx32 u0, fx32 v0, int x1, int y1, fx32 u1, fx32 v1, int x2, int y2,
-                               fx32 u2, fx32 v2, texture_t* tex);
+//#define PERSP_CORRECT 1
+
+void xd_draw_triangle(fx32 x0, fx32 y0, fx32 x1, fx32 y1, fx32 x2, fx32 y2, int color);
+void xd_draw_textured_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 x1, fx32 y1, fx32 z1, fx32 u1, fx32 v1,
+                               fx32 x2, fx32 y2, fx32 z2, fx32 u2, fx32 v2, texture_t* tex);
 
 vec3d matrix_multiply_vector(mat4x4* m, vec3d* i) {
     vec3d r = {MUL(i->x, m->m[0][0]) + MUL(i->y, m->m[1][0]) + MUL(i->z, m->m[2][0]) + m->m[3][0],
@@ -488,6 +496,20 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 tri_projected.t[1] = clipped[n].t[1];
                 tri_projected.t[2] = clipped[n].t[2];
 
+#ifdef PERSP_CORRECT
+                tri_projected.t[0].u = DIV(tri_projected.t[0].u, tri_projected.p[0].w);
+                tri_projected.t[1].u = DIV(tri_projected.t[1].u, tri_projected.p[1].w);
+                tri_projected.t[2].u = DIV(tri_projected.t[2].u, tri_projected.p[2].w);
+
+                tri_projected.t[0].v = DIV(tri_projected.t[0].v, tri_projected.p[0].w);
+                tri_projected.t[1].v = DIV(tri_projected.t[1].v, tri_projected.p[1].w);
+                tri_projected.t[2].v = DIV(tri_projected.t[2].v, tri_projected.p[2].w);
+
+                tri_projected.t[0].w = DIV(FX(1.0f), tri_projected.p[0].w);
+                tri_projected.t[1].w = DIV(FX(1.0f), tri_projected.p[1].w);
+                tri_projected.t[2].w = DIV(FX(1.0f), tri_projected.p[2].w);
+#endif
+
                 // scale into view
                 tri_projected.p[0] = vector_div(&tri_projected.p[0], tri_projected.p[0].w);
                 tri_projected.p[1] = vector_div(&tri_projected.p[1], tri_projected.p[1].w);
@@ -578,12 +600,11 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
             fx32 col = MUL(t->col.x, FX(255.0f));
 
             if (is_wireframe) {
-                xd_draw_triangle(INT(t->p[0].x), INT(t->p[0].y), INT(t->p[1].x), INT(t->p[1].y), INT(t->p[2].x),
-                                 INT(t->p[2].y), 0xFFF);
+                xd_draw_triangle(t->p[0].x, t->p[0].y, t->p[1].x, t->p[1].y, t->p[2].x, t->p[2].y, 0xFFF);
             } else {
-                xd_draw_textured_triangle(INT(t->p[0].x), INT(t->p[0].y), t->t[0].u, t->t[0].v, INT(t->p[1].x),
-                                          INT(t->p[1].y), t->t[1].u, t->t[1].v, INT(t->p[2].x), INT(t->p[2].y),
-                                          t->t[2].u, t->t[2].v, texture);
+                xd_draw_textured_triangle(t->p[0].x, t->p[0].y, t->t[0].w, t->t[0].u, t->t[0].v, t->p[1].x, t->p[1].y,
+                                          t->t[1].w, t->t[1].u, t->t[1].v, t->p[2].x, t->p[2].y, t->t[2].w, t->t[2].u,
+                                          t->t[2].v, texture);
             }
         }
     }

@@ -14,30 +14,42 @@
 
 #define OP_SET_X0 0
 #define OP_SET_Y0 1
-#define OP_SET_X1 2
-#define OP_SET_Y1 3
-#define OP_SET_X2 4
-#define OP_SET_Y2 5
-#define OP_SET_U0 6
-#define OP_SET_V0 7
-#define OP_SET_U1 8
-#define OP_SET_V1 9
-#define OP_SET_U2 10
-#define OP_SET_V2 11
-#define OP_SET_COLOR 12
-#define OP_CLEAR 13
-#define OP_DRAW 14
-#define OP_SWAP 15
+#define OP_SET_Z0 2
+#define OP_SET_X1 3
+#define OP_SET_Y1 4
+#define OP_SET_Z1 5
+#define OP_SET_X2 6
+#define OP_SET_Y2 7
+#define OP_SET_Z2 8
+#define OP_SET_R0 9
+#define OP_SET_G0 10
+#define OP_SET_B0 11
+#define OP_SET_R1 12
+#define OP_SET_G1 13
+#define OP_SET_B1 14
+#define OP_SET_R2 15
+#define OP_SET_G2 16
+#define OP_SET_B2 17
+#define OP_SET_S0 18
+#define OP_SET_T0 19
+#define OP_SET_S1 20
+#define OP_SET_T1 21
+#define OP_SET_S2 22
+#define OP_SET_T2 23
+#define OP_SET_COLOR 24
+#define OP_CLEAR 25
+#define OP_DRAW 26
+#define OP_SWAP 27
 
 #if FIXED_POINT
-#define TEXCOORD_PARAM(x) ((x) >> 5)
+#define TEXCOORD_PARAM(x) (x)
 #else
-#define TEXCOORD_PARAM(x) (_FLOAT_TO_FIXED(x, 16) >> 5)
+#define TEXCOORD_PARAM(x) (_FLOAT_TO_FIXED(x, 16))
 #endif
 
 struct Command {
-    uint16_t opcode : 4;
-    uint16_t param : 12;
+    uint32_t opcode : 8;
+    uint32_t param : 24;
 };
 
 std::deque<Command> g_commands;
@@ -52,117 +64,153 @@ void pulse_clk(Vtop* top) {
     top->eval();
 }
 
-static void swapi(int* a, int* b) {
-    int c = *a;
+static void swap(fx32* a, fx32* b) {
+    fx32 c = *a;
     *a = *b;
     *b = c;
 }
 
-void xd_draw_line(int x0, int y0, int x1, int y1, int color) {
+void xd_draw_line(fx32 x0, fx32 y0, fx32 x1, fx32 y1, int color) {
     if (y0 > y1) {
-        swapi(&x0, &x1);
-        swapi(&y0, &y1);
+        swap(&x0, &x1);
+        swap(&y0, &y1);
     }
 
     Command c;
     c.opcode = OP_SET_COLOR;
     c.param = color | color << 4 | color << 8;
     g_commands.push_back(c);
+
     c.opcode = OP_SET_X0;
-    c.param = x0;
+    c.param = x0 & 0xFFFF;
     g_commands.push_back(c);
+    c.param = 0x10000 | (x0 >> 16);
+    g_commands.push_back(c);
+
     c.opcode = OP_SET_Y0;
-    c.param = y0;
+    c.param = y0 & 0xFFFF;
     g_commands.push_back(c);
+    c.param = 0x10000 | (y0 >> 16);
+    g_commands.push_back(c);
+
     c.opcode = OP_SET_X1;
-    c.param = x1;
+    c.param = x1 & 0xFFFF;
     g_commands.push_back(c);
+    c.param = 0x10000 | (x1 >> 16);
+    g_commands.push_back(c);
+
     c.opcode = OP_SET_Y1;
-    c.param = y1;
+    c.param = y1 & 0xFFFF;
+    g_commands.push_back(c);
+    c.param = 0x10000 | (y1 >> 16);
+    g_commands.push_back(c);
+
     g_commands.push_back(c);
     c.opcode = OP_DRAW;
     c.param = 0;
     g_commands.push_back(c);
 }
 
-void xd_draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2, int color) {
+void xd_draw_triangle(fx32 x0, fx32 y0, fx32 x1, fx32 y1, fx32 x2, fx32 y2, int color) {
     xd_draw_line(x0, y0, x1, y1, color);
     xd_draw_line(x1, y1, x2, y2, color);
     xd_draw_line(x2, y2, x0, y0, color);
 }
 
-void xd_draw_filled_triangle(int x0, int y0, int x1, int y1, int x2, int y2, int color) {
+void xd_draw_textured_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 x1, fx32 y1, fx32 z1, fx32 u1, fx32 v1,
+                               fx32 x2, fx32 y2, fx32 z2, fx32 u2, fx32 v2, texture_t* tex) {
     Command c;
-    c.opcode = OP_SET_COLOR;
-    c.param = color | color << 4 | color << 8;
-    g_commands.push_back(c);
-    c.opcode = OP_SET_X0;
-    c.param = x0;
-    g_commands.push_back(c);
-    c.opcode = OP_SET_Y0;
-    c.param = y0;
-    g_commands.push_back(c);
-    c.opcode = OP_SET_X1;
-    c.param = x1;
-    g_commands.push_back(c);
-    c.opcode = OP_SET_Y1;
-    c.param = y1;
-    g_commands.push_back(c);
-    c.opcode = OP_SET_X2;
-    c.param = x2;
-    g_commands.push_back(c);
-    c.opcode = OP_SET_Y2;
-    c.param = y2;
-    g_commands.push_back(c);
-    c.opcode = OP_DRAW;
-    c.param = 1;
-    g_commands.push_back(c);
-}
 
-void xd_draw_filled_rectangle(int x0, int y0, int x1, int y1, int color) {}
-
-void xd_draw_textured_triangle(int x0, int y0, fx32 u0, fx32 v0, int x1, int y1, fx32 u1, fx32 v1, int x2, int y2,
-                               fx32 u2, fx32 v2, texture_t* tex) {
-    Command c;
-    c.opcode = OP_SET_COLOR;
-    c.param = 0x555;
-    g_commands.push_back(c);
     c.opcode = OP_SET_X0;
-    c.param = x0;
+    c.param = x0 & 0xFFFF;
     g_commands.push_back(c);
+    c.param = 0x10000 | (x0 >> 16);
+    g_commands.push_back(c);
+
     c.opcode = OP_SET_Y0;
-    c.param = y0;
+    c.param = y0 & 0xFFFF;
     g_commands.push_back(c);
+    c.param = 0x10000 | (y0 >> 16);
+    g_commands.push_back(c);
+
+    c.opcode = OP_SET_Z0;
+    c.param = z0 & 0xFFFF;
+    g_commands.push_back(c);
+    c.param = 0x10000 | (z0 >> 16);
+    g_commands.push_back(c);
+
     c.opcode = OP_SET_X1;
-    c.param = x1;
+    c.param = x1 & 0xFFFF;
     g_commands.push_back(c);
+    c.param = 0x10000 | (x1 >> 16);
+    g_commands.push_back(c);
+
     c.opcode = OP_SET_Y1;
-    c.param = y1;
+    c.param = y1 & 0xFFFF;
     g_commands.push_back(c);
+    c.param = 0x10000 | (y1 >> 16);
+    g_commands.push_back(c);
+
+    c.opcode = OP_SET_Z1;
+    c.param = z1 & 0xFFFF;
+    g_commands.push_back(c);
+    c.param = 0x10000 | (z1 >> 16);
+    g_commands.push_back(c);
+
     c.opcode = OP_SET_X2;
-    c.param = x2;
+    c.param = x2 & 0xFFFF;
     g_commands.push_back(c);
+    c.param = 0x10000 | (x2 >> 16);
+    g_commands.push_back(c);
+
     c.opcode = OP_SET_Y2;
-    c.param = y2;
+    c.param = y2 & 0xFFFF;
     g_commands.push_back(c);
-    c.opcode = OP_SET_U0;
-    c.param = TEXCOORD_PARAM(u0);
+    c.param = 0x10000 | (y2 >> 16);
     g_commands.push_back(c);
-    c.opcode = OP_SET_V0;
-    c.param = TEXCOORD_PARAM(v0);
+
+    c.opcode = OP_SET_Z2;
+    c.param = z2 & 0xFFFF;
     g_commands.push_back(c);
-    c.opcode = OP_SET_U1;
-    c.param = TEXCOORD_PARAM(u1);
+    c.param = 0x10000 | (z2 >> 16);
     g_commands.push_back(c);
-    c.opcode = OP_SET_V1;
-    c.param = TEXCOORD_PARAM(v1);
+
+    c.opcode = OP_SET_S0;
+    c.param = TEXCOORD_PARAM(u0) & 0xFFFF;
     g_commands.push_back(c);
-    c.opcode = OP_SET_U2;
-    c.param = TEXCOORD_PARAM(u2);
+    c.param = 0x10000 | (TEXCOORD_PARAM(u0) >> 16);
     g_commands.push_back(c);
-    c.opcode = OP_SET_V2;
-    c.param = TEXCOORD_PARAM(v2);
+
+    c.opcode = OP_SET_T0;
+    c.param = TEXCOORD_PARAM(v0) & 0xFFFF;
     g_commands.push_back(c);
+    c.param = 0x10000 | (TEXCOORD_PARAM(v0) >> 16);
+    g_commands.push_back(c);
+
+    c.opcode = OP_SET_S1;
+    c.param = TEXCOORD_PARAM(u1) & 0xFFFF;
+    g_commands.push_back(c);
+    c.param = 0x10000 | (TEXCOORD_PARAM(u1) >> 16);
+    g_commands.push_back(c);
+
+    c.opcode = OP_SET_T1;
+    c.param = TEXCOORD_PARAM(v1) & 0xFFFF;
+    g_commands.push_back(c);
+    c.param = 0x10000 | (TEXCOORD_PARAM(v1) >> 16);
+    g_commands.push_back(c);
+
+    c.opcode = OP_SET_S2;
+    c.param = TEXCOORD_PARAM(u2) & 0xFFFF;
+    g_commands.push_back(c);
+    c.param = 0x10000 | (TEXCOORD_PARAM(u2) >> 16);
+    g_commands.push_back(c);
+
+    c.opcode = OP_SET_T2;
+    c.param = TEXCOORD_PARAM(v2) & 0xFFFF;
+    g_commands.push_back(c);
+    c.param = 0x10000 | (TEXCOORD_PARAM(v2) >> 16);
+    g_commands.push_back(c);
+
     c.opcode = OP_DRAW;
     c.param = 1;
     g_commands.push_back(c);
@@ -309,8 +357,8 @@ int main(int argc, char** argv, char** env) {
 
             if (dump) {
                 for (auto cmd : g_commands) {
-                    printf("    send_command(ser, b'\\x%02x\\x%02x')\n", cmd.opcode << 4 | cmd.param >> 8,
-                           cmd.param & 0xff);
+                    printf("    send_command(ser, b'\\x%02x\\x%02x\\x%02x\\x%02x')\n", cmd.opcode, cmd.param >> 16,
+                           (cmd.param >> 8) & 0xFF, cmd.param & 0xFF);
                 }
                 dump = false;
             }
@@ -363,7 +411,7 @@ int main(int argc, char** argv, char** env) {
             if (g_commands.size() > 0) {
                 auto c = g_commands.front();
                 g_commands.pop_front();
-                top->cmd_axis_tdata_i = (c.opcode << 12) | c.param;
+                top->cmd_axis_tdata_i = (c.opcode << 24) | c.param;
                 top->cmd_axis_tvalid_i = 1;
             }
         }

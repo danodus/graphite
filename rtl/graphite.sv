@@ -1,4 +1,13 @@
+// graphite.sv
+// Copyright (c) 2021-2022 Daniel Cliche
+// SPDX-License-Identifier: MIT
+
+// Ref.: https://www.scratchapixel.com/lessons/3d-basic-rendering/rasterization-practical-implementation
+
 `include "graphite.svh"
+
+`define TEXTURED
+//`define PERSP_CORRECT
 
 module dsp_mul(
     input wire logic signed [31:0] p0,
@@ -18,8 +27,7 @@ endmodule
 
 module graphite #(
     parameter FB_WIDTH = 128,
-    parameter FB_HEIGHT = 128,
-    parameter CMD_STREAM_WIDTH = 16
+    parameter FB_HEIGHT = 128
     ) (
     input  wire logic                        clk,
     input  wire logic                        reset_i,
@@ -27,7 +35,7 @@ module graphite #(
     // AXI stream command interface (slave)
     input  wire logic                        cmd_axis_tvalid_i,
     output      logic                        cmd_axis_tready_o,
-    input  wire logic [CMD_STREAM_WIDTH-1:0] cmd_axis_tdata_i,
+    input  wire logic [31:0]                 cmd_axis_tdata_i,
 
     // VRAM write
     //input  wire logic                        vram_ack_i,
@@ -45,12 +53,12 @@ module graphite #(
            DRAW_TRIANGLE2,
            DRAW_TRIANGLE3, DRAW_TRIANGLE3B, DRAW_TRIANGLE3C, DRAW_TRIANGLE3D, DRAW_TRIANGLE3E, DRAW_TRIANGLE3F, DRAW_TRIANGLE3G, DRAW_TRIANGLE3H, DRAW_TRIANGLE3I, DRAW_TRIANGLE3J,
            DRAW_TRIANGLE4, DRAW_TRIANGLE4B, DRAW_TRIANGLE4C, DRAW_TRIANGLE4D, DRAW_TRIANGLE4E, DRAW_TRIANGLE4F, DRAW_TRIANGLE4G, DRAW_TRIANGLE4H, DRAW_TRIANGLE4I, DRAW_TRIANGLE4J, DRAW_TRIANGLE4K, DRAW_TRIANGLE4L,
-           DRAW_TRIANGLE5, DRAW_TRIANGLE6, DRAW_TRIANGLE7, DRAW_TRIANGLE8, DRAW_TRIANGLE9
+           DRAW_TRIANGLE5, DRAW_TRIANGLE5B, DRAW_TRIANGLE5C, DRAW_TRIANGLE5D, DRAW_TRIANGLE5E, DRAW_TRIANGLE5F, DRAW_TRIANGLE5G, DRAW_TRIANGLE5H, 
+           DRAW_TRIANGLE6, DRAW_TRIANGLE7, DRAW_TRIANGLE8, DRAW_TRIANGLE9
     } state;
 
-    logic signed [11:0] x0, y0, x1, y1, x2, y2;
+    logic signed [31:0] vv00, vv01, vv02, vv10, vv11, vv12, vv20, vv21, vv22;
     logic signed [11:0] x, y;
-    logic signed [11:0] x_line, y_line;
     logic        [15:0] color;
     logic signed [31:0] u0, v0, u1, v1, u2, v2;
 
@@ -62,6 +70,7 @@ module graphite #(
     logic drawing_line;
     logic busy_line;
     logic done_line;
+    logic signed [11:0] x_line, y_line;
 
     logic wait_vram_ack = 1'b0;
 
@@ -70,10 +79,10 @@ module graphite #(
         .reset_i(reset_i),                 // reset
         .start_i(start_line),              // start line rendering
         .oe_i(!wait_vram_ack),             // output enable
-        .x0_i(x0),                         // point 0 - horizontal position
-        .y0_i(y0),                         // point 0 - vertical position
-        .x1_i(x1),                         // point 1 - horizontal position
-        .y1_i(y1),                         // point 1 - vertical position
+        .x0_i(12'(vv00 >> 16)),            // point 0 - horizontal position
+        .y0_i(12'(vv01 >> 16)),            // point 0 - vertical position
+        .x1_i(12'(vv10 >> 16)),            // point 1 - horizontal position
+        .y1_i(12'(vv11 >> 16)),            // point 1 - vertical position
         .x_o(x_line),                      // horizontal drawing position
         .y_o(y_line),                      // vertical drawing position
         .drawing_o(drawing_line),          // line is drawing
@@ -85,7 +94,6 @@ module graphite #(
     // Draw triangle
     //
 
-    logic signed [31:0] vv00, vv01, vv10, vv11, vv20, vv21;
     logic signed [31:0] p0, p1;
     logic signed [31:0] w0, w1, w2;
     logic signed [31:0] area, inv_area;
@@ -116,6 +124,9 @@ module graphite #(
 
     logic signed [11:0] min_x, min_y, max_x, max_y;
 
+    logic [31:0] reciprocal_x, reciprocal_z;
+    //reciprocal reciprocal(.clk(clk), .x_i(reciprocal_x), .z_o(reciprocal_z));
+
     reciprocal area_reciprocal(.clk(clk), .x_i(area), .z_o(inv_area));
 
     //function logic signed [31:0] edge_function(logic signed [31:0] a0, logic signed [31:0] a1, logic signed [31:0] b0, logic signed [31:0] b1, logic signed [31:0] c0, logic signed [31:0] c1);
@@ -129,13 +140,6 @@ module graphite #(
         else if (u < (32768) && v >= (32768)) get_texture_sample = 12'h00F;
         else get_texture_sample = 12'hFF0;
     endfunction
-
-    assign vv00 = {{20{x0[11]}}, x0} << 16;
-    assign vv01 = {{20{y0[11]}}, y0} << 16;
-    assign vv10 = {{20{x1[11]}}, x1} << 16;
-    assign vv11 = {{20{y1[11]}}, y1} << 16;
-    assign vv20 = {{20{x2[11]}}, x2} << 16;
-    assign vv21 = {{20{y2[11]}}, y2} << 16;
 
     assign c00 = u0;
     assign c01 = v0;
@@ -166,55 +170,133 @@ module graphite #(
             PROCESS_COMMAND: begin
                 case (cmd_axis_tdata_i[OP_POS+:OP_SIZE])
                     OP_SET_X0: begin
-                        x0 <= cmd_axis_tdata_i[11:0];
+                        if (cmd_axis_tdata_i[16]) begin
+                            vv00[31:16] <= cmd_axis_tdata_i[15:0];
+                            vv00[15:0] <= 16'd0;
+                        end else begin
+                            //vv00[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_Y0: begin
-                        y0 <= cmd_axis_tdata_i[11:0];
+                        if (cmd_axis_tdata_i[16]) begin
+                            vv01[31:16] <= cmd_axis_tdata_i[15:0];
+                            vv01[15:0] <= 16'd0;
+                        end else begin
+                            //vv01[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_Z0: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            vv02[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            vv02[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_X1: begin
-                        x1 <= cmd_axis_tdata_i[11:0];
+                        if (cmd_axis_tdata_i[16]) begin
+                            vv10[31:16] <= cmd_axis_tdata_i[15:0];
+                            vv10[15:0] <= 16'd0;
+                        end else begin
+                            //vv10[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_Y1: begin
-                        y1 <= cmd_axis_tdata_i[11:0];
+                        if (cmd_axis_tdata_i[16]) begin
+                            vv11[31:16] <= cmd_axis_tdata_i[15:0];
+                            vv11[15:0] <= 16'd0;
+                        end else begin
+                            //vv11[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_Z1: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            vv12[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            vv12[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_X2: begin
-                        x2 <= cmd_axis_tdata_i[11:0];
+                        if (cmd_axis_tdata_i[16]) begin
+                            vv20[31:16] <= cmd_axis_tdata_i[15:0];
+                            vv20[15:0] <= 16'd0;
+                        end else begin
+                            //vv20[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_Y2: begin
-                        y2 <= cmd_axis_tdata_i[11:0];
+                        if (cmd_axis_tdata_i[16]) begin
+                            vv21[31:16] <= cmd_axis_tdata_i[15:0];
+                            vv21[15:0] <= 16'd0;
+                        end else begin
+                            //vv21[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
                         state <= WAIT_COMMAND;
                     end
-                    OP_SET_U0: begin
-                        u0 <= {15'b0, cmd_axis_tdata_i[11:0], 5'b0};
+                    OP_SET_Z2: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            vv22[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            vv22[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
                         state <= WAIT_COMMAND;
                     end
-                    OP_SET_V0: begin
-                        v0 <= {15'b0, cmd_axis_tdata_i[11:0], 5'b0};
+                    OP_SET_S0: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            u0[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            u0[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
                         state <= WAIT_COMMAND;
                     end
-                    OP_SET_U1: begin
-                        u1 <= {15'b0, cmd_axis_tdata_i[11:0], 5'b0};
+                    OP_SET_T0: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            v0[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            v0[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
                         state <= WAIT_COMMAND;
                     end
-                    OP_SET_V1: begin
-                        v1 <= {15'b0, cmd_axis_tdata_i[11:0], 5'b0};
+                    OP_SET_S1: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            u1[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            u1[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
                         state <= WAIT_COMMAND;
                     end
-                    OP_SET_U2: begin
-                        u2 <= {15'b0, cmd_axis_tdata_i[11:0], 5'b0};
+                    OP_SET_T1: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            v1[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            v1[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
                         state <= WAIT_COMMAND;
                     end
-                    OP_SET_V2: begin
-                        v2 <= {15'b0, cmd_axis_tdata_i[11:0], 5'b0};
+                    OP_SET_S2: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            u2[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            u2[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_T2: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            v2[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            v2[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_COLOR: begin
-                        color <= {4'hF, cmd_axis_tdata_i[OP_POS - 1:0]};
+                        color <= cmd_axis_tdata_i[15:0];
                         state <= WAIT_COMMAND;
                     end
                     OP_CLEAR: begin
@@ -226,7 +308,7 @@ module graphite #(
                         state           <= CLEAR;
                     end
                     OP_DRAW: begin
-                        if (cmd_axis_tdata_i[11:0] == 0) begin
+                        if (cmd_axis_tdata_i[0] == 0) begin
                             // Draw line
                             start_line      <= 1;
                             state           <= DRAW_LINE;
@@ -235,10 +317,10 @@ module graphite #(
                             vram_addr_o     <= 16'h0;
                             vram_data_out_o <= color;
                             vram_mask_o     <= 4'hF;
-                            min_x <= min3(x0, x1, x2);
-                            min_y <= min3(y0, y1, y2);
-                            max_x <= max3(x0, x1, x2);
-                            max_y <= max3(y0, y1, y2);
+                            min_x <= min3(12'(vv00 >> 16), 12'(vv10 >> 16), 12'(vv20 >> 16));
+                            min_y <= min3(12'(vv01 >> 16), 12'(vv11 >> 16), 12'(vv21 >> 16));
+                            max_x <= max3(12'(vv00 >> 16), 12'(vv10 >> 16), 12'(vv20 >> 16));
+                            max_y <= max3(12'(vv01 >> 16), 12'(vv11 >> 16), 12'(vv21 >> 16));
                             state <= DRAW_TRIANGLE;
                         end
                     end
@@ -302,10 +384,12 @@ module graphite #(
 
             DRAW_TRIANGLEE: begin
                 area = t0 - t1;
+                //reciprocal_x <= t0 - t1;
                 state <= DRAW_TRIANGLE2;
             end
 
             DRAW_TRIANGLE2: begin
+                //inv_area <= reciprocal_z;
                 x <= min_x;
                 y <= min_y;
                 vram_addr_o <= vram_addr_o + {4'd0, min_y} * FB_WIDTH + {4'd0, min_x};
@@ -392,11 +476,14 @@ module graphite #(
                 if (w0[31] || w1[31] || w2[31]) begin
                     state <= DRAW_TRIANGLE8;
                 end else begin
-                    //state <= DRAW_TRIANGLE7;
+`ifdef TEXTURED
                     // w0 = rmul(w0, inv_area)
                     dsp_rmul_p0 <= w0;
                     dsp_rmul_p1 <= inv_area;
                     state <= DRAW_TRIANGLE4B;
+`else
+                    state <= DRAW_TRIANGLE7;
+`endif                    
                 end
             end
 
@@ -476,10 +563,62 @@ module graphite #(
 
             DRAW_TRIANGLE4L: begin
                 g <= t0 + t1 + t2;
+`ifdef PERSP_CORRECT
+                state <= DRAW_TRIANGLE5;
+`else                                
                 state <= DRAW_TRIANGLE6;
+`endif                
             end
 
             DRAW_TRIANGLE5: begin
+                // Perspective correction
+                // z = 1 / (w0 * vv02 + w1 * vv12 + w2 * vv22)
+                // r = r * z
+                // g = g * z
+                dsp_mul_p0 <= w0;
+                dsp_mul_p1 <= vv02;
+                state <= DRAW_TRIANGLE5B;
+            end
+
+            DRAW_TRIANGLE5B: begin
+                t0 <= dsp_mul_z;
+                dsp_mul_p0 <= w1;
+                dsp_mul_p1 <= vv12;
+                state <= DRAW_TRIANGLE5C;
+            end
+
+            DRAW_TRIANGLE5C: begin
+                t1 <= dsp_mul_z;
+                dsp_mul_p0 <= w2;
+                dsp_mul_p1 <= vv22;
+                state <= DRAW_TRIANGLE5D;
+            end
+
+            DRAW_TRIANGLE5D: begin
+                t2 <= dsp_mul_z;
+                state <= DRAW_TRIANGLE5E;
+            end
+
+            DRAW_TRIANGLE5E: begin
+                reciprocal_x <= (t0 + t1 + t2) << 12;
+                state <= DRAW_TRIANGLE5F;
+            end
+
+            DRAW_TRIANGLE5F: begin
+                dsp_mul_p0 <= r;
+                dsp_mul_p1 <= reciprocal_z << 12;
+                state <= DRAW_TRIANGLE5G;
+            end
+
+            DRAW_TRIANGLE5G: begin
+                r <= dsp_mul_z >> 8;
+                dsp_mul_p0 <= g;
+                state <= DRAW_TRIANGLE5H;
+            end
+
+            DRAW_TRIANGLE5H: begin
+                g <= dsp_mul_z >> 8;
+                state <= DRAW_TRIANGLE6;
             end
 
             DRAW_TRIANGLE6: begin
@@ -488,8 +627,11 @@ module graphite #(
             end
 
             DRAW_TRIANGLE7: begin
-                //vram_data_out_o <= {16'hFFFF};
+`ifdef TEXTURED                
                 vram_data_out_o <= {4'hF, tex_sample[11:8], tex_sample[7:4], tex_sample[3:0]};
+`else
+                vram_data_out_o <= {16'hFFFF};
+`endif                
                 vram_sel_o      <= 1'b1;
                 vram_wr_o       <= 1'b1;
                 state <= DRAW_TRIANGLE8;

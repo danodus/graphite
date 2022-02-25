@@ -137,7 +137,7 @@ module top(
     // graphite
     logic        graphite_tvalid;
     logic        graphite_tready;
-    logic [15:0] graphite_tdata;
+    logic [31:0] graphite_tdata;
 
     logic        graphite_vram_sel;
     logic        graphite_vram_wr;
@@ -177,20 +177,38 @@ module top(
         .valid_o(uart_valid)
     );
 
-    enum { WAIT_MSB, WAIT_LSB, WRITE_CMD } state;
+    enum { WAIT_B0,WAIT_B1,WAIT_B2, WAIT_B3, WRITE_CMD } state;
 
-    logic [15:0] cmd;
+    logic [31:0] cmd;
     always_ff @(posedge clk_pix) begin
         case (state)
-            WAIT_MSB: begin
+            WAIT_B0: begin
+                uart_rd <= 1'b1;
+                graphite_tvalid = 1'b0;
+                if (!uart_busy && uart_valid) begin
+                    cmd[31:24] <= uart_data;
+                    state      <= WAIT_B1;                     
+                end
+            end
+            WAIT_B1: begin
+                uart_rd <= 1'b1;
+                graphite_tvalid = 1'b0;
+                if (!uart_busy && uart_valid) begin
+                    cmd[23:16] <= uart_data;
+                    state      <= WAIT_B2;
+                end
+            end
+            WAIT_B2: begin
                 uart_rd <= 1'b1;
                 graphite_tvalid = 1'b0;
                 if (!uart_busy && uart_valid) begin
                     cmd[15:8] <= uart_data;
-                    state     <= WAIT_LSB;                     
+                    state     <= WAIT_B3;
                 end
             end
-            WAIT_LSB: begin
+            WAIT_B3: begin
+                uart_rd <= 1'b1;
+                graphite_tvalid = 1'b0;
                 if (!uart_busy && uart_valid) begin
                     cmd[7:0] <= uart_data;
                     state    <= WRITE_CMD;
@@ -201,7 +219,7 @@ module top(
                 if (graphite_tready) begin
                     graphite_tdata  <= cmd;
                     graphite_tvalid <= 1'b1;
-                    state           <= WAIT_MSB;
+                    state           <= WAIT_B0;
                 end
             end
         endcase
@@ -209,7 +227,7 @@ module top(
         if (reset) begin
             graphite_tvalid <= 1'b0;
             uart_rd         <= 1'b0;
-            state           <= WAIT_MSB;
+            state           <= WAIT_B0;
         end
     end
 

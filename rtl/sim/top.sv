@@ -1,15 +1,11 @@
-module top #(
-    parameter CMD_STREAM_WIDTH = 16,
-    parameter FB_STREAM_WIDTH = 16
-    )
-    (
+module top(
     input wire logic                  clk,
     input wire logic                  reset_i,
 
     // AXI stream command interface (slave)
     input wire logic                   cmd_axis_tvalid_i,
     output logic                       cmd_axis_tready_o,
-    input wire [CMD_STREAM_WIDTH-1:0]  cmd_axis_tdata_i,
+    input wire [31:0]                  cmd_axis_tdata_i,
 
     // VRAM write
     //input  wire logic                        vram_ack_i,
@@ -38,9 +34,7 @@ module top #(
         .data_out_o()
     );
 */
-    graphite #(
-        .CMD_STREAM_WIDTH(CMD_STREAM_WIDTH)
-    ) graphite(
+    graphite graphite(
         .clk(clk),
         .reset_i(reset_i),
         .cmd_axis_tvalid_i(cmd_axis_tvalid_i),

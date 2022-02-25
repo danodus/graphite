@@ -1,28 +1,40 @@
 `ifndef GRAPHITE_SVH
 `define GRAPHITE_SVH
 
-// 4 OP | 12 Immediate
+// 8 OP | 24 Immediate
 
 localparam OP_SET_X0        = 0;
 localparam OP_SET_Y0        = 1;
-localparam OP_SET_X1        = 2;
-localparam OP_SET_Y1        = 3;
-localparam OP_SET_X2        = 4;
-localparam OP_SET_Y2        = 5;
-localparam OP_SET_U0        = 6;
-localparam OP_SET_V0        = 7;
-localparam OP_SET_U1        = 8;
-localparam OP_SET_V1        = 9;
-localparam OP_SET_U2        = 10;
-localparam OP_SET_V2        = 11;
-localparam OP_SET_COLOR     = 12;
-localparam OP_CLEAR         = 13;
-localparam OP_DRAW          = 14;
-localparam OP_SWAP          = 15;
+localparam OP_SET_Z0        = 2;
+localparam OP_SET_X1        = 3;
+localparam OP_SET_Y1        = 4;
+localparam OP_SET_Z1        = 5;
+localparam OP_SET_X2        = 6;
+localparam OP_SET_Y2        = 7;
+localparam OP_SET_Z2        = 8;
+localparam OP_SET_R0        = 9;
+localparam OP_SET_G0        = 10;
+localparam OP_SET_B0        = 11;
+localparam OP_SET_R1        = 12;
+localparam OP_SET_G1        = 13;
+localparam OP_SET_B1        = 14;
+localparam OP_SET_R2        = 15;
+localparam OP_SET_G2        = 16;
+localparam OP_SET_B2        = 17;
+localparam OP_SET_S0        = 18;
+localparam OP_SET_T0        = 19;
+localparam OP_SET_S1        = 20;
+localparam OP_SET_T1        = 21;
+localparam OP_SET_S2        = 22;
+localparam OP_SET_T2        = 23;
+localparam OP_SET_COLOR     = 24;
+localparam OP_CLEAR         = 25;
+localparam OP_DRAW          = 26;
+localparam OP_SWAP          = 27;
 
 
-localparam OP_POS   = 12;
-localparam OP_SIZE  = 4;
+localparam OP_POS   = 24;
+localparam OP_SIZE  = 8;
 
 function logic signed [31:0] mul(logic signed [31:0] x, logic signed [31:0] y);
     mul = (x >> 8) * (y >> 8);
@@ -30,6 +42,10 @@ endfunction
 
 function logic signed [31:0] rmul(logic signed [31:0] x, logic signed [31:0] y);
     rmul = (x >> 16) * y;
+endfunction
+
+function logic signed [31:0] div(logic signed [31:0] x, logic signed [31:0] y);
+    div = (x << 8) / (y >> 8);
 endfunction
 
 function logic signed [31:0] rdiv(logic signed [31:0] x, logic signed [31:0] y);
