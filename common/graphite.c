@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-//#define PERSP_CORRECT 1
+#define PERSP_CORRECT
 
 void xd_draw_triangle(fx32 x0, fx32 y0, fx32 x1, fx32 y1, fx32 x2, fx32 y2, int color);
 void xd_draw_textured_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 x1, fx32 y1, fx32 z1, fx32 u1, fx32 v1,

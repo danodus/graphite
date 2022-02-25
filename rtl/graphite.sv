@@ -7,7 +7,7 @@
 `include "graphite.svh"
 
 `define TEXTURED
-//`define PERSP_CORRECT
+`define PERSP_CORRECT
 
 module dsp_mul(
     input wire logic signed [31:0] p0,
@@ -96,7 +96,7 @@ module graphite #(
 
     logic signed [31:0] p0, p1;
     logic signed [31:0] w0, w1, w2;
-    logic signed [31:0] area, inv_area;
+    logic signed [31:0] inv_area;
     logic signed [31:0] r, g, b;
 
     logic [11:0] tex_sample;
@@ -125,10 +125,8 @@ module graphite #(
     logic signed [11:0] min_x, min_y, max_x, max_y;
 
     logic [31:0] reciprocal_x, reciprocal_z;
-    //reciprocal reciprocal(.clk(clk), .x_i(reciprocal_x), .z_o(reciprocal_z));
-
-    reciprocal area_reciprocal(.clk(clk), .x_i(area), .z_o(inv_area));
-
+    reciprocal reciprocal(.clk(clk), .x_i(reciprocal_x), .z_o(reciprocal_z));
+    
     //function logic signed [31:0] edge_function(logic signed [31:0] a0, logic signed [31:0] a1, logic signed [31:0] b0, logic signed [31:0] b1, logic signed [31:0] c0, logic signed [31:0] c1);
     //    edge_function = mul(c0 - a0, b1 - a1) - mul(c1 - a1, b0 - a0);
     //endfunction
@@ -383,13 +381,12 @@ module graphite #(
             end
 
             DRAW_TRIANGLEE: begin
-                area = t0 - t1;
-                //reciprocal_x <= t0 - t1;
+                reciprocal_x <= t0 - t1;
                 state <= DRAW_TRIANGLE2;
             end
 
             DRAW_TRIANGLE2: begin
-                //inv_area <= reciprocal_z;
+                inv_area <= reciprocal_z;
                 x <= min_x;
                 y <= min_y;
                 vram_addr_o <= vram_addr_o + {4'd0, min_y} * FB_WIDTH + {4'd0, min_x};

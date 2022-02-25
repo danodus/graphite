@@ -56,10 +56,9 @@ module reciprocal #(
     end
 */
  
-     always_ff @(posedge clk) begin
+    always_comb begin
         //z_o = reciprocal_value(x_i);
         z_o = interpolated(x_i);
-        //z_o = 32'd0;
     end
 
 endmodule
