@@ -8,7 +8,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifndef FIXED_POINT
 #define FIXED_POINT 1
+#endif
 
 #define _FRACTION_MASK(scale) (0xffffffff >> (32 - scale))
 #define _WHOLE_MASK(scale) (0xffffffff ^ FRACTION_MASK(scale))
