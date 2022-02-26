@@ -135,8 +135,7 @@ int triangle_clip_against_plane(vec3d plane_p, vec3d plane_n, triangle_t* in_tri
         return 0;  // no returned triangles are valid
     }
 
-    // TODO: Partial clipping is currently disabled due to improper winding order with new triangles.
-    if (true /*nb_inside_points == 3*/) {
+    if (nb_inside_points == 3) {
         // all points lie in the inside of plane, so do nothing and allow the triangle to simply pass through
         *out_tri1 = *in_tri;
 
@@ -160,10 +159,12 @@ int triangle_clip_against_plane(vec3d plane_p, vec3d plane_n, triangle_t* in_tri
         out_tri1->p[1] = vector_intersect_plane(&plane_p, &plane_n, inside_points[0], outside_points[0], &t);
         out_tri1->t[1].u = MUL(t, outside_texcoords[0]->u - inside_texcoords[0]->u) + inside_texcoords[0]->u;
         out_tri1->t[1].v = MUL(t, outside_texcoords[0]->v - inside_texcoords[0]->v) + inside_texcoords[0]->v;
+        out_tri1->t[1].w = MUL(t, outside_texcoords[0]->w - inside_texcoords[0]->w) + inside_texcoords[0]->w;
 
         out_tri1->p[2] = vector_intersect_plane(&plane_p, &plane_n, inside_points[0], outside_points[1], &t);
         out_tri1->t[2].u = MUL(t, outside_texcoords[1]->u - inside_texcoords[0]->u) + inside_texcoords[0]->u;
         out_tri1->t[2].v = MUL(t, outside_texcoords[1]->v - inside_texcoords[0]->v) + inside_texcoords[0]->v;
+        out_tri1->t[2].w = MUL(t, outside_texcoords[1]->w - inside_texcoords[0]->w) + inside_texcoords[0]->w;
 
         return 1;  // return the newly formed single triangle
     }
@@ -187,16 +188,18 @@ int triangle_clip_against_plane(vec3d plane_p, vec3d plane_n, triangle_t* in_tri
         out_tri1->p[2] = vector_intersect_plane(&plane_p, &plane_n, inside_points[0], outside_points[0], &t);
         out_tri1->t[2].u = MUL(t, outside_texcoords[0]->u - inside_texcoords[0]->u) + inside_texcoords[0]->u;
         out_tri1->t[2].v = MUL(t, outside_texcoords[0]->v - inside_texcoords[0]->v) + inside_texcoords[0]->v;
+        out_tri1->t[2].w = MUL(t, outside_texcoords[0]->w - inside_texcoords[0]->w) + inside_texcoords[0]->w;
 
         // The second triangle is composed of one the the inside points, a new point determined by the intersection
         // of the other side of the triangle and the plane, and the newly created point above
         out_tri2->p[0] = *inside_points[1];
         out_tri2->t[0] = *inside_texcoords[1];
-        out_tri2->p[1] = out_tri1->p[2];
-        out_tri2->t[1] = out_tri1->t[2];
-        out_tri2->p[2] = vector_intersect_plane(&plane_p, &plane_n, inside_points[1], outside_points[0], &t);
-        out_tri2->t[2].u = MUL(t, outside_texcoords[0]->u - inside_texcoords[1]->u) + inside_texcoords[1]->u;
-        out_tri2->t[2].v = MUL(t, outside_texcoords[0]->v - inside_texcoords[1]->v) + inside_texcoords[1]->v;
+        out_tri2->p[1] = vector_intersect_plane(&plane_p, &plane_n, inside_points[1], outside_points[0], &t);
+        out_tri2->t[1].u = MUL(t, outside_texcoords[0]->u - inside_texcoords[1]->u) + inside_texcoords[1]->u;
+        out_tri2->t[1].v = MUL(t, outside_texcoords[0]->v - inside_texcoords[1]->v) + inside_texcoords[1]->v;
+        out_tri2->t[1].w = MUL(t, outside_texcoords[0]->w - inside_texcoords[1]->w) + inside_texcoords[1]->w;
+        out_tri2->p[2] = out_tri1->p[2];
+        out_tri2->t[2] = out_tri1->t[2];
 
         return 2;  // return two newly formed triangles which form a quad
     }
@@ -596,6 +599,29 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
 
         for (int i = 0; i < nb_triangles; ++i) {
             triangle_t* t = &triangles[i];
+
+            // calculate the normal
+            vec3d normal, line1, line2;
+            line1.x = t->p[1].x - t->p[0].x;
+            line1.y = t->p[1].y - t->p[0].y;
+            line1.z = t->p[1].z - t->p[0].z;
+
+            line2.x = t->p[2].x - t->p[0].x;
+            line2.y = t->p[2].y - t->p[0].y;
+            line2.z = t->p[2].z - t->p[0].z;
+
+            // take the cross product of lines to get normal to triangle surface
+            normal = vector_cross_product(&line1, &line2);
+
+            if (normal.z > FX(0.0f)) {
+                vec3d tp = t->p[0];
+                vec2d tt = t->t[0];
+                t->p[0] = t->p[1];
+                t->t[0] = t->t[1];
+                t->p[1] = tp;
+                t->t[1] = tt;
+            }
+
             // rasterize triangle
             fx32 col = MUL(t->col.x, FX(255.0f));
 
