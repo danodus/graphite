@@ -287,9 +287,11 @@ int main(int argc, char** argv, char** env) {
 
     Vtop* top = new Vtop{contextp.get(), "TOP"};
 
+    top->clk = 0;
+    top->eval();
+
     top->reset_i = 1;
     pulse_clk(top);
-
     top->reset_i = 0;
 
     Command c;
