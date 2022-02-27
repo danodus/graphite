@@ -632,7 +632,6 @@ module graphite #(
             end
 
             DRAW_TRIANGLE6: begin
-                $display("%x,%x", g, r);
                 t0 <= rmul(rmul((TEXTURE_HEIGHT) << 16, clamp(g)), TEXTURE_WIDTH << 16);
                 state <= DRAW_TRIANGLE6B;
             end
