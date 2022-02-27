@@ -15,6 +15,6 @@ sim: top.sv sim_main.cpp ../../common/graphite.c ../../common/graphite.h ../../c
 
 run: sim
 	cp ../*.hex .
-	obj_dir/Vtop
+	obj_dir/Vtop $(SERIAL)
 
 .PHONY: all clean

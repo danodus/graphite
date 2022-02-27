@@ -1,8 +1,13 @@
 #include <SDL.h>
 #include <Vtop.h>
 #include <cube.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <graphite.h>
+#include <string.h>
 #include <teapot.h>
+#include <termios.h>
+#include <unistd.h>
 #include <verilated.h>
 
 #include <deque>
@@ -50,6 +55,64 @@
 #else
 #define TEXCOORD_PARAM(x) (_FLOAT_TO_FIXED(x, 16))
 #endif
+
+// Serial
+
+// Ref.: https://stackoverflow.com/questions/6947413/how-to-open-read-and-write-from-serial-port-in-c
+
+int g_serial_fd = -1;
+
+int set_interface_attribs(int fd, int speed, int parity) {
+    struct termios tty;
+    if (tcgetattr(fd, &tty) != 0) {
+        printf("error %d from tcgetattr", errno);
+        return -1;
+    }
+
+    cfsetospeed(&tty, speed);
+    cfsetispeed(&tty, speed);
+
+    tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;  // 8-bit chars
+    // disable IGNBRK for mismatched speed tests; otherwise receive break
+    // as \000 chars
+    tty.c_iflag &= ~IGNBRK;  // disable break processing
+    tty.c_lflag = 0;         // no signaling chars, no echo,
+                             // no canonical processing
+    tty.c_oflag = 0;         // no remapping, no delays
+    tty.c_cc[VMIN] = 0;      // read doesn't block
+    tty.c_cc[VTIME] = 5;     // 0.5 seconds read timeout
+
+    tty.c_iflag &= ~(IXON | IXOFF | IXANY);  // shut off xon/xoff ctrl
+
+    tty.c_cflag |= (CLOCAL | CREAD);    // ignore modem controls,
+                                        // enable reading
+    tty.c_cflag &= ~(PARENB | PARODD);  // shut off parity
+    tty.c_cflag |= parity;
+    tty.c_cflag &= ~CSTOPB;
+    tty.c_cflag &= ~CRTSCTS;
+
+    if (tcsetattr(fd, TCSANOW, &tty) != 0) {
+        printf("error %d from tcsetattr", errno);
+        return -1;
+    }
+    return 0;
+}
+
+void set_blocking(int fd, int should_block) {
+    struct termios tty;
+    memset(&tty, 0, sizeof tty);
+    if (tcgetattr(fd, &tty) != 0) {
+        printf("error %d from tggetattr", errno);
+        return;
+    }
+
+    tty.c_cc[VMIN] = should_block ? 1 : 0;
+    tty.c_cc[VTIME] = 5;  // 0.5 seconds read timeout
+
+    if (tcsetattr(fd, TCSANOW, &tty) != 0) printf("error %d setting term attributes", errno);
+}
+
+// -------------
 
 struct Command {
     uint32_t opcode : 8;
@@ -362,6 +425,16 @@ void write_texture() {
 }
 
 int main(int argc, char** argv, char** env) {
+    if (argc > 1) {
+        g_serial_fd = open(argv[1], O_RDWR | O_NOCTTY | O_SYNC | O_NONBLOCK);
+        if (g_serial_fd < 0) {
+            printf("error %d opening %s: %s", errno, argv[1], strerror(errno));
+            return 1;
+        }
+        set_interface_attribs(g_serial_fd, B115200, 0);  // set speed to 115,200 bps, 8n1 (no parity)
+        set_blocking(g_serial_fd, 0);
+    }
+
     SDL_Init(SDL_INIT_VIDEO);
 
     SDL_Window* window =
@@ -461,8 +534,18 @@ int main(int argc, char** argv, char** env) {
 
             if (dump) {
                 for (auto cmd : g_commands) {
-                    printf("    send_command(b'\\x%02x\\x%02x\\x%02x\\x%02x')", cmd.opcode, cmd.param >> 16,
-                           (cmd.param >> 8) & 0xFF, cmd.param & 0xFF);
+                    if (g_serial_fd >= 0) {
+                        char b[4];
+                        b[0] = cmd.opcode;
+                        b[1] = cmd.param >> 16;
+                        b[2] = (cmd.param >> 8) & 0xFF;
+                        b[3] = cmd.param & 0xFF;
+                        write(g_serial_fd, &b, 4);
+                        usleep((7 + 25) * 100);
+                    } else {
+                        printf("    send_command(b'\\x%02x\\x%02x\\x%02x\\x%02x')", cmd.opcode, cmd.param >> 16,
+                               (cmd.param >> 8) & 0xFF, cmd.param & 0xFF);
+                    }
                 }
                 dump = false;
             }
@@ -562,6 +645,8 @@ int main(int argc, char** argv, char** env) {
 
     SDL_DestroyTexture(texture);
     SDL_Quit();
+
+    if (g_serial_fd >= 0) close(g_serial_fd);
 
     return 0;
 }
