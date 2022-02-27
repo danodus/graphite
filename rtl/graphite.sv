@@ -27,7 +27,9 @@ endmodule
 
 module graphite #(
     parameter FB_WIDTH = 128,
-    parameter FB_HEIGHT = 128
+    parameter FB_HEIGHT = 128,
+    parameter TEXTURE_WIDTH = 32,
+    parameter TEXTURE_HEIGHT = 32
     ) (
     input  wire logic                        clk,
     input  wire logic                        reset_i,
@@ -43,6 +45,7 @@ module graphite #(
     output      logic                        vram_wr_o,
     output      logic  [3:0]                 vram_mask_o,
     output      logic [15:0]                 vram_addr_o,
+    input       logic [15:0]                 vram_data_in_i,
     output      logic [15:0]                 vram_data_out_o,
 
     output      logic                        swap_o
@@ -54,13 +57,17 @@ module graphite #(
            DRAW_TRIANGLE3, DRAW_TRIANGLE3B, DRAW_TRIANGLE3C, DRAW_TRIANGLE3D, DRAW_TRIANGLE3E, DRAW_TRIANGLE3F, DRAW_TRIANGLE3G, DRAW_TRIANGLE3H, DRAW_TRIANGLE3I, DRAW_TRIANGLE3J,
            DRAW_TRIANGLE4, DRAW_TRIANGLE4B, DRAW_TRIANGLE4C, DRAW_TRIANGLE4D, DRAW_TRIANGLE4E, DRAW_TRIANGLE4F, DRAW_TRIANGLE4G, DRAW_TRIANGLE4H, DRAW_TRIANGLE4I, DRAW_TRIANGLE4J, DRAW_TRIANGLE4K, DRAW_TRIANGLE4L,
            DRAW_TRIANGLE5, DRAW_TRIANGLE5B, DRAW_TRIANGLE5C, DRAW_TRIANGLE5D, DRAW_TRIANGLE5E, DRAW_TRIANGLE5F, DRAW_TRIANGLE5G, DRAW_TRIANGLE5H, 
-           DRAW_TRIANGLE6, DRAW_TRIANGLE7, DRAW_TRIANGLE8, DRAW_TRIANGLE9
+           DRAW_TRIANGLE6, DRAW_TRIANGLE6B, DRAW_TRIANGLE6C, DRAW_TRIANGLE6D,
+           DRAW_TRIANGLE7, DRAW_TRIANGLE7B, DRAW_TRIANGLE8, DRAW_TRIANGLE9
     } state;
 
     logic signed [31:0] vv00, vv01, vv02, vv10, vv11, vv12, vv20, vv21, vv22;
     logic signed [11:0] x, y;
     logic        [15:0] color;
     logic signed [31:0] u0, v0, u1, v1, u2, v2;
+
+    logic [15:0] raster_addr;
+    logic [15:0] texture_address, texture_write_address;
 
     //
     // Draw line
@@ -99,8 +106,6 @@ module graphite #(
     logic signed [31:0] inv_area;
     logic signed [31:0] r, g, b;
 
-    logic [11:0] tex_sample;
-    
     logic signed [31:0] c00, c01, c02;
     logic signed [31:0] c10, c11, c12;
     logic signed [31:0] c20, c21, c22;
@@ -131,14 +136,6 @@ module graphite #(
     //    edge_function = mul(c0 - a0, b1 - a1) - mul(c1 - a1, b0 - a0);
     //endfunction
 
-
-    function logic [11:0] get_texture_sample(logic signed [31:0] u, logic signed [31:0] v);
-        if (u < (32768) && v < (32768)) get_texture_sample = 12'hF00;
-        else if (u >= (32768) && v < (32768)) get_texture_sample = 12'h0F0;
-        else if (u < (32768) && v >= (32768)) get_texture_sample = 12'h00F;
-        else get_texture_sample = 12'hFF0;
-    endfunction
-
     assign c00 = u0;
     assign c01 = v0;
     assign c02 = 32'd0;
@@ -161,6 +158,8 @@ module graphite #(
         case (state)
             WAIT_COMMAND: begin
                 swap_o <= 1'b0;
+                vram_sel_o <= 1'b0;
+                vram_wr_o  <= 1'b0;
                 if (cmd_axis_tvalid_i)
                     state <= PROCESS_COMMAND;
             end
@@ -326,6 +325,20 @@ module graphite #(
                         swap_o <= 1'b1;
                         state <= WAIT_COMMAND;
                     end
+                    OP_SET_TEX_ADDR: begin
+                        texture_address <= cmd_axis_tdata_i[15:0];
+                        texture_write_address <= cmd_axis_tdata_i[15:0];
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_WRITE_TEX: begin
+                        vram_addr_o <= texture_write_address;
+                        vram_data_out_o <= cmd_axis_tdata_i[15:0];
+                        vram_mask_o <= 4'hF;
+                        vram_sel_o <= 1'b1;
+                        vram_wr_o  <= 1'b1;
+                        texture_write_address <= texture_write_address + 1;
+                        state <= WAIT_COMMAND;
+                    end
                     default:
                         state <= WAIT_COMMAND;
                 endcase
@@ -389,7 +402,7 @@ module graphite #(
                 inv_area <= reciprocal_z;
                 x <= min_x;
                 y <= min_y;
-                vram_addr_o <= vram_addr_o + {4'd0, min_y} * FB_WIDTH + {4'd0, min_x};
+                raster_addr <= {4'd0, min_y} * FB_WIDTH + {4'd0, min_x};
                 state <= DRAW_TRIANGLE3;
             end
 
@@ -619,18 +632,40 @@ module graphite #(
             end
 
             DRAW_TRIANGLE6: begin
-                tex_sample = get_texture_sample(r, g);
+                $display("%x,%x", g, r);
+                t0 <= rmul(rmul((TEXTURE_HEIGHT) << 16, clamp(g)), TEXTURE_WIDTH << 16);
+                state <= DRAW_TRIANGLE6B;
+            end
+
+            DRAW_TRIANGLE6B: begin
+                t1 <= rmul((TEXTURE_WIDTH) << 16, clamp(r));
+                state <= DRAW_TRIANGLE6C;
+            end
+
+            DRAW_TRIANGLE6C: begin
+                vram_sel_o <= 1'b1;
+                vram_wr_o  <= 1'b0;
+                vram_addr_o <= texture_address + 16'((t0 + t1) >> 16);
+                state <= DRAW_TRIANGLE6D;
+            end
+
+            DRAW_TRIANGLE6D: begin
                 state <= DRAW_TRIANGLE7;
             end
 
             DRAW_TRIANGLE7: begin
 `ifdef TEXTURED                
-                vram_data_out_o <= {4'hF, tex_sample[11:8], tex_sample[7:4], tex_sample[3:0]};
+                vram_data_out_o <= vram_data_in_i;
 `else
                 vram_data_out_o <= {16'hFFFF};
-`endif                
-                vram_sel_o      <= 1'b1;
-                vram_wr_o       <= 1'b1;
+`endif          
+                vram_sel_o <= 1'b1;
+                vram_wr_o  <= 1'b1;
+                vram_addr_o <= raster_addr;
+                state <= DRAW_TRIANGLE7B;
+            end
+
+            DRAW_TRIANGLE7B: begin
                 state <= DRAW_TRIANGLE8;
             end
 
@@ -640,11 +675,11 @@ module graphite #(
 
                 if (x < max_x) begin
                     x <= x + 1;
-                    vram_addr_o <= vram_addr_o + 1;
+                    raster_addr <= raster_addr + 1;
                 end else begin
                     x <= min_x;
                     y <= y + 1;
-                    vram_addr_o <= vram_addr_o + {4'd0, (FB_WIDTH[11:0] - max_x) + min_x};
+                    raster_addr <= raster_addr + {4'd0, (FB_WIDTH[11:0] - max_x) + min_x};
                 end
 
                 state <= DRAW_TRIANGLE9;
@@ -676,6 +711,7 @@ module graphite #(
             swap_o            <= 1'b0;
             vram_sel_o        <= 1'b0;
             start_line        <= 1'b0;
+            texture_address   <= FB_WIDTH * FB_HEIGHT;
             state             <= WAIT_COMMAND;
         end
     end

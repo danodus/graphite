@@ -13,6 +13,7 @@ module top(
     output      logic                        vram_wr_o,
     output      logic  [3:0]                 vram_mask_o,
     output      logic [15:0]                 vram_addr_o,
+    input       logic [15:0]                 vram_data_in_i,
     output      logic [15:0]                 vram_data_out_o,
 
     output      logic                        swap_o
@@ -23,17 +24,7 @@ module top(
     logic  [3:0] vram_wr_mask;
     logic [15:0] vram_addr;
     logic [15:0] vram_data_in;
-/*
-    vram vram(
-        .clk(clk),
-        .sel_i(vram_sel),
-        .wr_en_i(vram_wr_en),
-        .wr_mask_i(vram_wr_mask),
-        .addr_i(vram_addr),
-        .data_in_i(vram_data_in),
-        .data_out_o()
-    );
-*/
+
     graphite graphite(
         .clk(clk),
         .reset_i(reset_i),
@@ -44,6 +35,7 @@ module top(
         .vram_wr_o(vram_wr_o),
         .vram_mask_o(vram_mask_o),
         .vram_addr_o(vram_addr_o),
+        .vram_data_in_i(vram_data_in_i),
         .vram_data_out_o(vram_data_out_o),
         .swap_o(swap_o)
     );

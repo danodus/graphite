@@ -155,6 +155,7 @@ module top(
         .vram_wr_o(graphite_vram_wr),
         .vram_mask_o(graphite_vram_mask),
         .vram_addr_o(graphite_vram_address),
+        .vram_data_in_i(vram_data_out),
         .vram_data_out_o(graphite_vram_data_out),
         .swap_o()
     );

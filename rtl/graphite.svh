@@ -31,6 +31,9 @@ localparam OP_SET_COLOR     = 24;
 localparam OP_CLEAR         = 25;
 localparam OP_DRAW          = 26;
 localparam OP_SWAP          = 27;
+localparam OP_SET_TEX_ADDR  = 28;
+localparam OP_WRITE_TEX     = 29;
+
 
 
 localparam OP_POS   = 24;
@@ -50,6 +53,15 @@ endfunction
 
 function logic signed [31:0] rdiv(logic signed [31:0] x, logic signed [31:0] y);
     rdiv = x / (y >> 16);
+endfunction
+
+function logic signed [31:0] clamp(logic signed [31:0] x);
+    if (x[31])
+        clamp = 32'd0;
+    else if (x[31:16] != 16'd0)
+        clamp = 32'd1 << 16;
+    else
+        clamp = x;
 endfunction
 
 function logic signed [11:0] min(logic signed [11:0] a, logic signed [11:0] b);

@@ -11,6 +11,8 @@
 
 #define FB_WIDTH 128
 #define FB_HEIGHT 128
+#define TEXTURE_WIDTH 32
+#define TEXTURE_HEIGHT 32
 
 #define OP_SET_X0 0
 #define OP_SET_Y0 1
@@ -40,6 +42,8 @@
 #define OP_CLEAR 25
 #define OP_DRAW 26
 #define OP_SWAP 27
+#define OP_SET_TEX_ADDR 28
+#define OP_WRITE_TEX 29
 
 #if FIXED_POINT
 #define TEXCOORD_PARAM(x) (x)
@@ -268,6 +272,347 @@ void draw_model_with_camera(model_t* model, vec3d* vec_camera, float theta) {
     draw_model(FB_WIDTH, FB_HEIGHT, vec_camera, model, &mat_world, &mat_proj, &mat_view, true, true, NULL);
 }
 
+const uint16_t img[] = {
+    64373, 64373, 64373, 64373, 64373, 64373, 62770, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373,
+    64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373,
+    64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64972, 64972, 64972, 64972, 64972, 64169, 64169, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64972, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64972, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64972, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64169, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64169, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    63060, 63060, 63060, 63060, 63060, 63060, 62770, 64373, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060,
+    63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060,
+    62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770,
+    62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770,
+    64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373,
+    64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 62770, 64373, 64373, 64373, 64373, 64373,
+    64972, 64169, 64169, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64972, 64972, 64972, 64972,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64972, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64972, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64972, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64169, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64169, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118,
+    64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64118, 64118, 64118, 64118,
+    63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060,
+    63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 63060, 62770, 64373, 63060, 63060, 63060, 63060,
+    62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770,
+    62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770, 62770};
+
+void send_command(const char* s) {
+    Command c;
+    c.opcode = s[0];
+    c.param = (((uint32_t)s[1] << 16) & 0xFF0000) | (((uint32_t)s[2] << 8) & 0xFF00) | ((uint32_t)s[3] & 0xFF);
+    g_commands.push_back(c);
+}
+
+void test_issue() {
+    send_command("\x00\x00\xc0\x00");
+    send_command("\x00\x01\x00\x57");
+    send_command("\x01\x00\x80\x00");
+    send_command("\x01\x01\x00\x26");
+    send_command("\x02\x00\x3f\x42");
+    send_command("\x02\x01\x00\x00");
+    send_command("\x03\x00\x00\x00");
+    send_command("\x03\x01\x00\x52");
+    send_command("\x04\x00\x00\x00");
+    send_command("\x04\x01\x00\x40");
+    send_command("\x05\x00\x43\x49");
+    send_command("\x05\x01\x00\x00");
+    send_command("\x06\x00\x40\x00");
+    send_command("\x06\x01\x00\x58");
+    send_command("\x07\x00\x40\x00");
+    send_command("\x07\x01\x00\x36");
+    send_command("\x08\x00\x5a\x45");
+    send_command("\x08\x01\x00\x00");
+    send_command("\x12\x00\x00\x00");
+    send_command("\x12\x01\x00\x00");
+    send_command("\x13\x00\x3f\x42");
+    send_command("\x13\x01\x00\x00");
+    send_command("\x14\x00\x00\x00");
+    send_command("\x14\x01\x00\x00");
+    send_command("\x15\x00\x00\x00");
+    send_command("\x15\x01\x00\x00");
+    send_command("\x16\x00\x5a\x45");
+    send_command("\x16\x01\x00\x00");
+    send_command("\x17\x00\x00\x00");
+    send_command("\x17\x01\x00\x00");
+    send_command("\x1a\x00\x00\x01");
+    send_command("\x00\x00\x00\x00");
+    send_command("\x00\x01\x00\x6f");
+    send_command("\x01\x00\x40\x00");
+    send_command("\x01\x01\x00\x47");
+    send_command("\x02\x00\x44\x68");
+    send_command("\x02\x01\x00\x00");
+    send_command("\x03\x00\x40\x00");
+    send_command("\x03\x01\x00\x58");
+    send_command("\x04\x00\x40\x00");
+    send_command("\x04\x01\x00\x36");
+    send_command("\x05\x00\x5a\x45");
+    send_command("\x05\x01\x00\x00");
+    send_command("\x06\x00\x00\x00");
+    send_command("\x06\x01\x00\x52");
+    send_command("\x07\x00\x00\x00");
+    send_command("\x07\x01\x00\x40");
+    send_command("\x08\x00\x43\x49");
+    send_command("\x08\x01\x00\x00");
+    send_command("\x12\x00\x00\x00");
+    send_command("\x12\x01\x00\x00");
+    send_command("\x13\x00\x44\x68");
+    send_command("\x13\x01\x00\x00");
+    send_command("\x14\x00\x5a\x45");
+    send_command("\x14\x01\x00\x00");
+    send_command("\x15\x00\x00\x00");
+    send_command("\x15\x01\x00\x00");
+    send_command("\x16\x00\x43\x49");
+    send_command("\x16\x01\x00\x00");
+    send_command("\x17\x00\x43\x49");
+    send_command("\x17\x01\x00\x00");
+    send_command("\x1a\x00\x00\x01");
+    send_command("\x00\x00\xc0\x00");
+    send_command("\x00\x01\x00\x57");
+    send_command("\x01\x00\x80\x00");
+    send_command("\x01\x01\x00\x26");
+    send_command("\x02\x00\x3f\x42");
+    send_command("\x02\x01\x00\x00");
+    send_command("\x03\x00\x40\x00");
+    send_command("\x03\x01\x00\x58");
+    send_command("\x04\x00\x40\x00");
+    send_command("\x04\x01\x00\x36");
+    send_command("\x05\x00\x5a\x45");
+    send_command("\x05\x01\x00\x00");
+    send_command("\x06\x00\x40\x00");
+    send_command("\x06\x01\x00\x5f");
+    send_command("\x07\x00\x40\x00");
+    send_command("\x07\x01\x00\x15");
+    send_command("\x08\x00\x53\x2a");
+    send_command("\x08\x01\x00\x00");
+    send_command("\x12\x00\x00\x00");
+    send_command("\x12\x01\x00\x00");
+    send_command("\x13\x00\x3f\x42");
+    send_command("\x13\x01\x00\x00");
+    send_command("\x14\x00\x5a\x45");
+    send_command("\x14\x01\x00\x00");
+    send_command("\x15\x00\x00\x00");
+    send_command("\x15\x01\x00\x00");
+    send_command("\x16\x00\x53\x2a");
+    send_command("\x16\x01\x00\x00");
+    send_command("\x17\x00\x53\x2a");
+    send_command("\x17\x01\x00\x00");
+    send_command("\x1a\x00\x00\x01");
+    send_command("\x00\x00\x40\x00");
+    send_command("\x00\x01\x00\x58");
+    send_command("\x01\x00\x40\x00");
+    send_command("\x01\x01\x00\x36");
+    send_command("\x02\x00\x5a\x45");
+    send_command("\x02\x01\x00\x00");
+    send_command("\x03\x00\x00\x00");
+    send_command("\x03\x01\x00\x6f");
+    send_command("\x04\x00\x40\x00");
+    send_command("\x04\x01\x00\x47");
+    send_command("\x05\x00\x44\x68");
+    send_command("\x05\x01\x00\x00");
+    send_command("\x06\x00\xff\x00");
+    send_command("\x06\x01\x00\x7e");
+    send_command("\x07\x00\xde\x00");
+    send_command("\x07\x01\x00\x3f");
+    send_command("\x08\x00\x5b\x0c");
+    send_command("\x08\x01\x00\x00");
+    send_command("\x12\x00\x5a\x45");
+    send_command("\x12\x01\x00\x00");
+    send_command("\x13\x00\x00\x00");
+    send_command("\x13\x01\x00\x00");
+    send_command("\x14\x00\x00\x00");
+    send_command("\x14\x01\x00\x00");
+    send_command("\x15\x00\x44\x68");
+    send_command("\x15\x01\x00\x00");
+    send_command("\x16\x00\x00\x00");
+    send_command("\x16\x01\x00\x00");
+    send_command("\x17\x00\x00\x7c");
+    send_command("\x17\x01\x00\x00");
+    send_command("\x1a\x00\x00\x01");
+    send_command("\x00\x00\xf2\x00");
+    send_command("\x00\x01\x00\x7e");
+    send_command("\x01\x00\xad\x00");
+    send_command("\x01\x01\x00\x3f");
+    send_command("\x02\x00\x5c\x41");
+    send_command("\x02\x01\x00\x00");
+    send_command("\x03\x00\x40\x00");
+    send_command("\x03\x01\x00\x58");
+    send_command("\x04\x00\x40\x00");
+    send_command("\x04\x01\x00\x36");
+    send_command("\x05\x00\x5a\x45");
+    send_command("\x05\x01\x00\x00");
+    send_command("\x06\x00\xff\x00");
+    send_command("\x06\x01\x00\x7e");
+    send_command("\x07\x00\xde\x00");
+    send_command("\x07\x01\x00\x3f");
+    send_command("\x08\x00\x5b\x0c");
+    send_command("\x08\x01\x00\x00");
+    send_command("\x12\x00\xff\x0f");
+    send_command("\x12\xff\xff\xff");
+    send_command("\x13\x00\x00\x00");
+    send_command("\x13\x01\x00\x00");
+    send_command("\x14\x00\x5a\x45");
+    send_command("\x14\x01\x00\x00");
+    send_command("\x15\x00\x00\x00");
+    send_command("\x15\x01\x00\x00");
+    send_command("\x16\x00\x00\x00");
+    send_command("\x16\x01\x00\x00");
+    send_command("\x17\x00\x00\x7c");
+    send_command("\x17\x01\x00\x00");
+    send_command("\x1a\x00\x00\x01");
+    send_command("\x00\x00\x40\x00");
+    send_command("\x00\x01\x00\x5f");
+    send_command("\x01\x00\x40\x00");
+    send_command("\x01\x01\x00\x15");
+    send_command("\x02\x00\x53\x2a");
+    send_command("\x02\x01\x00\x00");
+    send_command("\x03\x00\x00\x00");
+    send_command("\x03\x01\x00\x7f");
+    send_command("\x04\x00\x6b\x00");
+    send_command("\x04\x01\x00\x3f");
+    send_command("\x05\x00\x5c\x18");
+    send_command("\x05\x01\x00\x00");
+    send_command("\x06\x00\xf8\x00");
+    send_command("\x06\x01\x00\x7e");
+    send_command("\x07\x00\x40\x00");
+    send_command("\x07\x01\x00\x1c");
+    send_command("\x08\x00\x54\x0a");
+    send_command("\x08\x01\x00\x00");
+    send_command("\x12\x00\x00\x00");
+    send_command("\x12\x01\x00\x00");
+    send_command("\x13\x00\x53\x2a");
+    send_command("\x13\x01\x00\x00");
+    send_command("\x14\x00\x5b\x48");
+    send_command("\x14\x01\x00\x00");
+    send_command("\x15\x00\xff\xd2");
+    send_command("\x15\xff\xff\xff");
+    send_command("\x16\x00\x49\x80");
+    send_command("\x16\x01\x00\x00");
+    send_command("\x17\x00\x54\x0a");
+    send_command("\x17\x01\x00\x00");
+    send_command("\x1a\x00\x00\x01");
+    send_command("\x00\x00\x40\x00");
+    send_command("\x00\x01\x00\x5f");
+    send_command("\x01\x00\x40\x00");
+    send_command("\x01\x01\x00\x15");
+    send_command("\x02\x00\x53\x2a");
+    send_command("\x02\x01\x00\x00");
+    send_command("\x03\x00\x40\x00");
+    send_command("\x03\x01\x00\x58");
+    send_command("\x04\x00\x40\x00");
+    send_command("\x04\x01\x00\x36");
+    send_command("\x05\x00\x5a\x45");
+    send_command("\x05\x01\x00\x00");
+    send_command("\x06\x00\x00\x00");
+    send_command("\x06\x01\x00\x7f");
+    send_command("\x07\x00\x6b\x00");
+    send_command("\x07\x01\x00\x3f");
+    send_command("\x08\x00\x5c\x18");
+    send_command("\x08\x01\x00\x00");
+    send_command("\x12\x00\x00\x00");
+    send_command("\x12\x01\x00\x00");
+    send_command("\x13\x00\x53\x2a");
+    send_command("\x13\x01\x00\x00");
+    send_command("\x14\x00\x00\x00");
+    send_command("\x14\x01\x00\x00");
+    send_command("\x15\x00\x00\x00");
+    send_command("\x15\x01\x00\x00");
+    send_command("\x16\x00\x5b\x48");
+    send_command("\x16\x01\x00\x00");
+    send_command("\x17\x00\xff\xd2");
+    send_command("\x17\xff\xff\xff");
+    send_command("\x1a\x00\x00\x01");
+    send_command("\x00\x00\x40\x00");
+    send_command("\x00\x01\x00\x58");
+    send_command("\x01\x00\x40\x00");
+    send_command("\x01\x01\x00\x36");
+    send_command("\x02\x00\x5a\x45");
+    send_command("\x02\x01\x00\x00");
+    send_command("\x03\x00\xf2\x00");
+    send_command("\x03\x01\x00\x7e");
+    send_command("\x04\x00\xad\x00");
+    send_command("\x04\x01\x00\x3f");
+    send_command("\x05\x00\x5c\x41");
+    send_command("\x05\x01\x00\x00");
+    send_command("\x06\x00\x00\x00");
+    send_command("\x06\x01\x00\x7f");
+    send_command("\x07\x00\x6b\x00");
+    send_command("\x07\x01\x00\x3f");
+    send_command("\x08\x00\x5c\x18");
+    send_command("\x08\x01\x00\x00");
+    send_command("\x12\x00\x00\x00");
+    send_command("\x12\x01\x00\x00");
+    send_command("\x13\x00\x00\x00");
+    send_command("\x13\x01\x00\x00");
+    send_command("\x14\x00\x5b\x48");
+    send_command("\x14\x01\x00\x00");
+    send_command("\x15\x00\x00\x00");
+    send_command("\x15\x01\x00\x00");
+    send_command("\x16\x00\x5b\x48");
+    send_command("\x16\x01\x00\x00");
+    send_command("\x17\x00\xff\xd2");
+    send_command("\x17\xff\xff\xff");
+    send_command("\x1a\x00\x00\x01");
+    send_command("\x1b\x00\x00\x00");
+}
+
+void write_texture() {
+    Command c;
+    c.opcode = OP_SET_TEX_ADDR;
+    c.param = FB_WIDTH * FB_HEIGHT;
+    g_commands.push_back(c);
+    c.opcode = OP_WRITE_TEX;
+
+    const uint16_t* p = img;
+    for (int t = 0; t < TEXTURE_WIDTH; ++t)
+        for (int s = 0; s < TEXTURE_HEIGHT; ++s) {
+            c.param = *p;
+            g_commands.push_back(c);
+            p++;
+        }
+}
+
 int main(int argc, char** argv, char** env) {
     SDL_Init(SDL_INIT_VIDEO);
 
@@ -276,9 +621,9 @@ int main(int argc, char** argv, char** env) {
 
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-    const size_t vram_size = FB_WIDTH * FB_HEIGHT;
+    const size_t vram_size = FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT;
     uint16_t* vram_data = new uint16_t[vram_size];
-    for (size_t i = 0; i < vram_size; ++i) vram_data[i] = 0xFF00;
+    for (size_t i = 0; i < vram_size; ++i) vram_data[i] = 0x0000;
 
     SDL_Texture* texture =
         SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB4444, SDL_TEXTUREACCESS_STREAMING, FB_WIDTH, FB_HEIGHT);
@@ -298,7 +643,7 @@ int main(int argc, char** argv, char** env) {
 
     model_t* teapot_model = load_teapot();
     model_t* cube_model = load_cube();
-    model_t* current_model = cube_model;
+    model_t* current_model = nullptr;
 
     float theta = 0.0f;
 
@@ -318,6 +663,8 @@ int main(int argc, char** argv, char** env) {
     bool dump = false;
 
     unsigned int time = SDL_GetTicks();
+
+    bool texture_dirty = true;
 
     while (!contextp->gotFinish() && !quit) {
         SDL_Event e;
@@ -352,14 +699,22 @@ int main(int argc, char** argv, char** env) {
             mat_world = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
             mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
 
-            // Draw cube
-            draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, true,
-                       wireframe, NULL);
-            swap();
+            if (texture_dirty || dump) {
+                write_texture();
+                test_issue();
+                texture_dirty = false;
+            }
+
+            if (current_model) {
+                // Draw cube
+                draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, true,
+                           wireframe, NULL);
+                swap();
+            }
 
             if (dump) {
                 for (auto cmd : g_commands) {
-                    printf("    send_command(ser, b'\\x%02x\\x%02x\\x%02x\\x%02x')\n", cmd.opcode, cmd.param >> 16,
+                    printf("    send_command(b'\\x%02x\\x%02x\\x%02x\\x%02x')", cmd.opcode, cmd.param >> 16,
                            (cmd.param >> 8) & 0xFF, cmd.param & 0xFF);
                 }
                 dump = false;
@@ -418,9 +773,15 @@ int main(int argc, char** argv, char** env) {
             }
         }
 
-        if (top->vram_sel_o && top->vram_wr_o) {
-            assert(top->vram_addr_o < FB_WIDTH * FB_HEIGHT);
-            vram_data[top->vram_addr_o] = top->vram_data_out_o;
+        if (top->vram_sel_o && top->vram_addr_o < FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT) {
+            // assert(top->vram_addr_o < FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT);
+
+            if (top->vram_wr_o) {
+                vram_data[top->vram_addr_o] = top->vram_data_out_o;
+            }
+            top->vram_data_in_i = vram_data[top->vram_addr_o];
+        } else {
+            top->vram_data_in_i = 0xFF00;
         }
 
         if (top->swap_o) {
