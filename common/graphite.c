@@ -405,6 +405,12 @@ void sort_triangles(triangle_t triangles[], size_t nb_triangles) {
     sort_triangles_lh(triangles, nb_triangles, 0, nb_triangles);
 }
 
+fx32 clamp(fx32 x) {
+    if (x < FX(0.0f)) return FX(0.0f);
+    if (x > FX(1.0f)) return FX(1.0f);
+    return x;
+}
+
 void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
                 mat4x4* mat_proj, mat4x4* mat_view, bool is_lighting_ena, bool is_wireframe, texture_t* texture) {
     size_t triangle_to_raster_index = 0;
@@ -621,6 +627,14 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 t->p[1] = tp;
                 t->t[1] = tt;
             }
+
+            // clamp the texture coordinates
+            t->t[0].u = clamp(t->t[0].u);
+            t->t[0].v = clamp(t->t[0].v);
+            t->t[1].u = clamp(t->t[1].u);
+            t->t[1].v = clamp(t->t[1].v);
+            t->t[2].u = clamp(t->t[2].u);
+            t->t[2].v = clamp(t->t[2].v);
 
             // rasterize triangle
             fx32 col = MUL(t->col.x, FX(255.0f));
