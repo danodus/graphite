@@ -3,6 +3,7 @@ import sys
 
 vertices = []
 texcoords = []
+colors = []
 faces = []
 
 
@@ -15,6 +16,14 @@ def process_line(line):
     words = line.split()
     if words[0] == "v":
         vertices.append([float(words[1]), float(words[2]), float(words[3])])
+        # vertex color hack
+        if len(words) > 4:
+            if len(words) > 7:
+                alpha = float(words[7])
+            else:
+                alpha = 1.0
+            colors.append(
+                [float(words[4]), float(words[5]), float(words[6]), alpha])
     elif words[0] == "vt":
         texcoords.append([float(words[1]), float(words[2])])
     elif words[0] == "f":
@@ -46,11 +55,22 @@ def print_texcoords(array):
     puts("};\n")
 
 
+def print_colors(array):
+    puts("static vec3d colors[] = {\n")
+    for i, v in enumerate(array):
+        puts("{{FX({}f), FX({}f), FX({}f), FX({}})}}".format(
+            v[0], v[1], v[2], v[3]))
+        if (i < len(array) - 1):
+            puts(",")
+        puts("\n")
+    puts("};\n")
+
+
 def print_faces(array):
     puts("static face_t faces[] = {\n")
     for i, v in enumerate(array):
-        puts("{{{}, {}, {}}}, {{FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)}}, {{{}, {}, {}}}}}".format(
-            v[0], v[1], v[2], v[3], v[4], v[5]))
+        puts("{{{{{}, {}, {}}}, {{{}, {}, {}}}, {{{}, {}, {}}}}}".format(
+            v[0], v[1], v[2], v[3], v[4], v[5], len(colors) > 0 and v[0] or -1, len(colors) > 0 and v[1] or -1, len(colors) > 0 and v[2] or -1))
         if (i < len(array) - 1):
             puts(",")
         puts("\n")
@@ -60,6 +80,8 @@ def print_faces(array):
 def print_all():
     print_vertices(vertices)
     print_texcoords(texcoords)
+    if len(colors) > 0:
+        print_colors(colors)
     print_faces(faces)
 
 

@@ -23,6 +23,6 @@ make run
 - Press 2 to select the teapot model;
 - Press W/A/S/D and arrows to move the camera;
 - Press SPACE to start/stop the rotation of the model;
-- Press TAB to enable/disable the wireframe mode.
-
-
+- Press TAB to enable/disable the wireframe mode;
+- Press T to enable/disable texture mapping;
+- Press L to enable/disable lighting.

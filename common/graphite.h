@@ -86,22 +86,24 @@ typedef struct {
 
 typedef struct {
     int indices[3];
-    vec3d col;
     int tex_indices[3];
+    int col_indices[3];
 } face_t;
 
 typedef struct {
     vec3d p[3];
     vec2d t[3];
-    vec3d col;
+    vec3d c[3];
 } triangle_t;
 
 typedef struct {
     size_t nb_vertices;
     size_t nb_texcoords;
+    size_t nb_colors;
     size_t nb_faces;
     vec3d* vertices;
     vec2d* texcoords;
+    vec3d* colors;
     face_t* faces;
 } mesh_t;
 

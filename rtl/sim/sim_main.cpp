@@ -51,9 +51,9 @@
 #define OP_WRITE_TEX 29
 
 #if FIXED_POINT
-#define TEXCOORD_PARAM(x) (x)
+#define PARAM(x) (x)
 #else
-#define TEXCOORD_PARAM(x) (_FLOAT_TO_FIXED(x, 16))
+#define PARAM(x) (_FLOAT_TO_FIXED(x, 16))
 #endif
 
 // Serial
@@ -184,102 +184,167 @@ void xd_draw_triangle(fx32 x0, fx32 y0, fx32 x1, fx32 y1, fx32 x2, fx32 y2, int 
     xd_draw_line(x2, y2, x0, y0, color);
 }
 
-void xd_draw_textured_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 x1, fx32 y1, fx32 z1, fx32 u1, fx32 v1,
-                               fx32 x2, fx32 y2, fx32 z2, fx32 u2, fx32 v2, texture_t* tex) {
+void xd_draw_textured_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1,
+                               fx32 y1, fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2,
+                               fx32 z2, fx32 u2, fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex) {
     Command c;
 
+    fx32 rr0 = MUL(r0, FX(15));
+    fx32 gg0 = MUL(g0, FX(15));
+    fx32 bb0 = MUL(b0, FX(15));
+    fx32 rr1 = MUL(r1, FX(15));
+    fx32 gg1 = MUL(g1, FX(15));
+    fx32 bb1 = MUL(b1, FX(15));
+    fx32 rr2 = MUL(r2, FX(15));
+    fx32 gg2 = MUL(g2, FX(15));
+    fx32 bb2 = MUL(b2, FX(15));
+
     c.opcode = OP_SET_X0;
-    c.param = x0 & 0xFFFF;
+    c.param = PARAM(x0) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (x0 >> 16);
+    c.param = 0x10000 | (PARAM(x0) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_Y0;
-    c.param = y0 & 0xFFFF;
+    c.param = PARAM(y0) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (y0 >> 16);
+    c.param = 0x10000 | (PARAM(y0) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_Z0;
-    c.param = z0 & 0xFFFF;
+    c.param = PARAM(z0) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (z0 >> 16);
+    c.param = 0x10000 | (PARAM(z0) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_X1;
-    c.param = x1 & 0xFFFF;
+    c.param = PARAM(x1) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (x1 >> 16);
+    c.param = 0x10000 | (PARAM(x1) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_Y1;
-    c.param = y1 & 0xFFFF;
+    c.param = PARAM(y1) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (y1 >> 16);
+    c.param = 0x10000 | (PARAM(y1) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_Z1;
-    c.param = z1 & 0xFFFF;
+    c.param = PARAM(z1) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (z1 >> 16);
+    c.param = 0x10000 | (PARAM(z1) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_X2;
-    c.param = x2 & 0xFFFF;
+    c.param = PARAM(x2) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (x2 >> 16);
+    c.param = 0x10000 | (PARAM(x2) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_Y2;
-    c.param = y2 & 0xFFFF;
+    c.param = PARAM(y2) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (y2 >> 16);
+    c.param = 0x10000 | (PARAM(y2) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_Z2;
-    c.param = z2 & 0xFFFF;
+    c.param = PARAM(z2) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (z2 >> 16);
+    c.param = 0x10000 | (PARAM(z2) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_S0;
-    c.param = TEXCOORD_PARAM(u0) & 0xFFFF;
+    c.param = PARAM(u0) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (TEXCOORD_PARAM(u0) >> 16);
+    c.param = 0x10000 | (PARAM(u0) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_T0;
-    c.param = TEXCOORD_PARAM(v0) & 0xFFFF;
+    c.param = PARAM(v0) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (TEXCOORD_PARAM(v0) >> 16);
+    c.param = 0x10000 | (PARAM(v0) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_S1;
-    c.param = TEXCOORD_PARAM(u1) & 0xFFFF;
+    c.param = PARAM(u1) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (TEXCOORD_PARAM(u1) >> 16);
+    c.param = 0x10000 | (PARAM(u1) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_T1;
-    c.param = TEXCOORD_PARAM(v1) & 0xFFFF;
+    c.param = PARAM(v1) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (TEXCOORD_PARAM(v1) >> 16);
+    c.param = 0x10000 | (PARAM(v1) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_S2;
-    c.param = TEXCOORD_PARAM(u2) & 0xFFFF;
+    c.param = PARAM(u2) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (TEXCOORD_PARAM(u2) >> 16);
+    c.param = 0x10000 | (PARAM(u2) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_T2;
-    c.param = TEXCOORD_PARAM(v2) & 0xFFFF;
+    c.param = PARAM(v2) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (TEXCOORD_PARAM(v2) >> 16);
+    c.param = 0x10000 | (PARAM(v2) >> 16);
+    g_commands.push_back(c);
+
+    c.opcode = OP_SET_R0;
+    c.param = PARAM(rr0) & 0xFFFF;
+    g_commands.push_back(c);
+    c.param = 0x10000 | (PARAM(rr0) >> 16);
+    g_commands.push_back(c);
+
+    c.opcode = OP_SET_G0;
+    c.param = PARAM(gg0) & 0xFFFF;
+    g_commands.push_back(c);
+    c.param = 0x10000 | (PARAM(gg0) >> 16);
+    g_commands.push_back(c);
+
+    c.opcode = OP_SET_B0;
+    c.param = PARAM(bb0) & 0xFFFF;
+    g_commands.push_back(c);
+    c.param = 0x10000 | (PARAM(bb0) >> 16);
+    g_commands.push_back(c);
+
+    c.opcode = OP_SET_R1;
+    c.param = PARAM(rr1) & 0xFFFF;
+    g_commands.push_back(c);
+    c.param = 0x10000 | (PARAM(rr1) >> 16);
+    g_commands.push_back(c);
+
+    c.opcode = OP_SET_G1;
+    c.param = PARAM(gg1) & 0xFFFF;
+    g_commands.push_back(c);
+    c.param = 0x10000 | (PARAM(gg1) >> 16);
+    g_commands.push_back(c);
+
+    c.opcode = OP_SET_B1;
+    c.param = PARAM(bb1) & 0xFFFF;
+    g_commands.push_back(c);
+    c.param = 0x10000 | (PARAM(bb1) >> 16);
+    g_commands.push_back(c);
+
+    c.opcode = OP_SET_R2;
+    c.param = PARAM(rr2) & 0xFFFF;
+    g_commands.push_back(c);
+    c.param = 0x10000 | (PARAM(rr2) >> 16);
+    g_commands.push_back(c);
+
+    c.opcode = OP_SET_G2;
+    c.param = PARAM(gg2) & 0xFFFF;
+    g_commands.push_back(c);
+    c.param = 0x10000 | (PARAM(gg2) >> 16);
+    g_commands.push_back(c);
+
+    c.opcode = OP_SET_B2;
+    c.param = PARAM(bb2) & 0xFFFF;
+    g_commands.push_back(c);
+    c.param = 0x10000 | (PARAM(bb2) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_DRAW;
-    c.param = 1;
+    c.param = tex ? 0b11 : 0b01;
     g_commands.push_back(c);
 }
 
@@ -298,41 +363,6 @@ void swap() {
     c.opcode = OP_SWAP;
     c.param = 0;
     g_commands.push_back(c);
-}
-
-void draw_model_with_camera(model_t* model, vec3d* vec_camera, float theta) {
-    vec3d vec_up = {FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
-
-    // Projection matrix
-    mat4x4 mat_proj = matrix_make_projection(FB_WIDTH, FB_HEIGHT, 60.0f);
-
-    float yaw = 0.0f;
-
-    vec3d vec_target = {FX(0.0f), FX(0.0f), FX(1.0f), FX(1.0f)};
-    mat4x4 mat_camera_rot = matrix_make_rotation_y(yaw);
-    vec3d vec_look_dir = matrix_multiply_vector(&mat_camera_rot, &vec_target);
-    vec_target = vector_add(vec_camera, &vec_look_dir);
-
-    mat4x4 mat_camera = matrix_point_at(vec_camera, &vec_target, &vec_up);
-
-    // make view matrix from camera
-    mat4x4 mat_view = matrix_quick_inverse(&mat_camera);
-
-    //
-    // world
-    //
-
-    mat4x4 mat_rot_z = matrix_make_rotation_z(theta);
-    mat4x4 mat_rot_x = matrix_make_rotation_x(theta);
-
-    mat4x4 mat_trans = matrix_make_translation(FX(0.0f), FX(0.0f), FX(3.0f));
-    mat4x4 mat_world;
-    mat_world = matrix_make_identity();
-    mat_world = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
-    mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
-
-    // Draw model
-    draw_model(FB_WIDTH, FB_HEIGHT, vec_camera, model, &mat_world, &mat_proj, &mat_view, true, true, NULL);
 }
 
 const uint16_t img[] = {
@@ -478,6 +508,8 @@ int main(int argc, char** argv, char** env) {
 
     bool anim = false;
     bool wireframe = false;
+    bool lighting = false;
+    bool textured = false;
 
     bool quit = false;
 
@@ -527,8 +559,9 @@ int main(int argc, char** argv, char** env) {
 
             if (current_model) {
                 // Draw cube
-                draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, true,
-                           wireframe, NULL);
+                texture_t dummy_texture;
+                draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, lighting,
+                           wireframe, textured ? &dummy_texture : NULL);
                 swap();
             }
 
@@ -572,6 +605,12 @@ int main(int argc, char** argv, char** env) {
                             break;
                         case SDL_SCANCODE_TAB:
                             wireframe = !wireframe;
+                            break;
+                        case SDL_SCANCODE_L:
+                            lighting = !lighting;
+                            break;
+                        case SDL_SCANCODE_T:
+                            textured = !textured;
                             break;
                         case SDL_SCANCODE_SLASH:
                             dump = true;
