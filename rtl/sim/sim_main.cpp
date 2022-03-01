@@ -189,16 +189,6 @@ void xd_draw_textured_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32
                                fx32 z2, fx32 u2, fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex) {
     Command c;
 
-    fx32 rr0 = MUL(r0, FX(15));
-    fx32 gg0 = MUL(g0, FX(15));
-    fx32 bb0 = MUL(b0, FX(15));
-    fx32 rr1 = MUL(r1, FX(15));
-    fx32 gg1 = MUL(g1, FX(15));
-    fx32 bb1 = MUL(b1, FX(15));
-    fx32 rr2 = MUL(r2, FX(15));
-    fx32 gg2 = MUL(g2, FX(15));
-    fx32 bb2 = MUL(b2, FX(15));
-
     c.opcode = OP_SET_X0;
     c.param = PARAM(x0) & 0xFFFF;
     g_commands.push_back(c);
@@ -290,57 +280,57 @@ void xd_draw_textured_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32
     g_commands.push_back(c);
 
     c.opcode = OP_SET_R0;
-    c.param = PARAM(rr0) & 0xFFFF;
+    c.param = PARAM(r0) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (PARAM(rr0) >> 16);
+    c.param = 0x10000 | (PARAM(r0) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_G0;
-    c.param = PARAM(gg0) & 0xFFFF;
+    c.param = PARAM(g0) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (PARAM(gg0) >> 16);
+    c.param = 0x10000 | (PARAM(g0) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_B0;
-    c.param = PARAM(bb0) & 0xFFFF;
+    c.param = PARAM(b0) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (PARAM(bb0) >> 16);
+    c.param = 0x10000 | (PARAM(b0) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_R1;
-    c.param = PARAM(rr1) & 0xFFFF;
+    c.param = PARAM(r1) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (PARAM(rr1) >> 16);
+    c.param = 0x10000 | (PARAM(r1) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_G1;
-    c.param = PARAM(gg1) & 0xFFFF;
+    c.param = PARAM(g1) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (PARAM(gg1) >> 16);
+    c.param = 0x10000 | (PARAM(g1) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_B1;
-    c.param = PARAM(bb1) & 0xFFFF;
+    c.param = PARAM(b1) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (PARAM(bb1) >> 16);
+    c.param = 0x10000 | (PARAM(b1) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_R2;
-    c.param = PARAM(rr2) & 0xFFFF;
+    c.param = PARAM(r2) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (PARAM(rr2) >> 16);
+    c.param = 0x10000 | (PARAM(r2) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_G2;
-    c.param = PARAM(gg2) & 0xFFFF;
+    c.param = PARAM(g2) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (PARAM(gg2) >> 16);
+    c.param = 0x10000 | (PARAM(g2) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_SET_B2;
-    c.param = PARAM(bb2) & 0xFFFF;
+    c.param = PARAM(b2) & 0xFFFF;
     g_commands.push_back(c);
-    c.param = 0x10000 | (PARAM(bb2) >> 16);
+    c.param = 0x10000 | (PARAM(b2) >> 16);
     g_commands.push_back(c);
 
     c.opcode = OP_DRAW;

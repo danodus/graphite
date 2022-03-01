@@ -59,7 +59,7 @@ module graphite #(
            DRAW_TRIANGLE5, DRAW_TRIANGLE5B, DRAW_TRIANGLE5C, DRAW_TRIANGLE5D, DRAW_TRIANGLE5E, DRAW_TRIANGLE5F, DRAW_TRIANGLE5G, DRAW_TRIANGLE5H, DRAW_TRIANGLE5I, DRAW_TRIANGLE5J, DRAW_TRIANGLE5K,
            DRAW_TRIANGLE6, DRAW_TRIANGLE6B, DRAW_TRIANGLE6C, DRAW_TRIANGLE6D,
            DRAW_TRIANGLE7, DRAW_TRIANGLE7B, DRAW_TRIANGLE7C, DRAW_TRIANGLE7D, DRAW_TRIANGLE7E,
-           DRAW_TRIANGLE8, DRAW_TRIANGLE8B,
+           DRAW_TRIANGLE8, DRAW_TRIANGLE8B, DRAW_TRIANGLE8C, DRAW_TRIANGLE8D, DRAW_TRIANGLE8E,
            DRAW_TRIANGLE9, DRAW_TRIANGLE10
     } state;
 
@@ -670,7 +670,12 @@ module graphite #(
             DRAW_TRIANGLE4P: begin
                 b <= t0 + t1 + t2;
 `ifdef TEXTURED
-                state <= DRAW_TRIANGLE4Q;
+                if (is_textured) begin
+                    state <= DRAW_TRIANGLE4Q;
+                end else begin
+                    sample <= 16'hFFFF;
+                    state <= DRAW_TRIANGLE4Z;
+                end
 `else
                 sample <= 16'hFFFF;
                 state <= DRAW_TRIANGLE4Z;
@@ -832,7 +837,11 @@ module graphite #(
 
             DRAW_TRIANGLE6: begin
 `ifdef TEXTURED                
-                state <= DRAW_TRIANGLE7;
+                if (is_textured) begin
+                    state <= DRAW_TRIANGLE7;
+                end else begin
+                    state <= DRAW_TRIANGLE8;
+                end
 `else
                 state <= DRAW_TRIANGLE8;
 `endif
@@ -870,26 +879,38 @@ module graphite #(
 `endif // TEXTURED
 
             DRAW_TRIANGLE8: begin
-                if (is_textured) begin
-                    vram_data_out_o <= sample;
-                end else begin
-                    vram_data_out_o <= {4'hF, 4'(r >> 16), 4'(g >> 16), 4'(b >> 16)};
-                end
-
-                ////vram_data_out_o[15:12] <= 4'hF;
-                //vram_data_out_o[11:8] <= 4'(mul({12'd0, sample[11:8], 16'd0}, r) >> 16);
-                //vram_data_out_o[7:4] <= 4'(mul({12'd0, sample[7:4], 16'd0}, g) >> 16);
-                //vram_data_out_o[3:0] <= 4'(mul({12'd0, sample[3:0], 16'd0}, b) >> 16);
-                //vram_data_out_o <= sample;
-                //vram_data_out_o <= {4'hF, 4'(mul(255 << 16, r) >> 16), 4'(mul(255 << 16, g) >> 16), 4'(mul(255 << 16, b) >> 16)};
-
-                vram_sel_o <= 1'b1;
-                vram_wr_o  <= 1'b1;
-                vram_addr_o <= raster_addr;
+                vram_data_out_o[15:12] <= 4'hF;
+                // vram_data_out_o[11:8] = 4'(mul({12'd0, sample[11:8], 16'd0}, r) >> 16)
+                // vram_data_out_o[7:4] = 4'(mul({12'd0, sample[7:4], 16'd0}, g) >> 16)
+                // vram_data_out_o[3:0] = 4'(mul({12'd0, sample[3:0], 16'd0}, b) >> 16)
+                dsp_mul_p0 <= {12'd0, sample[11:8], 16'd0};
+                dsp_mul_p1 <= r;
                 state <= DRAW_TRIANGLE8B;
             end
 
             DRAW_TRIANGLE8B: begin
+                vram_data_out_o[11:8] <= 4'(dsp_mul_z >> 16);
+                dsp_mul_p0 <= {12'd0, sample[7:4], 16'd0};
+                dsp_mul_p1 <= g;
+                state <= DRAW_TRIANGLE8C;
+            end
+
+            DRAW_TRIANGLE8C: begin
+                vram_data_out_o[7:4] <= 4'(dsp_mul_z >> 16);
+                dsp_mul_p0 <= {12'd0, sample[3:0], 16'd0};
+                dsp_mul_p1 <= b;
+                state <= DRAW_TRIANGLE8D;
+            end
+
+            DRAW_TRIANGLE8D: begin
+                vram_data_out_o[3:0] <= 4'(dsp_mul_z >> 16);
+                vram_sel_o <= 1'b1;
+                vram_wr_o  <= 1'b1;
+                vram_addr_o <= raster_addr;
+                state <= DRAW_TRIANGLE8E;
+            end
+
+            DRAW_TRIANGLE8E: begin
                 state <= DRAW_TRIANGLE9;
             end
 
