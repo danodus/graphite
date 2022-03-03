@@ -850,19 +850,24 @@ module graphite #(
 `ifdef TEXTURED
 
             DRAW_TRIANGLE7: begin
-                t0 <= rmul(rmul((TEXTURE_HEIGHT) << 16, clamp(t)), TEXTURE_WIDTH << 16);
+                // t0 = rmul(rmul((TEXTURE_HEIGHT - 1) << 16, clamp(t)), TEXTURE_WIDTH << 16)
+                dsp_mul_p0 <= (TEXTURE_HEIGHT - 1) << 16;
+                dsp_mul_p1 <= clamp(t);
                 state <= DRAW_TRIANGLE7B;
             end
 
             DRAW_TRIANGLE7B: begin
-                t1 <= rmul((TEXTURE_WIDTH) << 16, clamp(s));
+                t0 <= rmul(dsp_mul_z, TEXTURE_WIDTH << 16);
+                // t1 = rmul((TEXTURE_WIDTH - 1) << 16, clamp(s))
+                dsp_mul_p0 <= (TEXTURE_WIDTH - 1) << 16;
+                dsp_mul_p1 <= clamp(s);
                 state <= DRAW_TRIANGLE7C;
             end
 
             DRAW_TRIANGLE7C: begin
                 vram_sel_o <= 1'b1;
                 vram_wr_o  <= 1'b0;
-                vram_addr_o <= texture_address + 16'((t0 + t1) >> 16);
+                vram_addr_o <= texture_address + 16'((t0 + dsp_mul_z) >> 16);
                 state <= DRAW_TRIANGLE7D;
             end
 
