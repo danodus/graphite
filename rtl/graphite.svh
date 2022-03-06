@@ -64,6 +64,13 @@ function logic signed [31:0] clamp(logic signed [31:0] x);
         clamp = x;
 endfunction
 
+function logic signed [31:0] wrap(logic signed [31:0] x);
+    if (x[31])
+        wrap = 32'd0;
+    else
+        wrap = {16'd0, x[15:0]};
+endfunction
+
 function logic signed [11:0] min(logic signed [11:0] a, logic signed [11:0] b);
     min = (a <= b) ? a : b;
 endfunction

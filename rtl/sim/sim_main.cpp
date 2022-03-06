@@ -186,7 +186,8 @@ void xd_draw_triangle(fx32 x0, fx32 y0, fx32 x1, fx32 y1, fx32 x2, fx32 y2, int 
 
 void xd_draw_textured_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1,
                                fx32 y1, fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2,
-                               fx32 z2, fx32 u2, fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex) {
+                               fx32 z2, fx32 u2, fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex,
+                               bool clamp_s, bool clamp_t) {
     Command c;
 
     c.opcode = OP_SET_X0;
@@ -334,7 +335,7 @@ void xd_draw_textured_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32
     g_commands.push_back(c);
 
     c.opcode = OP_DRAW;
-    c.param = tex ? 0b11 : 0b01;
+    c.param = (clamp_s ? 0b1000 : 0b0000) | (clamp_t ? 0b0100 : 0b0000) | ((tex != nullptr) ? 0b0010 : 0b0000) | 0b0001;
     g_commands.push_back(c);
 }
 
@@ -502,6 +503,8 @@ int main(int argc, char** argv, char** env) {
     bool wireframe = false;
     bool lighting = false;
     bool textured = false;
+    bool clamp_s = false;
+    bool clamp_t = false;
     bool show_depth = false;
 
     uint16_t show_depth_value = 32000;
@@ -557,7 +560,7 @@ int main(int argc, char** argv, char** env) {
                 // Draw cube
                 texture_t dummy_texture;
                 draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, lighting,
-                           wireframe, textured ? &dummy_texture : NULL);
+                           wireframe, textured ? &dummy_texture : NULL, clamp_s, clamp_t);
                 swap();
             }
 
@@ -610,6 +613,12 @@ int main(int argc, char** argv, char** env) {
                             break;
                         case SDL_SCANCODE_SLASH:
                             dump = true;
+                            break;
+                        case SDL_SCANCODE_U:
+                            clamp_s = !clamp_s;
+                            break;
+                        case SDL_SCANCODE_V:
+                            clamp_t = !clamp_t;
                             break;
                         case SDL_SCANCODE_F1:
                             show_depth = !show_depth;

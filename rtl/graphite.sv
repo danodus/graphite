@@ -104,7 +104,7 @@ module graphite #(
     // Draw triangle
     //
 
-    logic is_textured;
+    logic is_textured, is_clamp_s, is_clamp_t;
 
     logic signed [31:0] p0, p1;
     logic signed [31:0] w0, w1, w2;
@@ -380,6 +380,8 @@ module graphite #(
                         end else begin
                             // Draw triangle
                             is_textured     <= cmd_axis_tdata_i[1];
+                            is_clamp_t      <= cmd_axis_tdata_i[2];
+                            is_clamp_s      <= cmd_axis_tdata_i[3];
                             vram_addr_o     <= 16'h0;
                             vram_data_out_o <= color;
                             vram_mask_o     <= 4'hF;
@@ -879,7 +881,7 @@ module graphite #(
             DRAW_TRIANGLE7: begin
                 // t0 = rmul(rmul((TEXTURE_HEIGHT - 1) << 16, clamp(t)), TEXTURE_WIDTH << 16)
                 dsp_mul_p0 <= (TEXTURE_HEIGHT - 1) << 16;
-                dsp_mul_p1 <= clamp(t);
+                dsp_mul_p1 <= is_clamp_t ? clamp(t) : wrap(t);
                 state <= DRAW_TRIANGLE7B;
             end
 
@@ -887,7 +889,7 @@ module graphite #(
                 t0 <= rmul(dsp_mul_z, TEXTURE_WIDTH << 16);
                 // t1 = rmul((TEXTURE_WIDTH - 1) << 16, clamp(s))
                 dsp_mul_p0 <= (TEXTURE_WIDTH - 1) << 16;
-                dsp_mul_p1 <= clamp(s);
+                dsp_mul_p1 <= is_clamp_s ? clamp(s) : wrap(s);
                 state <= DRAW_TRIANGLE7C;
             end
 

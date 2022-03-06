@@ -17,7 +17,8 @@
 void xd_draw_triangle(fx32 x0, fx32 y0, fx32 x1, fx32 y1, fx32 x2, fx32 y2, int color);
 void xd_draw_textured_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1,
                                fx32 y1, fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2,
-                               fx32 z2, fx32 u2, fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex);
+                               fx32 z2, fx32 u2, fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex,
+                               bool clamp_s, bool clamp_t);
 
 vec3d matrix_multiply_vector(mat4x4* m, vec3d* i) {
     vec3d r = {MUL(i->x, m->m[0][0]) + MUL(i->y, m->m[1][0]) + MUL(i->z, m->m[2][0]) + m->m[3][0],
@@ -437,7 +438,8 @@ fx32 clamp(fx32 x) {
 }
 
 void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
-                mat4x4* mat_proj, mat4x4* mat_view, bool is_lighting_ena, bool is_wireframe, texture_t* texture) {
+                mat4x4* mat_proj, mat4x4* mat_view, bool is_lighting_ena, bool is_wireframe, texture_t* texture,
+                bool clamp_s, bool clamp_t) {
     size_t triangle_to_raster_index = 0;
 
     // draw faces
@@ -717,7 +719,8 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 xd_draw_textured_triangle(t->p[0].x, t->p[0].y, t->t[0].w, t->t[0].u, t->t[0].v, t->c[0].x, t->c[0].y,
                                           t->c[0].z, t->c[0].w, t->p[1].x, t->p[1].y, t->t[1].w, t->t[1].u, t->t[1].v,
                                           t->c[1].x, t->c[1].y, t->c[1].z, t->c[1].w, t->p[2].x, t->p[2].y, t->t[2].w,
-                                          t->t[2].u, t->t[2].v, t->c[2].x, t->c[2].y, t->c[2].z, t->c[2].w, texture);
+                                          t->t[2].u, t->t[2].v, t->c[2].x, t->c[2].y, t->c[2].z, t->c[2].w, texture,
+                                          clamp_s, clamp_t);
             }
         }
     }
