@@ -2,15 +2,16 @@
 
 // f(x) = NUMERATOR/x
 module reciprocal #(
-    parameter NUMERATOR = 32'h100
+    parameter NUMERATOR = 32'h100,
+    parameter END_INTERPOLATION_REGION = 4096,     // values beyond this will return 0
+    parameter NB_SUBDIVISIONS = 2048
 )(
     input wire logic clk,
     input wire logic [31:0] x_i,
     output     logic [31:0] z_o
 );
-    localparam NB_SUBDIVISIONS = 2048;
-    localparam SUBDIVISION_SIZE = 16384 / NB_SUBDIVISIONS;
-    localparam NB_BITS_PER_SUBDIVISION = 3;
+    localparam SUBDIVISION_SIZE = END_INTERPOLATION_REGION / NB_SUBDIVISIONS;
+    localparam NB_BITS_PER_SUBDIVISION = $clog2(SUBDIVISION_SIZE);
 
     logic [23:0] m_lut[NB_SUBDIVISIONS];
     logic [31:0] b_lut[NB_SUBDIVISIONS];
@@ -27,10 +28,10 @@ module reciprocal #(
     endfunction
 
     function logic [31:0] interpolated(logic [31:0] x);
-        if (x[31:30] > 0) begin
+        if (x[31:31-(16-$clog2(END_INTERPOLATION_REGION))+1] > 0) begin
             interpolated = 32'd0;
         end else begin
-            interpolated = rmul(x - {x[31:19], {(19){1'b0}}}, {8'hFF, m_lut[x[29:19]]}) + b_lut[x[29:19]];
+           interpolated = rmul(x - {x[31:(16+NB_BITS_PER_SUBDIVISION)], {(16+NB_BITS_PER_SUBDIVISION){1'b0}}}, {8'hFF, m_lut[x[(16 + NB_BITS_PER_SUBDIVISION + $clog2(NB_SUBDIVISIONS) - 1):(16+NB_BITS_PER_SUBDIVISION)]]}) + b_lut[x[(16 + NB_BITS_PER_SUBDIVISION + $clog2(NB_SUBDIVISIONS) - 1):(16+NB_BITS_PER_SUBDIVISION)]];
         end
     endfunction
 

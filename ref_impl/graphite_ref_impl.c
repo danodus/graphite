@@ -32,7 +32,7 @@ void xd_draw_textured_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32
 }
 
 int main(int argc, char* argv[]) {
-    sw_init_rasterizer(draw_pixel);
+    sw_init_rasterizer(screen_width, screen_height, draw_pixel);
 
     SDL_Init(SDL_INIT_VIDEO);
 
@@ -66,6 +66,7 @@ int main(int argc, char* argv[]) {
     while (!quit) {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
         SDL_RenderClear(renderer);
+        sw_clear_depth_buffer();
 
         //
         // camera
@@ -156,6 +157,8 @@ int main(int argc, char* argv[]) {
 
     SDL_DestroyWindow(window);
     SDL_Quit();
+
+    sw_dispose_rasterizer();
 
     return 0;
 }

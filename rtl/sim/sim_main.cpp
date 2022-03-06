@@ -340,11 +340,13 @@ void xd_draw_textured_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32
 
 void clear() {
     Command c;
-    c.opcode = OP_SET_COLOR;
-    c.param = 0x333;
-    g_commands.push_back(c);
+    // Clear framebuffer
     c.opcode = OP_CLEAR;
-    c.param = 0x000;
+    c.param = 0x00F333;
+    g_commands.push_back(c);
+    // Clear depth buffer
+    c.opcode = OP_CLEAR;
+    c.param = 0x010000;
     g_commands.push_back(c);
 }
 
@@ -431,7 +433,7 @@ void send_command(const char* s) {
 void write_texture() {
     Command c;
     c.opcode = OP_SET_TEX_ADDR;
-    c.param = FB_WIDTH * FB_HEIGHT;
+    c.param = 2 * FB_WIDTH * FB_HEIGHT;
     g_commands.push_back(c);
     c.opcode = OP_WRITE_TEX;
 
@@ -462,7 +464,7 @@ int main(int argc, char** argv, char** env) {
 
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-    const size_t vram_size = FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT;
+    const size_t vram_size = 2 * FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT;
     uint16_t* vram_data = new uint16_t[vram_size];
     for (size_t i = 0; i < vram_size; ++i) vram_data[i] = 0x0000;
 
@@ -500,6 +502,10 @@ int main(int argc, char** argv, char** env) {
     bool wireframe = false;
     bool lighting = false;
     bool textured = false;
+    bool show_depth = false;
+
+    uint16_t show_depth_value = 32000;
+    uint16_t last_show_depth_value = show_depth_value;
 
     bool quit = false;
 
@@ -605,6 +611,9 @@ int main(int argc, char** argv, char** env) {
                         case SDL_SCANCODE_SLASH:
                             dump = true;
                             break;
+                        case SDL_SCANCODE_F1:
+                            show_depth = !show_depth;
+                            break;
                         default:
                             break;
                     }
@@ -621,6 +630,8 @@ int main(int argc, char** argv, char** env) {
             if (state[SDL_SCANCODE_S]) vec_camera = vector_sub(&vec_camera, &vec_forward);
             if (state[SDL_SCANCODE_A]) yaw -= 2.0f * elapsed_time;
             if (state[SDL_SCANCODE_D]) yaw += 2.0f * elapsed_time;
+            if (state[SDL_SCANCODE_LEFTBRACKET]) show_depth_value -= 1000;
+            if (state[SDL_SCANCODE_RIGHTBRACKET]) show_depth_value += 1000;
         }
 
         if (top->cmd_axis_tready_o) {
@@ -632,7 +643,7 @@ int main(int argc, char** argv, char** env) {
             }
         }
 
-        if (top->vram_sel_o && top->vram_addr_o < FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT) {
+        if (top->vram_sel_o && top->vram_addr_o < 2 * FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT) {
             // assert(top->vram_addr_o < FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT);
 
             if (top->vram_wr_o) {
@@ -643,12 +654,33 @@ int main(int argc, char** argv, char** env) {
             top->vram_data_in_i = 0xFF00;
         }
 
+        if (last_show_depth_value != show_depth_value) {
+            printf("Displaying depth %d\n", show_depth_value);
+            last_show_depth_value = show_depth_value;
+        }
         if (top->swap_o) {
             void* p;
             int pitch;
             SDL_LockTexture(texture, NULL, &p, &pitch);
             assert(pitch == FB_WIDTH * 2);
-            memcpy(p, vram_data, FB_WIDTH * FB_HEIGHT * 2);
+            if (show_depth) {
+                uint16_t* pp = (uint16_t*)p;
+                uint16_t* d = &vram_data[FB_WIDTH * FB_HEIGHT];
+                for (int y = 0; y < FB_HEIGHT; ++y)
+                    for (int x = 0; x < FB_WIDTH; ++x) {
+                        // if (*d > show_depth_value - 1000 && *d < show_depth_value + 1000) {
+                        uint16_t i = *d >> 12;
+                        *pp = (i) | (i << 4) | (i << 8);
+                        //} else {
+                        //    *pp = 0;
+                        //}
+                        ++pp;
+                        ++d;
+                    }
+
+            } else {
+                memcpy(p, vram_data, FB_WIDTH * FB_HEIGHT * 2);
+            }
             SDL_UnlockTexture(texture);
 
             int draw_w, draw_h;

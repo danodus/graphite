@@ -6,9 +6,6 @@
 
 `include "graphite.svh"
 
-`define TEXTURED
-`define PERSP_CORRECT
-
 module dsp_mul(
     input wire logic signed [31:0] p0,
     input wire logic signed [31:0] p1,
@@ -51,12 +48,12 @@ module graphite #(
     output      logic                        swap_o
     );
 
-    enum { WAIT_COMMAND, PROCESS_COMMAND, CLEAR, DRAW_LINE,
+    enum { WAIT_COMMAND, PROCESS_COMMAND, CLEAR_FB, CLEAR_DEPTH, DRAW_LINE,
            DRAW_TRIANGLE, DRAW_TRIANGLEB, DRAW_TRIANGLEC, DRAW_TRIANGLED, DRAW_TRIANGLEE,
            DRAW_TRIANGLE2,
            DRAW_TRIANGLE3, DRAW_TRIANGLE3B, DRAW_TRIANGLE3C, DRAW_TRIANGLE3D, DRAW_TRIANGLE3E, DRAW_TRIANGLE3F, DRAW_TRIANGLE3G, DRAW_TRIANGLE3H, DRAW_TRIANGLE3I, DRAW_TRIANGLE3J,
            DRAW_TRIANGLE4, DRAW_TRIANGLE4B, DRAW_TRIANGLE4C, DRAW_TRIANGLE4D, DRAW_TRIANGLE4E, DRAW_TRIANGLE4F, DRAW_TRIANGLE4G, DRAW_TRIANGLE4H, DRAW_TRIANGLE4I, DRAW_TRIANGLE4J, DRAW_TRIANGLE4K, DRAW_TRIANGLE4L, DRAW_TRIANGLE4M, DRAW_TRIANGLE4N, DRAW_TRIANGLE4O, DRAW_TRIANGLE4P, DRAW_TRIANGLE4Q, DRAW_TRIANGLE4R, DRAW_TRIANGLE4S, DRAW_TRIANGLE4T, DRAW_TRIANGLE4U, DRAW_TRIANGLE4V, DRAW_TRIANGLE4W, DRAW_TRIANGLE4X, DRAW_TRIANGLE4Y, DRAW_TRIANGLE4Z,
-           DRAW_TRIANGLE5, DRAW_TRIANGLE5B, DRAW_TRIANGLE5C, DRAW_TRIANGLE5D, DRAW_TRIANGLE5E, DRAW_TRIANGLE5F, DRAW_TRIANGLE5G, DRAW_TRIANGLE5H, DRAW_TRIANGLE5I, DRAW_TRIANGLE5J, DRAW_TRIANGLE5K,
+           DRAW_TRIANGLE5, DRAW_TRIANGLE5B, DRAW_TRIANGLE5C, DRAW_TRIANGLE5D, DRAW_TRIANGLE5D2, DRAW_TRIANGLE5D3, DRAW_TRIANGLE5D4, DRAW_TRIANGLE5D4B, DRAW_TRIANGLE5D5, DRAW_TRIANGLE5D6, DRAW_TRIANGLE5D7, DRAW_TRIANGLE5E, DRAW_TRIANGLE5F, DRAW_TRIANGLE5G, DRAW_TRIANGLE5H, DRAW_TRIANGLE5I, DRAW_TRIANGLE5J, DRAW_TRIANGLE5K,
            DRAW_TRIANGLE6, DRAW_TRIANGLE6B, DRAW_TRIANGLE6C, DRAW_TRIANGLE6D,
            DRAW_TRIANGLE7, DRAW_TRIANGLE7B, DRAW_TRIANGLE7C, DRAW_TRIANGLE7D, DRAW_TRIANGLE7E,
            DRAW_TRIANGLE8, DRAW_TRIANGLE8B, DRAW_TRIANGLE8C, DRAW_TRIANGLE8D, DRAW_TRIANGLE8E,
@@ -119,7 +116,9 @@ module graphite #(
     logic signed [31:0] dsp_rmul_p0, dsp_rmul_p1, dsp_rmul_z;
 
     logic signed [31:0] t0, t1, t2;
+    logic        [31:0] z;
 
+    logic        [15:0] depth;
     logic        [15:0] sample;
 
     dsp_mul dsp_mul(
@@ -366,12 +365,12 @@ module graphite #(
                         state <= WAIT_COMMAND;
                     end
                     OP_CLEAR: begin
-                        vram_addr_o     <= 16'h0;
-                        vram_data_out_o <= color;
+                        vram_addr_o     <= (cmd_axis_tdata_i[16] == 0) ? 16'h0 : 16'(FB_WIDTH * FB_HEIGHT);
+                        vram_data_out_o <= cmd_axis_tdata_i[15:0];
                         vram_mask_o     <= 4'hF;
                         vram_sel_o      <= 1'b1;
                         vram_wr_o       <= 1'b1;
-                        state           <= CLEAR;
+                        state           <= (cmd_axis_tdata_i[16] == 0) ? CLEAR_FB : CLEAR_DEPTH;
                     end
                     OP_DRAW: begin
                         if (cmd_axis_tdata_i[0] == 0) begin
@@ -414,8 +413,18 @@ module graphite #(
                 endcase
             end
 
-            CLEAR: begin
+            CLEAR_FB: begin
                 if (vram_addr_o < FB_WIDTH * FB_HEIGHT - 1) begin
+                    vram_addr_o <= vram_addr_o + 1;
+                end else begin
+                    vram_sel_o <= 1'b0;
+                    vram_wr_o  <= 1'b0;
+                    state      <= WAIT_COMMAND;
+                end
+            end
+
+            CLEAR_DEPTH: begin
+                if (vram_addr_o < 2 * FB_WIDTH * FB_HEIGHT - 1) begin
                     vram_addr_o <= vram_addr_o + 1;
                 end else begin
                     vram_sel_o <= 1'b0;
@@ -669,20 +678,13 @@ module graphite #(
 
             DRAW_TRIANGLE4P: begin
                 b <= t0 + t1 + t2;
-`ifdef TEXTURED
                 if (is_textured) begin
                     state <= DRAW_TRIANGLE4Q;
                 end else begin
                     sample <= 16'hFFFF;
                     state <= DRAW_TRIANGLE4Z;
                 end
-`else
-                sample <= 16'hFFFF;
-                state <= DRAW_TRIANGLE4Z;
-`endif
             end
-
-`ifdef TEXTURED
 
             DRAW_TRIANGLE4Q: begin
                 // s = mul(w0, st00) + mul(w1, st10) + mul(w2, st20)
@@ -748,27 +750,18 @@ module graphite #(
                 state <= DRAW_TRIANGLE4Z;
             end
 
-`endif // TEXTURED
-
             DRAW_TRIANGLE4Z: begin
-`ifdef PERSP_CORRECT
                 state <= DRAW_TRIANGLE5;
-`else                                
-                state <= DRAW_TRIANGLE6;
-`endif                
             end
-
-
-`ifdef PERSP_CORRECT
 
             DRAW_TRIANGLE5: begin
                 // Perspective correction
-                // z = 1 / (w0 * vv02 + w1 * vv12 + w2 * vv22)
-                // r = r * z
-                // g = g * z
-                // b = b * z
-                // s = s * z
-                // t = t * z
+                // z = w0 * vv02 + w1 * vv12 + w2 * vv22
+                // r = r * 1/z
+                // g = g * 1/z
+                // b = b * 1/z
+                // s = s * 1/z
+                // t = t * 1/z
                 dsp_mul_p0 <= w0;
                 dsp_mul_p1 <= vv02;
                 state <= DRAW_TRIANGLE5B;
@@ -790,11 +783,53 @@ module graphite #(
 
             DRAW_TRIANGLE5D: begin
                 t2 <= dsp_mul_z;
+                state <= DRAW_TRIANGLE5D2;
+            end
+
+            DRAW_TRIANGLE5D2: begin
+                z <= t0 + t1 + t2;
+                vram_addr_o <= FB_WIDTH * FB_HEIGHT + 16'(y) * FB_WIDTH + 16'(x);
+                vram_wr_o <= 1'b0;
+                vram_sel_o <= 1'b1;
+                state <= DRAW_TRIANGLE5D3;
+            end
+
+            DRAW_TRIANGLE5D3: begin
+                state <= DRAW_TRIANGLE5D4;
+            end
+
+            DRAW_TRIANGLE5D4: begin
+                vram_sel_o <= 1'b0;
+                depth <= 16'(vram_data_in_i);
+                state <= DRAW_TRIANGLE5D4B;
+            end
+
+            DRAW_TRIANGLE5D4B: begin
+                if (16'(z) > depth) begin
+                    state <= DRAW_TRIANGLE5D5;
+                end else begin
+                    state <= DRAW_TRIANGLE9;
+                end
+            end
+
+            DRAW_TRIANGLE5D5: begin
+                vram_data_out_o <= 16'(z);
+                vram_wr_o <= 1'b1;
+                vram_sel_o <= 1'b1;
+                state <= DRAW_TRIANGLE5D6;
+            end
+
+            DRAW_TRIANGLE5D6: begin
+                state <= DRAW_TRIANGLE5D7;
+            end
+
+            DRAW_TRIANGLE5D7: begin
+                vram_sel_o <= 1'b0;
                 state <= DRAW_TRIANGLE5E;
             end
 
             DRAW_TRIANGLE5E: begin
-                reciprocal_x <= (t0 + t1 + t2) << 12;
+                reciprocal_x <= z << 12;
                 state <= DRAW_TRIANGLE5F;
             end
 
@@ -833,21 +868,13 @@ module graphite #(
                 state <= DRAW_TRIANGLE6;
             end
 
-`endif  // PERSP_CORRECT                
-
             DRAW_TRIANGLE6: begin
-`ifdef TEXTURED                
                 if (is_textured) begin
                     state <= DRAW_TRIANGLE7;
                 end else begin
                     state <= DRAW_TRIANGLE8;
                 end
-`else
-                state <= DRAW_TRIANGLE8;
-`endif
             end
-
-`ifdef TEXTURED
 
             DRAW_TRIANGLE7: begin
                 // t0 = rmul(rmul((TEXTURE_HEIGHT - 1) << 16, clamp(t)), TEXTURE_WIDTH << 16)
@@ -880,8 +907,6 @@ module graphite #(
                 sample <= vram_data_in_i;
                 state <= DRAW_TRIANGLE8;
             end
-
-`endif // TEXTURED
 
             DRAW_TRIANGLE8: begin
                 vram_data_out_o[15:12] <= 4'hF;
@@ -961,7 +986,7 @@ module graphite #(
             swap_o            <= 1'b0;
             vram_sel_o        <= 1'b0;
             start_line        <= 1'b0;
-            texture_address   <= FB_WIDTH * FB_HEIGHT;
+            texture_address   <= 2 * FB_WIDTH * FB_HEIGHT;
             state             <= WAIT_COMMAND;
         end
     end

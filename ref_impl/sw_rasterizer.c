@@ -1,10 +1,37 @@
 #include "sw_rasterizer.h"
 
 #include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 
+#if FIXED_POINT
+#define SAFE_DIV(x) (x > 0xFF)
+#define SAFE_RDIV(x) (x > 0xFFFF)
+#define RMUL(x, y) ((int)((x) >> (SCALE)) * (int)((y)))
+#define RDIV(x, y) (((int)(x)) / (int)((y) >> (SCALE)))
+
+#else
+#define SAFE_DIV(x) (x != 0.0f)
+#define SAFE_RDIV(x) (x != 0.0f)
+#define RMUL(x, y) (x * y)
+#define RDIV(x, y) (x / y)
+#endif
+
+int g_fb_width, g_fb_height;
 static draw_pixel_fn_t g_draw_pixel_fn;
 
-void sw_init_rasterizer(draw_pixel_fn_t draw_pixel_fn) { g_draw_pixel_fn = draw_pixel_fn; }
+fx32* g_depth_buffer;
+
+void sw_init_rasterizer(int fb_width, int fb_height, draw_pixel_fn_t draw_pixel_fn) {
+    g_fb_width = fb_width;
+    g_fb_height = fb_height;
+    g_depth_buffer = (fx32*)malloc(fb_width * fb_height * sizeof(fx32));
+    g_draw_pixel_fn = draw_pixel_fn;
+}
+
+void sw_dispose_rasterizer() { free(g_depth_buffer); }
+
+void sw_clear_depth_buffer() { memset(g_depth_buffer, FX(0.0f), g_fb_width * g_fb_height * sizeof(fx32)); }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
@@ -175,10 +202,11 @@ void sw_draw_textured_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32
             fx32 w1 = edge_function_fx32(vv2, vv0, pixel_sample);
             fx32 w2 = edge_function_fx32(vv0, vv1, pixel_sample);
             if (w0 >= FX(0.0f) && w1 >= FX(0.0f) && w2 >= FX(0.0f)) {
-                if (area > FX(0.0f)) {
-                    w0 = DIV(w0, area);
-                    w1 = DIV(w1, area);
-                    w2 = DIV(w2, area);
+                if (SAFE_DIV(area)) {
+                    fx32 inv_area = SAFE_RDIV(area) ? RDIV(FX(1.0), area) : FX(1.0f);
+                    w0 = RMUL(w0, inv_area);
+                    w1 = RMUL(w1, inv_area);
+                    w2 = RMUL(w2, inv_area);
                     fx32 u = MUL(w0, t0[0]) + MUL(w1, t1[0]) + MUL(w2, t2[0]);
                     fx32 v = MUL(w0, t0[1]) + MUL(w1, t1[1]) + MUL(w2, t2[1]);
                     fx32 r = MUL(w0, c0[0]) + MUL(w1, c1[0]) + MUL(w2, c2[0]);
@@ -187,26 +215,33 @@ void sw_draw_textured_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32
                     fx32 a = MUL(w0, c0[3]) + MUL(w1, c1[3]) + MUL(w2, c2[3]);
 
                     // Perspective correction
-                    fx32 z = DIV(FX(1.0f), MUL(w0, vv0[2]) + MUL(w1, vv1[2]) + MUL(w2, vv2[2]));
-                    u = MUL(u, z);
-                    v = MUL(v, z);
-                    r = MUL(r, z);
-                    g = MUL(g, z);
-                    b = MUL(b, z);
-                    a = MUL(a, z);
+                    fx32 z = MUL(w0, vv0[2]) + MUL(w1, vv1[2]) + MUL(w2, vv2[2]);
 
-                    vec3d sample = texture_sample_color(tex, u, v);
-                    r = MUL(r, sample.x);
-                    g = MUL(g, sample.y);
-                    b = MUL(b, sample.z);
+                    int depth_index = y * g_fb_width + x;
+                    if (z > g_depth_buffer[depth_index]) {
+                        fx32 inv_z = SAFE_RDIV(z << 12) ? RDIV(FX(1.0f), z << 12) : FX(1.0f);
+                        u = MUL(u, inv_z << 12);
+                        v = MUL(v, inv_z << 12);
+                        r = MUL(r, inv_z << 12);
+                        g = MUL(g, inv_z << 12);
+                        b = MUL(b, inv_z << 12);
+                        a = MUL(a, inv_z << 12);
 
-                    int rr = INT(MUL(r, FX(15.0f)));
-                    int gg = INT(MUL(g, FX(15.0f)));
-                    int bb = INT(MUL(b, FX(15.0f)));
-                    int aa = INT(MUL(a, FX(15.0f)));
-                    (*g_draw_pixel_fn)(x, y, aa << 12 | rr << 8 | gg << 4 | bb);
+                        vec3d sample = texture_sample_color(tex, u, v);
+                        r = MUL(r, sample.x);
+                        g = MUL(g, sample.y);
+                        b = MUL(b, sample.z);
 
-                    //(*g_draw_pixel_fn)(x, y, texture_sample_color(tex, r, g));
+                        int rr = INT(MUL(r, FX(15.0f)));
+                        int gg = INT(MUL(g, FX(15.0f)));
+                        int bb = INT(MUL(b, FX(15.0f)));
+                        int aa = INT(MUL(a, FX(15.0f)));
+
+                        (*g_draw_pixel_fn)(x, y, aa << 12 | rr << 8 | gg << 4 | bb);
+
+                        // write to depth buffer
+                        g_depth_buffer[depth_index] = z;
+                    }
                 }
             }
         }
