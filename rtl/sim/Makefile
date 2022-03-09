@@ -14,7 +14,6 @@ sim: top.sv sim_main.cpp ../../common/graphite.c ../../common/graphite.h ../../c
 	$(MAKE) -j 4 -C obj_dir -f Vtop.mk
 
 run: sim
-	cp ../*.hex .
 	obj_dir/Vtop $(SERIAL)
 
 .PHONY: all clean
