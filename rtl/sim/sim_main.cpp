@@ -43,12 +43,11 @@
 #define OP_SET_T1 21
 #define OP_SET_S2 22
 #define OP_SET_T2 23
-#define OP_SET_COLOR 24
-#define OP_CLEAR 25
-#define OP_DRAW 26
-#define OP_SWAP 27
-#define OP_SET_TEX_ADDR 28
-#define OP_WRITE_TEX 29
+#define OP_CLEAR 24
+#define OP_DRAW 25
+#define OP_SWAP 26
+#define OP_SET_TEX_ADDR 27
+#define OP_WRITE_TEX 28
 
 #if FIXED_POINT
 #define PARAM(x) (x)
@@ -139,57 +138,10 @@ static void swap(fx32* a, fx32* b) {
     *b = c;
 }
 
-void xd_draw_line(fx32 x0, fx32 y0, fx32 x1, fx32 y1, int color) {
-    if (y0 > y1) {
-        swap(&x0, &x1);
-        swap(&y0, &y1);
-    }
-
-    Command c;
-    c.opcode = OP_SET_COLOR;
-    c.param = color | color << 4 | color << 8;
-    g_commands.push_back(c);
-
-    c.opcode = OP_SET_X0;
-    c.param = x0 & 0xFFFF;
-    g_commands.push_back(c);
-    c.param = 0x10000 | (x0 >> 16);
-    g_commands.push_back(c);
-
-    c.opcode = OP_SET_Y0;
-    c.param = y0 & 0xFFFF;
-    g_commands.push_back(c);
-    c.param = 0x10000 | (y0 >> 16);
-    g_commands.push_back(c);
-
-    c.opcode = OP_SET_X1;
-    c.param = x1 & 0xFFFF;
-    g_commands.push_back(c);
-    c.param = 0x10000 | (x1 >> 16);
-    g_commands.push_back(c);
-
-    c.opcode = OP_SET_Y1;
-    c.param = y1 & 0xFFFF;
-    g_commands.push_back(c);
-    c.param = 0x10000 | (y1 >> 16);
-    g_commands.push_back(c);
-
-    g_commands.push_back(c);
-    c.opcode = OP_DRAW;
-    c.param = 0;
-    g_commands.push_back(c);
-}
-
-void xd_draw_triangle(fx32 x0, fx32 y0, fx32 x1, fx32 y1, fx32 x2, fx32 y2, int color) {
-    xd_draw_line(x0, y0, x1, y1, color);
-    xd_draw_line(x1, y1, x2, y2, color);
-    xd_draw_line(x2, y2, x0, y0, color);
-}
-
-void xd_draw_textured_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1,
-                               fx32 y1, fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2,
-                               fx32 z2, fx32 u2, fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex,
-                               bool clamp_s, bool clamp_t) {
+void xd_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1, fx32 y1,
+                      fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2, fx32 z2, fx32 u2,
+                      fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex, bool clamp_s, bool clamp_t,
+                      bool depth_test) {
     Command c;
 
     c.opcode = OP_SET_X0;
@@ -337,7 +289,8 @@ void xd_draw_textured_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32
     g_commands.push_back(c);
 
     c.opcode = OP_DRAW;
-    c.param = (clamp_s ? 0b1000 : 0b0000) | (clamp_t ? 0b0100 : 0b0000) | ((tex != nullptr) ? 0b0010 : 0b0000) | 0b0001;
+    c.param = (depth_test ? 0b1000 : 0b0000) | (clamp_s ? 0b0100 : 0b0000) | (clamp_t ? 0b0010 : 0b0000) |
+              ((tex != nullptr) ? 0b0001 : 0b0000);
     g_commands.push_back(c);
 }
 
@@ -462,8 +415,8 @@ int main(int argc, char** argv, char** env) {
 
     SDL_Init(SDL_INIT_VIDEO);
 
-    SDL_Window* window =
-        SDL_CreateWindow("Graphite", SDL_WINDOWPOS_UNDEFINED_DISPLAY(1), SDL_WINDOWPOS_UNDEFINED, 640, 480, 0);
+    SDL_Window* window = SDL_CreateWindow("Graphite", SDL_WINDOWPOS_UNDEFINED_DISPLAY(1), SDL_WINDOWPOS_UNDEFINED,
+                                          FB_WIDTH * 4, FB_HEIGHT * 4, 0);
 
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
@@ -563,6 +516,11 @@ int main(int argc, char** argv, char** env) {
                 texture_t dummy_texture;
                 draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, lighting,
                            wireframe, textured ? &dummy_texture : NULL, clamp_s, clamp_t);
+
+                draw_line((vec3d){FX(10.0f), FX(10.0f), FX(0.0f), FX(1.0f)},
+                          (vec3d){FX(10.0f), FX(100.0f), FX(0.0f), FX(1.0f)},
+                          (vec3d){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)}, FX(1.0f));
+
                 swap();
             }
 
@@ -698,11 +656,7 @@ int main(int argc, char** argv, char** env) {
             int draw_w, draw_h;
             SDL_GL_GetDrawableSize(window, &draw_w, &draw_h);
 
-            int scale_x, scale_y;
-            scale_x = draw_w / 640;
-            scale_y = draw_h / 480;
-
-            SDL_Rect vga_r = {0, 0, scale_x * 640, scale_y * 480};
+            SDL_Rect vga_r = {0, 0, draw_w, draw_h};
             SDL_RenderCopy(renderer, texture, NULL, &vga_r);
 
             SDL_RenderPresent(renderer);

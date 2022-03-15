@@ -48,7 +48,7 @@ module graphite #(
     output      logic                        swap_o
     );
 
-    enum { WAIT_COMMAND, PROCESS_COMMAND, CLEAR_FB, CLEAR_DEPTH, DRAW_LINE,
+    enum { WAIT_COMMAND, PROCESS_COMMAND, CLEAR_FB, CLEAR_DEPTH,
            DRAW_TRIANGLE, DRAW_TRIANGLEB, DRAW_TRIANGLEC, DRAW_TRIANGLED, DRAW_TRIANGLEE,
            DRAW_TRIANGLE2,
            DRAW_TRIANGLE3, DRAW_TRIANGLE3B, DRAW_TRIANGLE3C, DRAW_TRIANGLE3D, DRAW_TRIANGLE3E, DRAW_TRIANGLE3F, DRAW_TRIANGLE3G, DRAW_TRIANGLE3H, DRAW_TRIANGLE3I, DRAW_TRIANGLE3J,
@@ -67,44 +67,15 @@ module graphite #(
     logic signed [31:0] st00, st01, st10, st11, st20, st21;
 
     logic signed [11:0] x, y;
-    logic        [15:0] color;
     
     logic [15:0] raster_addr;
     logic [15:0] texture_address, texture_write_address;
 
     //
-    // Draw line
-    //
-
-    logic start_line;
-    logic drawing_line;
-    logic busy_line;
-    logic done_line;
-    logic signed [11:0] x_line, y_line;
-
-    logic wait_vram_ack = 1'b0;
-
-    draw_line #(.CORDW(12)) draw_line (    // framebuffer coord width in bits
-        .clk(clk),                         // clock
-        .reset_i(reset_i),                 // reset
-        .start_i(start_line),              // start line rendering
-        .oe_i(!wait_vram_ack),             // output enable
-        .x0_i(12'(vv00 >> 16)),            // point 0 - horizontal position
-        .y0_i(12'(vv01 >> 16)),            // point 0 - vertical position
-        .x1_i(12'(vv10 >> 16)),            // point 1 - horizontal position
-        .y1_i(12'(vv11 >> 16)),            // point 1 - vertical position
-        .x_o(x_line),                      // horizontal drawing position
-        .y_o(y_line),                      // vertical drawing position
-        .drawing_o(drawing_line),          // line is drawing
-        .busy_o(busy_line),                // line drawing request in progress
-        .done_o(done_line)                 // line complete (high for one tick)
-    );
-
-    //
     // Draw triangle
     //
 
-    logic is_textured, is_clamp_s, is_clamp_t;
+    logic is_textured, is_clamp_s, is_clamp_t, is_depth_test;
 
     logic signed [31:0] p0, p1;
     logic signed [31:0] w0, w1, w2;
@@ -138,19 +109,12 @@ module graphite #(
     logic [31:0] reciprocal_x, reciprocal_z;
     reciprocal reciprocal(.clk(clk), .x_i(reciprocal_x), .z_o(reciprocal_z));
     
-    //function logic signed [31:0] edge_function(logic signed [31:0] a0, logic signed [31:0] a1, logic signed [31:0] b0, logic signed [31:0] b1, logic signed [31:0] c0, logic signed [31:0] c1);
-    //    edge_function = mul(c0 - a0, b1 - a1) - mul(c1 - a1, b0 - a0);
-    //endfunction
-    
     assign p0 = {20'd0, x} << 16;
     assign p1 = {20'd0, y} << 16;
 
     assign cmd_axis_tready_o = state == WAIT_COMMAND;
 
     always_ff @(posedge clk) begin
-        if (start_line)
-            start_line <= 1'b0;
-
         case (state)
             WAIT_COMMAND: begin
                 swap_o <= 1'b0;
@@ -360,10 +324,6 @@ module graphite #(
                         end
                         state <= WAIT_COMMAND;
                     end
-                    OP_SET_COLOR: begin
-                        color <= cmd_axis_tdata_i[15:0];
-                        state <= WAIT_COMMAND;
-                    end
                     OP_CLEAR: begin
                         vram_addr_o     <= (cmd_axis_tdata_i[16] == 0) ? 16'h0 : 16'(FB_WIDTH * FB_HEIGHT);
                         vram_data_out_o <= cmd_axis_tdata_i[15:0];
@@ -373,24 +333,18 @@ module graphite #(
                         state           <= (cmd_axis_tdata_i[16] == 0) ? CLEAR_FB : CLEAR_DEPTH;
                     end
                     OP_DRAW: begin
-                        if (cmd_axis_tdata_i[0] == 0) begin
-                            // Draw line
-                            start_line      <= 1;
-                            state           <= DRAW_LINE;
-                        end else begin
-                            // Draw triangle
-                            is_textured     <= cmd_axis_tdata_i[1];
-                            is_clamp_t      <= cmd_axis_tdata_i[2];
-                            is_clamp_s      <= cmd_axis_tdata_i[3];
-                            vram_addr_o     <= 16'h0;
-                            vram_data_out_o <= color;
-                            vram_mask_o     <= 4'hF;
-                            min_x <= min3(12'(vv00 >> 16), 12'(vv10 >> 16), 12'(vv20 >> 16));
-                            min_y <= min3(12'(vv01 >> 16), 12'(vv11 >> 16), 12'(vv21 >> 16));
-                            max_x <= max3(12'(vv00 >> 16), 12'(vv10 >> 16), 12'(vv20 >> 16));
-                            max_y <= max3(12'(vv01 >> 16), 12'(vv11 >> 16), 12'(vv21 >> 16));
-                            state <= DRAW_TRIANGLE;
-                        end
+                        // Draw triangle
+                        is_textured     <= cmd_axis_tdata_i[0];
+                        is_clamp_t      <= cmd_axis_tdata_i[1];
+                        is_clamp_s      <= cmd_axis_tdata_i[2];
+                        is_depth_test   <= cmd_axis_tdata_i[3];
+                        vram_addr_o     <= 16'h0;
+                        vram_mask_o     <= 4'hF;
+                        min_x <= min3(12'(vv00 >> 16), 12'(vv10 >> 16), 12'(vv20 >> 16));
+                        min_y <= min3(12'(vv01 >> 16), 12'(vv11 >> 16), 12'(vv21 >> 16));
+                        max_x <= max3(12'(vv00 >> 16), 12'(vv10 >> 16), 12'(vv20 >> 16));
+                        max_y <= max3(12'(vv01 >> 16), 12'(vv11 >> 16), 12'(vv21 >> 16));
+                        state <= DRAW_TRIANGLE;
                     end
                     OP_SWAP: begin
                         swap_o <= 1'b1;
@@ -432,14 +386,6 @@ module graphite #(
                     vram_sel_o <= 1'b0;
                     vram_wr_o  <= 1'b0;
                     state      <= WAIT_COMMAND;
-                end
-            end
-
-            DRAW_LINE: begin
-                if (done_line) begin
-                    vram_sel_o      <= 1'b0;
-                    vram_wr_o       <= 1'b0;
-                    state           <= WAIT_COMMAND;
                 end
             end
 
@@ -807,7 +753,7 @@ module graphite #(
             end
 
             DRAW_TRIANGLE5D4B: begin
-                if (16'(z) > depth) begin
+                if (!is_depth_test || (16'(z) > depth)) begin
                     state <= DRAW_TRIANGLE5D5;
                 end else begin
                     state <= DRAW_TRIANGLE9;
@@ -971,23 +917,9 @@ module graphite #(
             end
         endcase
 
-        if (drawing_line) begin
-            if (x_line >= 0 && y_line >= 0 && x_line < FB_WIDTH && y_line < FB_HEIGHT) begin
-                vram_addr_o     <= {4'b0, y_line} * FB_WIDTH + {4'b0, x_line};
-                vram_data_out_o <= color;
-                vram_mask_o     <= 4'hF;
-                vram_sel_o      <= 1'b1;
-                vram_wr_o       <= 1'b1;
-            end else begin
-                vram_sel_o      <= 1'b0;
-                vram_wr_o       <= 1'b0;
-            end
-        end
-
         if (reset_i) begin
             swap_o            <= 1'b0;
             vram_sel_o        <= 1'b0;
-            start_line        <= 1'b0;
             texture_address   <= 2 * FB_WIDTH * FB_HEIGHT;
             state             <= WAIT_COMMAND;
         end

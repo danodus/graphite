@@ -7,8 +7,7 @@ DEVICE := up5k
 PACKAGE := sg48
 
 PIN_DEF := icebreaker.pcf
-SRC :=  ../draw_line.sv \
-		../reciprocal.sv \
+SRC :=  ../reciprocal.sv \
 		../graphite.sv \
 		ram.sv \
 		clock_gen_480p.sv \

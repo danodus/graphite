@@ -27,12 +27,11 @@ localparam OP_SET_S1        = 20;
 localparam OP_SET_T1        = 21;
 localparam OP_SET_S2        = 22;
 localparam OP_SET_T2        = 23;
-localparam OP_SET_COLOR     = 24;
-localparam OP_CLEAR         = 25;
-localparam OP_DRAW          = 26;
-localparam OP_SWAP          = 27;
-localparam OP_SET_TEX_ADDR  = 28;
-localparam OP_WRITE_TEX     = 29;
+localparam OP_CLEAR         = 24;
+localparam OP_DRAW          = 25;
+localparam OP_SWAP          = 26;
+localparam OP_SET_TEX_ADDR  = 27;
+localparam OP_WRITE_TEX     = 28;
 
 
 

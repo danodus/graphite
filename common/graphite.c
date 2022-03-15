@@ -14,11 +14,10 @@
 
 #define SORT_TRIANGLES 0
 
-void xd_draw_triangle(fx32 x0, fx32 y0, fx32 x1, fx32 y1, fx32 x2, fx32 y2, int color);
-void xd_draw_textured_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1,
-                               fx32 y1, fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2,
-                               fx32 z2, fx32 u2, fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex,
-                               bool clamp_s, bool clamp_t);
+void xd_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1, fx32 y1,
+                      fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2, fx32 z2, fx32 u2,
+                      fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex, bool clamp_s, bool clamp_t,
+                      bool depth_test);
 
 vec3d matrix_multiply_vector(mat4x4* m, vec3d* i) {
     vec3d r = {MUL(i->x, m->m[0][0]) + MUL(i->y, m->m[1][0]) + MUL(i->z, m->m[2][0]) + m->m[3][0],
@@ -437,6 +436,34 @@ fx32 clamp(fx32 x) {
     return x;
 }
 
+void draw_line(vec3d v0, vec3d v1, vec3d color, fx32 thickness) {
+    // skip if zero thickness or length
+    if (thickness == FX(0.0f) || (v0.x == v1.x && v0.y == v1.y)) return;
+
+    thickness = DIV(thickness, FX(2.0f));
+
+    // define the line between the two points
+    vec3d line = vector_sub(&v1, &v0);
+
+    // find the normal vector of this line
+    vec3d normal = (vec3d){-line.y, line.x, FX(0.0f), FX(0.0f)};
+    normal = vector_normalize(&normal);
+
+    vec3d miter = vector_mul(&normal, thickness);
+
+    vec3d vv0 = vector_add(&v0, &miter);  // u,v=0,1
+    vec3d vv1 = vector_sub(&v0, &miter);  // u,v=0,0
+    vec3d vv2 = vector_add(&v1, &miter);  // u,v=1,1
+    vec3d vv3 = vector_sub(&v1, &miter);  // u,v=1,0
+
+    xd_draw_triangle(vv0.x, vv0.y, vv0.w, FX(0.0f), FX(1.0f), color.x, color.y, color.z, color.w, vv2.x, vv2.y, vv2.w,
+                     FX(1.0f), FX(1.0f), color.x, color.y, color.z, color.w, vv3.x, vv3.y, vv3.w, FX(1.0f), FX(0.0f),
+                     color.x, color.y, color.z, color.w, NULL, false, false, false);
+    xd_draw_triangle(vv1.x, vv1.y, vv1.w, FX(0.0f), FX(0.0f), color.x, color.y, color.z, color.w, vv0.x, vv0.y, vv0.w,
+                     FX(0.0f), FX(1.0f), color.x, color.y, color.z, color.w, vv3.x, vv3.y, vv3.w, FX(1.0f), FX(0.0f),
+                     color.x, color.y, color.z, color.w, NULL, false, false, false);
+}
+
 void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
                 mat4x4* mat_proj, mat4x4* mat_view, bool is_lighting_ena, bool is_wireframe, texture_t* texture,
                 bool clamp_s, bool clamp_t) {
@@ -714,13 +741,14 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
 
             // rasterize triangle
             if (is_wireframe) {
-                xd_draw_triangle(t->p[0].x, t->p[0].y, t->p[1].x, t->p[1].y, t->p[2].x, t->p[2].y, 0xFFF);
+                draw_line(t->p[0], t->p[1], (vec3d){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)}, FX(1.0f));
+                draw_line(t->p[1], t->p[2], (vec3d){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)}, FX(1.0f));
+                draw_line(t->p[2], t->p[0], (vec3d){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)}, FX(1.0f));
             } else {
-                xd_draw_textured_triangle(t->p[0].x, t->p[0].y, t->t[0].w, t->t[0].u, t->t[0].v, t->c[0].x, t->c[0].y,
-                                          t->c[0].z, t->c[0].w, t->p[1].x, t->p[1].y, t->t[1].w, t->t[1].u, t->t[1].v,
-                                          t->c[1].x, t->c[1].y, t->c[1].z, t->c[1].w, t->p[2].x, t->p[2].y, t->t[2].w,
-                                          t->t[2].u, t->t[2].v, t->c[2].x, t->c[2].y, t->c[2].z, t->c[2].w, texture,
-                                          clamp_s, clamp_t);
+                xd_draw_triangle(t->p[0].x, t->p[0].y, t->t[0].w, t->t[0].u, t->t[0].v, t->c[0].x, t->c[0].y, t->c[0].z,
+                                 t->c[0].w, t->p[1].x, t->p[1].y, t->t[1].w, t->t[1].u, t->t[1].v, t->c[1].x, t->c[1].y,
+                                 t->c[1].z, t->c[1].w, t->p[2].x, t->p[2].y, t->t[2].w, t->t[2].u, t->t[2].v, t->c[2].x,
+                                 t->c[2].y, t->c[2].z, t->c[2].w, texture, clamp_s, clamp_t, true);
             }
         }
     }
