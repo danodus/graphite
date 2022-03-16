@@ -517,10 +517,6 @@ int main(int argc, char** argv, char** env) {
                 draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, lighting,
                            wireframe, textured ? &dummy_texture : NULL, clamp_s, clamp_t);
 
-                draw_line((vec3d){FX(10.0f), FX(10.0f), FX(0.0f), FX(1.0f)},
-                          (vec3d){FX(10.0f), FX(100.0f), FX(0.0f), FX(1.0f)},
-                          (vec3d){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)}, FX(1.0f));
-
                 swap();
             }
 

@@ -39,19 +39,19 @@ localparam OP_POS   = 24;
 localparam OP_SIZE  = 8;
 
 function logic signed [31:0] mul(logic signed [31:0] x, logic signed [31:0] y);
-    mul = (x >> 8) * (y >> 8);
+    mul = (x >>> 8) * (y >>> 8);
 endfunction
 
 function logic signed [31:0] rmul(logic signed [31:0] x, logic signed [31:0] y);
-    rmul = (x >> 16) * y;
+    rmul = (x >>> 16) * y;
 endfunction
 
 function logic signed [31:0] div(logic signed [31:0] x, logic signed [31:0] y);
-    div = (x << 8) / (y >> 8);
+    div = (x << 8) / (y >>> 8);
 endfunction
 
 function logic signed [31:0] rdiv(logic signed [31:0] x, logic signed [31:0] y);
-    rdiv = x / (y >> 16);
+    rdiv = x / (y >>> 16);
 endfunction
 
 function logic signed [31:0] clamp(logic signed [31:0] x);

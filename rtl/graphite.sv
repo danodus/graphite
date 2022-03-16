@@ -129,18 +129,16 @@ module graphite #(
                     OP_SET_X0: begin
                         if (cmd_axis_tdata_i[16]) begin
                             vv00[31:16] <= cmd_axis_tdata_i[15:0];
-                            vv00[15:0] <= 16'd0;
                         end else begin
-                            //vv00[15:0] <= cmd_axis_tdata_i[15:0];
+                            vv00[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_Y0: begin
                         if (cmd_axis_tdata_i[16]) begin
                             vv01[31:16] <= cmd_axis_tdata_i[15:0];
-                            vv01[15:0] <= 16'd0;
                         end else begin
-                            //vv01[15:0] <= cmd_axis_tdata_i[15:0];
+                            vv01[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
@@ -155,18 +153,16 @@ module graphite #(
                     OP_SET_X1: begin
                         if (cmd_axis_tdata_i[16]) begin
                             vv10[31:16] <= cmd_axis_tdata_i[15:0];
-                            vv10[15:0] <= 16'd0;
                         end else begin
-                            //vv10[15:0] <= cmd_axis_tdata_i[15:0];
+                            vv10[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_Y1: begin
                         if (cmd_axis_tdata_i[16]) begin
                             vv11[31:16] <= cmd_axis_tdata_i[15:0];
-                            vv11[15:0] <= 16'd0;
                         end else begin
-                            //vv11[15:0] <= cmd_axis_tdata_i[15:0];
+                            vv11[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
@@ -181,18 +177,16 @@ module graphite #(
                     OP_SET_X2: begin
                         if (cmd_axis_tdata_i[16]) begin
                             vv20[31:16] <= cmd_axis_tdata_i[15:0];
-                            vv20[15:0] <= 16'd0;
                         end else begin
-                            //vv20[15:0] <= cmd_axis_tdata_i[15:0];
+                            vv20[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_Y2: begin
                         if (cmd_axis_tdata_i[16]) begin
                             vv21[31:16] <= cmd_axis_tdata_i[15:0];
-                            vv21[15:0] <= 16'd0;
                         end else begin
-                            //vv21[15:0] <= cmd_axis_tdata_i[15:0];
+                            vv21[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
@@ -342,8 +336,8 @@ module graphite #(
                         vram_mask_o     <= 4'hF;
                         min_x <= min3(12'(vv00 >> 16), 12'(vv10 >> 16), 12'(vv20 >> 16));
                         min_y <= min3(12'(vv01 >> 16), 12'(vv11 >> 16), 12'(vv21 >> 16));
-                        max_x <= max3(12'(vv00 >> 16), 12'(vv10 >> 16), 12'(vv20 >> 16));
-                        max_y <= max3(12'(vv01 >> 16), 12'(vv11 >> 16), 12'(vv21 >> 16));
+                        max_x <= max3(12'(vv00 >> 16), 12'(vv10 >> 16), 12'(vv20 >> 16)) + 1;
+                        max_y <= max3(12'(vv01 >> 16), 12'(vv11 >> 16), 12'(vv21 >> 16)) + 1;
                         state <= DRAW_TRIANGLE;
                     end
                     OP_SWAP: begin

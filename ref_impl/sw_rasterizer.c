@@ -9,12 +9,13 @@
 #define SAFE_RDIV(x) (x > 0xFFFF)
 #define RMUL(x, y) ((int)((x) >> (SCALE)) * (int)((y)))
 #define RDIV(x, y) (((int)(x)) / (int)((y) >> (SCALE)))
-
+#define FX_SHIFT(x) (x << 12)
 #else
 #define SAFE_DIV(x) (x != 0.0f)
 #define SAFE_RDIV(x) (x != 0.0f)
 #define RMUL(x, y) (x * y)
 #define RDIV(x, y) (x / y)
+#define FX_SHIFT(x) (x)
 #endif
 
 int g_fb_width, g_fb_height;
@@ -33,11 +34,7 @@ void sw_dispose_rasterizer() { free(g_depth_buffer); }
 
 void sw_clear_depth_buffer() { memset(g_depth_buffer, FX(0.0f), g_fb_width * g_fb_height * sizeof(fx32)); }
 
-int edge_function(int a[2], int b[2], int c[2]) {
-    return (c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0]);
-}
-
-fx32 edge_function_fx32(fx32 a[2], fx32 b[2], fx32 c[2]) {
+fx32 edge_function(fx32 a[2], fx32 b[2], fx32 c[2]) {
     return MUL(c[0] - a[0], b[1] - a[1]) - MUL(c[1] - a[1], b[0] - a[0]);
 }
 
@@ -77,18 +74,17 @@ void sw_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32
 
     int min_x = min3(INT(x0), INT(x1), INT(x2));
     int min_y = min3(INT(y0), INT(y1), INT(y2));
-    int max_x = max3(INT(x0), INT(x1), INT(x2));
-    int max_y = max3(INT(y0), INT(y1), INT(y2));
+    int max_x = max3(INT(x0), INT(x1), INT(x2)) + 1;
+    int max_y = max3(INT(y0), INT(y1), INT(y2)) + 1;
 
-    fx32 area = edge_function_fx32(vv0, vv1, vv2);
+    fx32 area = edge_function(vv0, vv1, vv2);
 
     for (int y = min_y; y <= max_y; ++y)
         for (int x = min_x; x <= max_x; ++x) {
             fx32 pixel_sample[2] = {FXI(x), FXI(y)};
-
-            fx32 w0 = edge_function_fx32(vv1, vv2, pixel_sample);
-            fx32 w1 = edge_function_fx32(vv2, vv0, pixel_sample);
-            fx32 w2 = edge_function_fx32(vv0, vv1, pixel_sample);
+            fx32 w0 = edge_function(vv1, vv2, pixel_sample);
+            fx32 w1 = edge_function(vv2, vv0, pixel_sample);
+            fx32 w2 = edge_function(vv0, vv1, pixel_sample);
             if (w0 >= FX(0.0f) && w1 >= FX(0.0f) && w2 >= FX(0.0f)) {
                 if (SAFE_DIV(area)) {
                     fx32 inv_area = SAFE_RDIV(area) ? RDIV(FX(1.0), area) : FX(1.0f);
@@ -107,13 +103,13 @@ void sw_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32
 
                     int depth_index = y * g_fb_width + x;
                     if (!depth_test || (z > g_depth_buffer[depth_index])) {
-                        fx32 inv_z = SAFE_RDIV(z << 12) ? RDIV(FX(1.0f), z << 12) : FX(1.0f);
-                        u = MUL(u, inv_z << 12);
-                        v = MUL(v, inv_z << 12);
-                        r = MUL(r, inv_z << 12);
-                        g = MUL(g, inv_z << 12);
-                        b = MUL(b, inv_z << 12);
-                        a = MUL(a, inv_z << 12);
+                        fx32 inv_z = SAFE_RDIV(FX_SHIFT(z)) ? RDIV(FX(1.0f), FX_SHIFT(z)) : FX(1.0f);
+                        u = MUL(u, FX_SHIFT(inv_z));
+                        v = MUL(v, FX_SHIFT(inv_z));
+                        r = MUL(r, FX_SHIFT(inv_z));
+                        g = MUL(g, FX_SHIFT(inv_z));
+                        b = MUL(b, FX_SHIFT(inv_z));
+                        a = MUL(a, FX_SHIFT(inv_z));
 
                         if (tex != NULL) {
                             vec3d sample = texture_sample_color(tex, u, v);

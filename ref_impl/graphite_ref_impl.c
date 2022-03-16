@@ -54,6 +54,7 @@ int main(int argc, char* argv[]) {
     model_t* teapot_model = load_teapot();
     model_t* current_model = cube_model;
 
+    bool is_anim = false;
     bool is_wireframe = false;
 
     unsigned int time = SDL_GetTicks();
@@ -97,8 +98,6 @@ int main(int argc, char* argv[]) {
         // Draw cube
         draw_model(screen_width, screen_height, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, false,
                    is_wireframe, NULL, true, true);
-        draw_line((vec3d){FX(10.0f), FX(10.0f), FX(0.0f), FX(1.0f)}, (vec3d){FX(10.0f), FX(100.0f), FX(0.0f), FX(1.0f)},
-                  (vec3d){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)}, FX(1.0f));
 
         SDL_RenderPresent(renderer);
 
@@ -149,6 +148,9 @@ int main(int argc, char* argv[]) {
                     case SDL_SCANCODE_TAB:
                         is_wireframe = !is_wireframe;
                         break;
+                    case SDL_SCANCODE_SPACE:
+                        is_anim = !is_anim;
+                        break;
                     default:
                         // do nothing
                         break;
@@ -156,7 +158,7 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        theta += 0.001f;
+        if (is_anim) theta += 0.001f;
     }
 
     SDL_DestroyWindow(window);
