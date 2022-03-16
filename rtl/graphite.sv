@@ -26,7 +26,8 @@ module graphite #(
     parameter FB_WIDTH = 128,
     parameter FB_HEIGHT = 128,
     parameter TEXTURE_WIDTH = 32,
-    parameter TEXTURE_HEIGHT = 32
+    parameter TEXTURE_HEIGHT = 32,
+    parameter SUBPIXEL_PRECISION_MASK = 16'hC000
     ) (
     input  wire logic                        clk,
     input  wire logic                        reset_i,
@@ -109,8 +110,8 @@ module graphite #(
     logic [31:0] reciprocal_x, reciprocal_z;
     reciprocal reciprocal(.clk(clk), .x_i(reciprocal_x), .z_o(reciprocal_z));
     
-    assign p0 = {20'd0, x} << 16;
-    assign p1 = {20'd0, y} << 16;
+    assign p0 = {4'd0, x, 16'd0};
+    assign p1 = {4'd0, y, 16'd0};
 
     assign cmd_axis_tready_o = state == WAIT_COMMAND;
 
@@ -130,7 +131,7 @@ module graphite #(
                         if (cmd_axis_tdata_i[16]) begin
                             vv00[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            vv00[15:0] <= cmd_axis_tdata_i[15:0];
+                            vv00[15:0] <= cmd_axis_tdata_i[15:0] & SUBPIXEL_PRECISION_MASK;
                         end
                         state <= WAIT_COMMAND;
                     end
@@ -138,7 +139,7 @@ module graphite #(
                         if (cmd_axis_tdata_i[16]) begin
                             vv01[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            vv01[15:0] <= cmd_axis_tdata_i[15:0];
+                            vv01[15:0] <= cmd_axis_tdata_i[15:0] & SUBPIXEL_PRECISION_MASK;
                         end
                         state <= WAIT_COMMAND;
                     end
@@ -154,7 +155,7 @@ module graphite #(
                         if (cmd_axis_tdata_i[16]) begin
                             vv10[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            vv10[15:0] <= cmd_axis_tdata_i[15:0];
+                            vv10[15:0] <= cmd_axis_tdata_i[15:0] & SUBPIXEL_PRECISION_MASK;
                         end
                         state <= WAIT_COMMAND;
                     end
@@ -162,7 +163,7 @@ module graphite #(
                         if (cmd_axis_tdata_i[16]) begin
                             vv11[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            vv11[15:0] <= cmd_axis_tdata_i[15:0];
+                            vv11[15:0] <= cmd_axis_tdata_i[15:0] & SUBPIXEL_PRECISION_MASK;
                         end
                         state <= WAIT_COMMAND;
                     end
@@ -178,7 +179,7 @@ module graphite #(
                         if (cmd_axis_tdata_i[16]) begin
                             vv20[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            vv20[15:0] <= cmd_axis_tdata_i[15:0];
+                            vv20[15:0] <= cmd_axis_tdata_i[15:0] & SUBPIXEL_PRECISION_MASK;
                         end
                         state <= WAIT_COMMAND;
                     end
@@ -186,7 +187,7 @@ module graphite #(
                         if (cmd_axis_tdata_i[16]) begin
                             vv21[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            vv21[15:0] <= cmd_axis_tdata_i[15:0];
+                            vv21[15:0] <= cmd_axis_tdata_i[15:0] & SUBPIXEL_PRECISION_MASK;
                         end
                         state <= WAIT_COMMAND;
                     end
@@ -336,8 +337,8 @@ module graphite #(
                         vram_mask_o     <= 4'hF;
                         min_x <= min3(12'(vv00 >> 16), 12'(vv10 >> 16), 12'(vv20 >> 16));
                         min_y <= min3(12'(vv01 >> 16), 12'(vv11 >> 16), 12'(vv21 >> 16));
-                        max_x <= max3(12'(vv00 >> 16), 12'(vv10 >> 16), 12'(vv20 >> 16)) + 1;
-                        max_y <= max3(12'(vv01 >> 16), 12'(vv11 >> 16), 12'(vv21 >> 16)) + 1;
+                        max_x <= max3(12'(vv00 >> 16), 12'(vv10 >> 16), 12'(vv20 >> 16));
+                        max_y <= max3(12'(vv01 >> 16), 12'(vv11 >> 16), 12'(vv21 >> 16));
                         state <= DRAW_TRIANGLE;
                     end
                     OP_SWAP: begin
@@ -903,7 +904,7 @@ module graphite #(
             end
 
             DRAW_TRIANGLE10: begin
-                if (y >= max_y) begin
+                if (y > max_y) begin
                     state       <= WAIT_COMMAND;
                 end else begin
                     state       <= DRAW_TRIANGLE3;
