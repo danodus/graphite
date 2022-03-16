@@ -158,7 +158,7 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        if (is_anim) theta += 0.001f;
+        if (is_anim) theta += 0.01f;
     }
 
     SDL_DestroyWindow(window);

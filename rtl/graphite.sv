@@ -27,7 +27,7 @@ module graphite #(
     parameter FB_HEIGHT = 128,
     parameter TEXTURE_WIDTH = 32,
     parameter TEXTURE_HEIGHT = 32,
-    parameter SUBPIXEL_PRECISION_MASK = 16'hC000
+    parameter SUBPIXEL_PRECISION_MASK = 16'hF000
     ) (
     input  wire logic                        clk,
     input  wire logic                        reset_i,
