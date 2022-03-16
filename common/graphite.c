@@ -436,7 +436,7 @@ fx32 clamp(fx32 x) {
     return x;
 }
 
-void draw_line(vec3d v0, vec3d v1, vec3d color, fx32 thickness) {
+void draw_line(vec3d v0, vec3d v1, vec3d c0, vec3d c1, fx32 thickness) {
     // skip if zero thickness or length
     if (thickness == FX(0.0f) || (v0.x == v1.x && v0.y == v1.y)) return;
 
@@ -456,12 +456,12 @@ void draw_line(vec3d v0, vec3d v1, vec3d color, fx32 thickness) {
     vec3d vv2 = vector_add(&v1, &miter);  // u,v=1,1
     vec3d vv3 = vector_sub(&v1, &miter);  // u,v=1,0
 
-    xd_draw_triangle(vv0.x, vv0.y, vv0.w, FX(0.0f), FX(1.0f), color.x, color.y, color.z, color.w, vv2.x, vv2.y, vv2.w,
-                     FX(1.0f), FX(1.0f), color.x, color.y, color.z, color.w, vv3.x, vv3.y, vv3.w, FX(1.0f), FX(0.0f),
-                     color.x, color.y, color.z, color.w, NULL, false, false, false);
-    xd_draw_triangle(vv1.x, vv1.y, vv1.w, FX(0.0f), FX(0.0f), color.x, color.y, color.z, color.w, vv0.x, vv0.y, vv0.w,
-                     FX(0.0f), FX(1.0f), color.x, color.y, color.z, color.w, vv3.x, vv3.y, vv3.w, FX(1.0f), FX(0.0f),
-                     color.x, color.y, color.z, color.w, NULL, false, false, false);
+    xd_draw_triangle(vv0.x, vv0.y, vv0.z, FX(0.0f), FX(1.0f), c0.x, c0.y, c0.z, c0.w, vv2.x, vv2.y, vv2.z, FX(1.0f),
+                     FX(1.0f), c1.x, c1.y, c1.z, c1.w, vv3.x, vv3.y, vv3.z, FX(1.0f), FX(0.0f), c1.x, c1.y, c1.z, c1.w,
+                     NULL, true, true, false);
+    xd_draw_triangle(vv1.x, vv1.y, vv1.z, FX(0.0f), FX(0.0f), c0.x, c0.y, c0.z, c0.w, vv0.x, vv0.y, vv0.z, FX(0.0f),
+                     FX(1.0f), c0.x, c0.y, c0.z, c0.w, vv3.x, vv3.y, vv3.z, FX(1.0f), FX(0.0f), c1.x, c1.y, c1.z, c1.w,
+                     NULL, true, true, false);
 }
 
 void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
@@ -741,9 +741,18 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
 
             // rasterize triangle
             if (is_wireframe) {
-                draw_line(t->p[0], t->p[1], (vec3d){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)}, FX(1.0f));
-                draw_line(t->p[1], t->p[2], (vec3d){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)}, FX(1.0f));
-                draw_line(t->p[2], t->p[0], (vec3d){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)}, FX(1.0f));
+                draw_line((vec3d){t->p[0].x, t->p[0].y, t->t[0].w, FX(0.0f)},
+                          (vec3d){t->p[1].x, t->p[1].y, t->t[1].w, FX(0.0f)},
+                          (vec3d){t->c[0].x, t->c[0].y, t->c[0].z, t->c[0].w},
+                          (vec3d){t->c[1].x, t->c[1].y, t->c[1].z, t->c[1].w}, FX(1.0f));
+                draw_line((vec3d){t->p[1].x, t->p[1].y, t->t[1].w, FX(0.0f)},
+                          (vec3d){t->p[2].x, t->p[2].y, t->t[2].w, FX(0.0f)},
+                          (vec3d){t->c[1].x, t->c[1].y, t->c[1].z, t->c[1].w},
+                          (vec3d){t->c[2].x, t->c[2].y, t->c[2].z, t->c[2].w}, FX(1.0f));
+                draw_line((vec3d){t->p[2].x, t->p[2].y, t->t[2].w, FX(0.0f)},
+                          (vec3d){t->p[0].x, t->p[0].y, t->t[0].w, FX(0.0f)},
+                          (vec3d){t->c[2].x, t->c[2].y, t->c[2].z, t->c[2].w},
+                          (vec3d){t->c[0].x, t->c[0].y, t->c[0].z, t->c[0].w}, FX(1.0f));
             } else {
                 xd_draw_triangle(t->p[0].x, t->p[0].y, t->t[0].w, t->t[0].u, t->t[0].v, t->c[0].x, t->c[0].y, t->c[0].z,
                                  t->c[0].w, t->p[1].x, t->p[1].y, t->t[1].w, t->t[1].u, t->t[1].v, t->c[1].x, t->c[1].y,
