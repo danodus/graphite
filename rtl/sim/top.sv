@@ -1,3 +1,7 @@
+// top.sv
+// Copyright (c) 2021-2022 Daniel Cliche
+// SPDX-License-Identifier: MIT
+
 module top(
     input wire logic                  clk,
     input wire logic                  reset_i,
@@ -12,7 +16,7 @@ module top(
     output      logic                        vram_sel_o,
     output      logic                        vram_wr_o,
     output      logic  [3:0]                 vram_mask_o,
-    output      logic [15:0]                 vram_addr_o,
+    output      logic [31:0]                 vram_addr_o,
     input       logic [15:0]                 vram_data_in_i,
     output      logic [15:0]                 vram_data_out_o,
 
@@ -22,10 +26,13 @@ module top(
     logic        vram_sel;
     logic        vram_wr_en;
     logic  [3:0] vram_wr_mask;
-    logic [15:0] vram_addr;
+    logic [31:0] vram_addr;
     logic [15:0] vram_data_in;
 
-    graphite graphite(
+    graphite #(
+        .FB_WIDTH(128),
+        .FB_HEIGHT(128)
+    ) graphite (
         .clk(clk),
         .reset_i(reset_i),
         .cmd_axis_tvalid_i(cmd_axis_tvalid_i),

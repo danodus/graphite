@@ -1,3 +1,7 @@
+// sim_main.cpp
+// Copyright (c) 2021-2022 Daniel Cliche
+// SPDX-License-Identifier: MIT
+
 #include <SDL.h>
 #include <Vtop.h>
 #include <cube.h>
@@ -387,12 +391,16 @@ void send_command(const char* s) {
 }
 
 void write_texture() {
+    uint32_t tex_addr = 2 * FB_WIDTH * FB_HEIGHT;
+
     Command c;
     c.opcode = OP_SET_TEX_ADDR;
-    c.param = 2 * FB_WIDTH * FB_HEIGHT;
+    c.param = tex_addr & 0xFFFF;
     g_commands.push_back(c);
-    c.opcode = OP_WRITE_TEX;
+    c.param = 0x10000 | (tex_addr >> 16);
+    g_commands.push_back(c);
 
+    c.opcode = OP_WRITE_TEX;
     const uint16_t* p = img;
     for (int t = 0; t < TEXTURE_WIDTH; ++t)
         for (int s = 0; s < TEXTURE_HEIGHT; ++s) {

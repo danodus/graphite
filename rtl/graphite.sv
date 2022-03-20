@@ -34,7 +34,7 @@ module graphite #(
     output      logic                        vram_sel_o,
     output      logic                        vram_wr_o,
     output      logic  [3:0]                 vram_mask_o,
-    output      logic [15:0]                 vram_addr_o,
+    output      logic [31:0]                 vram_addr_o,
     input       logic [15:0]                 vram_data_in_i,
     output      logic [15:0]                 vram_data_out_o,
 
@@ -63,8 +63,8 @@ module graphite #(
 
     logic signed [11:0] x, y;
     
-    logic [15:0] raster_addr;
-    logic [15:0] texture_address, texture_write_address;
+    logic [31:0] raster_addr;
+    logic [31:0] texture_address, texture_write_address;
 
     //
     // Draw triangle
@@ -307,7 +307,7 @@ module graphite #(
                         state <= WAIT_COMMAND;
                     end
                     OP_CLEAR: begin
-                        vram_addr_o     <= (cmd_axis_tdata_i[16] == 0) ? 16'h0 : 16'(FB_WIDTH * FB_HEIGHT);
+                        vram_addr_o     <= (cmd_axis_tdata_i[16] == 0) ? 32'h0 : 32'(FB_WIDTH * FB_HEIGHT);
                         vram_data_out_o <= cmd_axis_tdata_i[15:0];
                         vram_mask_o     <= 4'hF;
                         vram_sel_o      <= 1'b1;
@@ -320,7 +320,7 @@ module graphite #(
                         is_clamp_t      <= cmd_axis_tdata_i[1];
                         is_clamp_s      <= cmd_axis_tdata_i[2];
                         is_depth_test   <= cmd_axis_tdata_i[3];
-                        vram_addr_o     <= 16'h0;
+                        vram_addr_o     <= 32'h0;
                         vram_mask_o     <= 4'hF;
                         min_x <= min3(12'(vv00 >> 16), 12'(vv10 >> 16), 12'(vv20 >> 16));
                         min_y <= min3(12'(vv01 >> 16), 12'(vv11 >> 16), 12'(vv21 >> 16));
@@ -333,8 +333,13 @@ module graphite #(
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_TEX_ADDR: begin
-                        texture_address <= cmd_axis_tdata_i[15:0];
-                        texture_write_address <= cmd_axis_tdata_i[15:0];
+                        if (cmd_axis_tdata_i[16]) begin
+                            texture_address[31:16] <= cmd_axis_tdata_i[15:0];
+                            texture_write_address[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            texture_address[15:0] <= cmd_axis_tdata_i[15:0];
+                            texture_write_address[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
                         state <= WAIT_COMMAND;
                     end
                     OP_WRITE_TEX: begin
@@ -406,7 +411,7 @@ module graphite #(
                 inv_area <= reciprocal_z;
                 x <= min_x;
                 y <= min_y;
-                raster_addr <= {4'd0, min_y} * FB_WIDTH + {4'd0, min_x};
+                raster_addr <= {20'd0, min_y} * FB_WIDTH + {20'd0, min_x};
                 state <= DRAW_TRIANGLE05;
             end
 
@@ -664,7 +669,7 @@ module graphite #(
 
             DRAW_TRIANGLE35: begin
                 z <= t0 + t1 + dsp_mul_z;
-                vram_addr_o <= FB_WIDTH * FB_HEIGHT + 16'(y) * FB_WIDTH + 16'(x);
+                vram_addr_o <= FB_WIDTH * FB_HEIGHT + 32'(y) * FB_WIDTH + 32'(x);
                 vram_wr_o <= 1'b0;
                 vram_sel_o <= 1'b1;
                 state <= DRAW_TRIANGLE36;
@@ -768,7 +773,7 @@ module graphite #(
             DRAW_TRIANGLE51: begin
                 vram_sel_o <= 1'b1;
                 vram_wr_o  <= 1'b0;
-                vram_addr_o <= texture_address + 16'((t0 + dsp_mul_z) >> 16);
+                vram_addr_o <= texture_address + 32'((t0 + dsp_mul_z) >> 16);
                 state <= DRAW_TRIANGLE52;
             end
 
@@ -830,7 +835,7 @@ module graphite #(
                 end else begin
                     x <= min_x;
                     y <= y + 1;
-                    raster_addr <= raster_addr + {4'd0, (FB_WIDTH[11:0] - max_x) + min_x};
+                    raster_addr <= raster_addr + {20'd0, (FB_WIDTH[11:0] - max_x) + min_x};
                 end
 
                 state <= DRAW_TRIANGLE60;

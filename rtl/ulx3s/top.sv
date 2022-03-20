@@ -1,16 +1,25 @@
+// top.sv
+// Copyright (c) 2022 Daniel Cliche
+// SPDX-License-Identifier: MIT
 
 `include "../graphite.svh"
 
 module top(
-    input  wire logic       CLK,
-    input  wire logic       BTN_N,
-    output      logic       P1A1, P1A2, P1A3, P1A4, P1A7, P1A8, P1A9, P1A10,   // PMOD 1A
-    output      logic       P1B1, P1B2, P1B3, P1B4, P1B7, P1B8, P1B9, P1B10,   // PMOD 1B
-    input  wire logic       RX,
-    output      logic       TX
+    input  wire logic       clk_25mhz,
+
+    output      logic [3:0] gpdi_dp,
+    output      logic [3:0] gpdi_dn,
+
+    input  wire logic [6:0] btn,
+
+    input  wire logic       ftdi_txd,
+    output      logic       ftdi_rxd
     );
 
-    logic clk_pix;
+    localparam FB_WIDTH = 128;
+    localparam FB_HEIGHT = 128;
+
+    logic clk_pix, clk_1x, clk_10x;
     logic clk_locked;
 
     // reset
@@ -20,19 +29,21 @@ module top(
 
     // reset
     assign auto_reset = auto_reset_counter < 5'b11111;
-    assign reset = auto_reset || !BTN_N;
+    assign reset = auto_reset || !btn[0];
 
 	always @(posedge clk_pix) begin
         if (clk_locked)
 		    auto_reset_counter <= auto_reset_counter + auto_reset;
 	end
 
-    // clock gen
-    clock_gen_480p clock_gen_480p(
-        .clk(CLK),
-        .rst(BTN_N),
-        .clk_pix(clk_pix),
-        .clk_locked(clk_locked)
+    pll_ecp5 #(
+        .ENABLE_FAST_CLK(0)
+    ) pll_main (
+        .clk_25m(clk_25mhz),
+        .locked(clk_locked),
+        .clk_1x(clk_1x),
+        .clk_2x(clk_pix),
+        .clk_10x(clk_10x)
     );
 
     // display timings
@@ -57,12 +68,24 @@ module top(
     logic [3:0] vga_b;                      // vga blue (4-bits)
     logic       vga_hsync;                  // vga hsync
     logic       vga_vsync;                  // vga vsync
+    logic       vga_de;                     // vga data enable
 
-    assign {P1A1, P1A2, P1A3, P1A4, P1A7, P1A8, P1A9, P1A10} =
-       {vga_r[0], vga_r[1], vga_r[2], vga_r[3], vga_b[0], vga_b[1], vga_b[2], vga_b[3]};
-    assign {P1B1, P1B2, P1B3, P1B4, P1B7, P1B8, P1B9, P1B10} =
-       {vga_g[0], vga_g[1], vga_g[2], vga_g[3], vga_hsync, vga_vsync, 1'b0, 1'b0};
 
+    hdmi_encoder hdmi(
+        .pixel_clk(clk_pix),
+        .pixel_clk_x5(clk_10x),
+
+        .red({2{vga_r}}),
+        .green({2{vga_g}}),
+        .blue({2{vga_b}}),
+
+        .vde(vga_de),
+        .hsync(vga_hsync),
+        .vsync(vga_vsync),
+
+        .gpdi_dp(gpdi_dp),
+        .gpdi_dn(gpdi_dn)
+    );
 
     // VGA output
     // 128x128: 14 bits to address 16-bit values
@@ -71,6 +94,7 @@ module top(
     always_ff @(posedge clk_pix) begin
         vga_hsync <= hsync;
         vga_vsync <= vsync;
+        vga_de    <= de;
 
         if (frame) begin
             col_counter <= 12'd0;
@@ -86,15 +110,15 @@ module top(
 
         if (de) begin
             col_counter <= col_counter + 1;
-            if (line_counter < 12'd128 && col_counter < 12'd128) begin
+            if (line_counter < 12'(FB_WIDTH) && col_counter < 12'(FB_HEIGHT)) begin
                 vga_read_addr <= vga_read_addr + 1;
                 vga_r <= vram_data_out[11:8];
                 vga_g <= vram_data_out[7:4];
                 vga_b <= vram_data_out[3:0];
             end else begin
-                vga_r <= 4'h1;
-                vga_g <= 4'h1;
-                vga_b <= 4'h1;
+                vga_r <= 4'h2;
+                vga_g <= 4'h2;
+                vga_b <= 4'h2;
             end
         end else begin
             vga_r <= 4'h0;
@@ -114,7 +138,7 @@ module top(
     logic        vram_sel;
     logic        vram_wr;
     logic [3:0]  vram_mask;
-    logic [15:0] vram_address;
+    logic [31:0] vram_address;
     logic [15:0] vram_data_in;
     logic [15:0] vram_data_out;
 
@@ -124,7 +148,9 @@ module top(
     assign vram_address = graphite_vram_sel ? graphite_vram_address : {2'd0, vga_read_addr};
     assign vram_data_in = graphite_vram_sel ? graphite_vram_data_out : 16'd0;
 
-    ram vram(
+    ram  #(
+        .SIZE(4 * FB_WIDTH * FB_HEIGHT)
+    ) vram (
         .clk(clk_pix),
         .sel_i(vram_sel),
         .wr_en_i(vram_wr),
@@ -142,10 +168,13 @@ module top(
     logic        graphite_vram_sel;
     logic        graphite_vram_wr;
     logic [3:0]  graphite_vram_mask;
-    logic [15:0] graphite_vram_address;
+    logic [31:0] graphite_vram_address;
     logic [15:0] graphite_vram_data_out;
 
-    graphite graphite(
+    graphite #(
+        .FB_WIDTH(FB_WIDTH),
+        .FB_HEIGHT(FB_HEIGHT)
+    ) graphite (
         .clk(clk_pix),
         .reset_i(reset),
         .cmd_axis_tvalid_i(graphite_tvalid),
@@ -168,8 +197,8 @@ module top(
     uart #(.FREQ_MHZ(25)) uart(
         .clk(clk_pix),
         .reset_i(reset),
-        .tx_o(TX),
-        .rx_i(RX),
+        .tx_o(ftdi_rxd),
+        .rx_i(ftdi_txd),
         .wr_i(1'b0),
         .rd_i(uart_rd),
         .tx_data_i(8'd0),
