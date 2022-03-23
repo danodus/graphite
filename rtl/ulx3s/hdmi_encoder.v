@@ -49,15 +49,15 @@ module hdmi_encoder(
 `else
   // (pseudo-) differential DDR driver (ECP5 synthesis version)
   //*
-  ODDRX1F ddr3p( .Q(gpdi_dp[3]), .SCLK(pixel_clk_x5), .D0(shift_C[0]),  .D1(shift_C[1]),  .RST(0) );
-  ODDRX1F ddr2p( .Q(gpdi_dp[2]), .SCLK(pixel_clk_x5), .D0(shift_R[0]),  .D1(shift_R[1]),  .RST(0) );
-  ODDRX1F ddr1p( .Q(gpdi_dp[1]), .SCLK(pixel_clk_x5), .D0(shift_G[0]),  .D1(shift_G[1]),  .RST(0) );
-  ODDRX1F ddr0p( .Q(gpdi_dp[0]), .SCLK(pixel_clk_x5), .D0(shift_B[0]),  .D1(shift_B[1]),  .RST(0) );
+  ODDRX1F ddr3p( .Q(gpdi_dp[3]), .SCLK(pixel_clk_x5), .D0(shift_C[0]),  .D1(shift_C[1]),  .RST(1'b0) );
+  ODDRX1F ddr2p( .Q(gpdi_dp[2]), .SCLK(pixel_clk_x5), .D0(shift_R[0]),  .D1(shift_R[1]),  .RST(1'b0) );
+  ODDRX1F ddr1p( .Q(gpdi_dp[1]), .SCLK(pixel_clk_x5), .D0(shift_G[0]),  .D1(shift_G[1]),  .RST(1'b0) );
+  ODDRX1F ddr0p( .Q(gpdi_dp[0]), .SCLK(pixel_clk_x5), .D0(shift_B[0]),  .D1(shift_B[1]),  .RST(1'b0) );
 
-  ODDRX1F ddr3n( .Q(gpdi_dn[3]), .SCLK(pixel_clk_x5), .D0(~shift_C[0]), .D1(~shift_C[1]), .RST(0) );
-  ODDRX1F ddr2n( .Q(gpdi_dn[2]), .SCLK(pixel_clk_x5), .D0(~shift_R[0]), .D1(~shift_R[1]), .RST(0) );
-  ODDRX1F ddr1n( .Q(gpdi_dn[1]), .SCLK(pixel_clk_x5), .D0(~shift_G[0]), .D1(~shift_G[1]), .RST(0) );
-  ODDRX1F ddr0n( .Q(gpdi_dn[0]), .SCLK(pixel_clk_x5), .D0(~shift_B[0]), .D1(~shift_B[1]), .RST(0) );
+  ODDRX1F ddr3n( .Q(gpdi_dn[3]), .SCLK(pixel_clk_x5), .D0(~shift_C[0]), .D1(~shift_C[1]), .RST(1'b0) );
+  ODDRX1F ddr2n( .Q(gpdi_dn[2]), .SCLK(pixel_clk_x5), .D0(~shift_R[0]), .D1(~shift_R[1]), .RST(1'b0) );
+  ODDRX1F ddr1n( .Q(gpdi_dn[1]), .SCLK(pixel_clk_x5), .D0(~shift_G[0]), .D1(~shift_G[1]), .RST(1'b0) );
+  ODDRX1F ddr0n( .Q(gpdi_dn[0]), .SCLK(pixel_clk_x5), .D0(~shift_B[0]), .D1(~shift_B[1]), .RST(1'b0) );
 `endif
 
 endmodule
