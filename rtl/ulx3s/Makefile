@@ -16,6 +16,7 @@ SRC := ../reciprocal.sv \
 		pll_ecp5.v \
 		generated_pll_25.v \
 		generated_pll_33_75.v \
+		sdram_ctrl.v \
 		top.sv
 
 all: top.bin
