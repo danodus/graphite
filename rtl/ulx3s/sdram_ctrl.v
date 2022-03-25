@@ -46,9 +46,9 @@ module sdram_ctrl #(
     output	[BA_WIDTH-1:0]	ba_o,
     output		            [12:0]  a_o,
     output			        cs_n_o,
-    output			        ras_o,
-    output			        cas_o,
-    output			        we_o,
+    output			        ras_n_o,
+    output			        cas_n_o,
+    output			        we_n_o,
     output reg	[15:0]	    dq_o,
     output reg	[1:0]	    dqm_o,
     input		[15:0]	    dq_i,
@@ -97,7 +97,7 @@ module sdram_ctrl #(
         PRE_ALL       = 4'h9,
         REF           = 4'ha;
 
-    // SDRAM commands (a10_oe,a10,ras,cas,we)
+    // SDRAM commands (a10_oe,a10,ras_n,cas_n,we_n)
     localparam [4:0]
         CMD_NOP      = 5'b10111,
         CMD_BST      = 5'b10110,
@@ -136,7 +136,7 @@ module sdram_ctrl #(
     assign cke_o  = 1'b1;
     assign a_o    = a10_oe ? {a[12:11], a10, a[9:0]} : a;
     assign ba_o   = ba;
-    assign {a10_oe,a10,ras_o,cas_o,we_o} = cmd;
+    assign {a10_oe,a10,ras_n_o,cas_n_o,we_n_o} = cmd;
     assign bl = (BURST_LENGTH == 0) ? 3'b111 :
             (BURST_LENGTH == 1) ? 3'b000 :
             (BURST_LENGTH == 2) ? 3'b001 :

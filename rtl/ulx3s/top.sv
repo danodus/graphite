@@ -25,9 +25,9 @@ module sdram_ctrl_wrapper #(
     output	[BA_WIDTH-1:0]	ba_o,
     output		            [12:0]  a_o,
     output			        cs_n_o,
-    output			        ras_o,
-    output			        cas_o,
-    output			        we_o,
+    output			        ras_n_o,
+    output			        cas_n_o,
+    output			        we_n_o,
     output reg	[1:0]	    dqm_o,
     inout  wire	[15:0]	    dq_io,
     output reg	        	dq_oe_o,
@@ -65,9 +65,9 @@ module sdram_ctrl_wrapper #(
         .ba_o,
         .a_o,
         .cs_n_o,
-        .ras_o,
-        .cas_o,
-        .we_o,
+        .ras_n_o,
+        .cas_n_o,
+        .we_n_o,
         .dq_o(dq_o),
         .dqm_o,
         .dq_i(dq_i),
@@ -248,11 +248,6 @@ module top(
     logic sc_ack;
     logic sc_we;
 
-    logic sdram_ras, sdram_cas, sdram_we;
-    assign sdram_rasn = !sdram_ras;
-    assign sdram_casn = !sdram_cas;
-    assign sdram_wen  = !sdram_we;
-
     sdram_ctrl_wrapper #(
         .CLK_FREQ_MHZ(25),      // sdram_clk freq in MHZ
         .POWERUP_DELAY(200),    // power up delay in us
@@ -273,9 +268,9 @@ module top(
         .ba_o(sdram_ba),
         .a_o(sdram_a),
         .cs_n_o(sdram_csn),
-        .ras_o(sdram_ras),
-        .cas_o(sdram_cas),
-        .we_o(sdram_we),
+        .ras_n_o(sdram_rasn),
+        .cas_n_o(sdram_casn),
+        .we_n_o(sdram_wen),
         .dq_io(sdram_d),
         .dqm_o(sdram_dqm),
         .dq_oe_o(sdram_dq_oe),
