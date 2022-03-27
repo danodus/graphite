@@ -386,6 +386,8 @@ mat4x4 matrix_quick_inverse(mat4x4* m) {
     return mat;
 }
 
+#if SORT_TRIANGLES
+
 void swap_triangle(triangle_t* a, triangle_t* b) {
     triangle_t c = *a;
     *a = *b;
@@ -429,6 +431,7 @@ void sort_triangles_lh(triangle_t triangles[], size_t nb_triangles, size_t l, si
 void sort_triangles(triangle_t triangles[], size_t nb_triangles) {
     sort_triangles_lh(triangles, nb_triangles, 0, nb_triangles);
 }
+#endif // SORT_TRIANGLES
 
 fx32 clamp(fx32 x) {
     if (x < FX(0.0f)) return FX(0.0f);
