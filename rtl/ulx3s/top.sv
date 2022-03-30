@@ -4,95 +4,6 @@
 
 `include "../graphite.svh"
 
-module sdram_ctrl_wrapper #(
-    parameter CLK_FREQ_MHZ	= 100,	// sdram_clk freq in MHZ
-    parameter POWERUP_DELAY	= 200,	// power up delay in us
-    parameter REFRESH_MS	= 64,	// time to wait between refreshes in ms (0 = disable)
-    parameter BURST_LENGTH	= 8,	// 0, 1, 2, 4 or 8 (0 = full page)
-    parameter ROW_WIDTH	    = 13,	// Row width
-    parameter COL_WIDTH	    = 9,	// Column width
-    parameter BA_WIDTH	    = 2,	// Ba width
-    parameter tCAC		    = 2,	// CAS Latency
-    parameter tRAC		    = 5,	// RAS Latency
-    parameter tRP		    = 2,	// Command Period (PRE to ACT)
-    parameter tRC		    = 7,	// Command Period (REF to REF / ACT to ACT)
-    parameter tMRD		    = 2	    // Mode Register Set To Command Delay time
-)
-(
-    // SDRAM interface
-    input			        sdram_rst,
-    input			        sdram_clk,
-    output	[BA_WIDTH-1:0]	ba_o,
-    output		            [12:0]  a_o,
-    output			        cs_n_o,
-    output			        ras_n_o,
-    output			        cas_n_o,
-    output			        we_n_o,
-    output reg	[1:0]	    dqm_o,
-    inout  wire	[15:0]	    dq_io,
-    output reg	        	dq_oe_o,
-    output			        cke_o,
-
-    // Internal interface
-    output			        idle_o,
-    input		[31:0]	    adr_i,
-    output reg	[31:0]	    adr_o,
-    input		[15:0]	    dat_i,
-    output reg	[15:0]	    dat_o,
-    input		[1:0]	    sel_i,
-    input			        acc_i,
-    output reg		        ack_o,
-    input			        we_i
-);
-    wire [15:0] dq_o;
-    reg [15:0] dq_i;
-
-    sdram_ctrl #(
-        .CLK_FREQ_MHZ(CLK_FREQ_MHZ),
-        .POWERUP_DELAY(POWERUP_DELAY),
-        .REFRESH_MS(REFRESH_MS),
-        .BURST_LENGTH(BURST_LENGTH),
-        .ROW_WIDTH(ROW_WIDTH),
-        .COL_WIDTH(COL_WIDTH),
-        .BA_WIDTH(BA_WIDTH),
-        .tCAC(tCAC),
-        .tRAC(tRAC),
-        .tRP(tRP),
-        .tMRD(tMRD)
-    ) sdraw_ctrl(
-        .sdram_rst,
-        .sdram_clk,
-        .ba_o,
-        .a_o,
-        .cs_n_o,
-        .ras_n_o,
-        .cas_n_o,
-        .we_n_o,
-        .dq_o(dq_o),
-        .dqm_o,
-        .dq_i(dq_i),
-        .dq_oe_o,
-        .cke_o,
-
-        // Internal interface
-        .idle_o,
-        .adr_i,
-        .adr_o,
-        .dat_i,
-        .dat_o,
-        .sel_i,
-        .acc_i,
-        .ack_o,
-        .we_i        
-    );
-
-    always @(posedge sdram_clk)
-        dq_i <= dq_io;
-
-    assign dq_io = dq_oe_o ? dq_o : 16'hZZZZ;
-    
-endmodule
-
 module top(
     input  wire logic       clk_25mhz,
 
@@ -120,7 +31,7 @@ module top(
     localparam FB_WIDTH = 128;
     localparam FB_HEIGHT = 128;
 
-    logic clk_pix, clk_1x, clk_10x;
+    logic clk_pix, clk_pix_x5, clk_sdram;
     logic clk_locked;
 
     // reset
@@ -137,14 +48,12 @@ module top(
 		    auto_reset_counter <= auto_reset_counter + auto_reset;
 	end
 
-    pll_ecp5 #(
-        .ENABLE_FAST_CLK(0)
-    ) pll_main (
-        .clk_25m(clk_25mhz),
+    pll pll (
+        .clkin(clk_25mhz),
         .locked(clk_locked),
-        .clk_1x(clk_1x),
-        .clk_2x(clk_pix),
-        .clk_10x(clk_10x)
+        .clkout0(clk_pix_x5),
+        .clkout2(clk_pix),
+        .clkout3(clk_sdram)
     );
 
     // display timings
@@ -174,7 +83,7 @@ module top(
 
     hdmi_encoder hdmi(
         .pixel_clk(clk_pix),
-        .pixel_clk_x5(clk_10x),
+        .pixel_clk_x5(clk_pix_x5),
 
         .red({2{vga_r}}),
         .green({2{vga_g}}),
@@ -235,36 +144,48 @@ module top(
         end
     end
 
+    assign sdram_clk = clk_sdram;
+
     logic [15:0] vram_data_out;
+    logic error;
 
-    logic sdram_dq_oe;
+    assign vram_data_out = error ? 16'hFF00 : 16'hF0F0;
 
-    assign sdram_clk = clk_pix;
-
-    logic sc_idle;
-    logic [31:0] sc_adr_in, sc_adr_out;
-    logic [15:0] sc_dat_in, sc_dat_out;
-    logic sc_acc;
-    logic sc_ack;
-    logic sc_we;
-
-    sdram_ctrl_wrapper #(
-        .CLK_FREQ_MHZ(25),      // sdram_clk freq in MHZ
-        .POWERUP_DELAY(200),    // power up delay in us
-        .REFRESH_MS(0),         // time to wait between refreshes in ms (0 = disable)
-        .BURST_LENGTH(8),       // 0, 1, 2, 4 or 8 (0 = full page)
-        .ROW_WIDTH(13),         // Row width
-        .COL_WIDTH(9),          // Column width
-        .BA_WIDTH(2),           // Ba width
-        .tCAC(2),               // CAS Latency
-        .tRAC(4),               // RAS Latency
-        .tRP(2),                // Command Period (PRE to ACT)
-        .tRC(8),                // Command Period (REF to REF / ACT to ACT)
-        .tMRD(2)            	// Mode Register Set To Command Delay time
-    ) sdram_ctrl (
+    sdram_test #(
+        .SDRAM_CLK_FREQ_MHZ(52)
+    ) sdram_test(
         // SDRAM interface
         .sdram_rst(reset),
-        .sdram_clk(clk_pix),
+        .sdram_clk(clk_sdram),
+        .sdram_ba_o(sdram_ba),
+        .sdram_a_o(sdram_a),
+        .sdram_cs_n_o(sdram_csn),
+        .sdram_ras_n_o(sdram_rasn),
+        .sdram_cas_n_o(sdram_casn),
+        .sdram_we_n_o(sdram_wen),
+        .sdram_dq_io(sdram_d),
+        .sdram_dqm_o(sdram_dqm),
+        .sdram_cke_o(sdram_cke),
+
+        .error_o(error)
+    );
+
+/*
+
+    logic [40:0] writer_d;
+    logic writer_enq;
+    logic writer_full;
+
+    logic [15:0] reader_q;
+    logic reader_deq;
+    logic reader_empty;    
+
+    async_sdram_ctrl #(
+        .SDRAM_CLK_FREQ_MHZ(52)
+    ) async_sdram_ctrl(
+        // SDRAM interface
+        .sdram_rst(reset),
+        .sdram_clk(clk_sdram),
         .ba_o(sdram_ba),
         .a_o(sdram_a),
         .cs_n_o(sdram_csn),
@@ -273,73 +194,75 @@ module top(
         .we_n_o(sdram_wen),
         .dq_io(sdram_d),
         .dqm_o(sdram_dqm),
-        .dq_oe_o(sdram_dq_oe),
         .cke_o(sdram_cke),
 
-        // Internal interface
-        .idle_o(sc_idle),
-        .adr_i(sc_adr_in),
-        .adr_o(sc_adr_out),
-        .dat_i(sc_dat_in),
-        .dat_o(sc_dat_out),
-        .sel_i(2'b11),
-        .acc_i(sc_acc),
-        .ack_o(sc_ack),
-        .we_i(sc_we)
+        // Writer (input commands)
+        .writer_clk(clk_pix),
+        .writer_rst_i(reset),
+        .writer_d_i(writer_d),
+        .writer_enq_i(writer_enq),    // enqueue
+        .writer_full_o(writer_full),
+        .writer_alm_full_o(),
+
+        // Reader (output)
+        .reader_clk(clk_pix),
+        .reader_rst_i(reset),
+        .reader_q_o(reader_q),
+        .reader_deq_i(reader_deq),    // dequeue
+        .reader_empty_o(reader_empty),
+        .reader_alm_empty_o()
     );
 
-    logic [31:0] adr = 32'd0;
-    logic [15:0] dat = 16'hF000;
-
-    enum { WRITE, WAIT_WRITE, READ, WAIT_READ } state;
+    enum {IDLE, WRITE0, READ0, READ1} state;
 
     always_ff @(posedge clk_pix) begin
-        case (state)
-            WRITE: begin
-                if (sc_idle) begin
-                    sc_adr_in <= adr;
-                    sc_dat_in <= dat;
-                    sc_acc <= 1'b1;
-                    sc_we <= 1'b1;
-                    state <= WAIT_WRITE;
-                end
-            end
-            WAIT_WRITE: begin
-                if (sc_ack) begin
-                    sc_acc <= 1'b0;
-                    sc_we <= 1'b0;
-                    state <= READ;
-                end
-            end
-            READ: begin
-                if (sc_idle) begin
-                    sc_adr_out <= adr;
-                    sc_acc <= 1'b1;
-                    sc_we <= 1'b0;
-                    state <= WAIT_READ;
-                end
-            end
-            WAIT_READ: begin
-                if (sc_ack) begin
-                    sc_acc <= 1'b0;
-                    vram_data_out <= sc_dat_out;
-                    dat[11:0] <= 12'(dat + 1);
-                    adr[15:0] <= 16'(adr + 1);
-                    state <= WRITE;
-                end
-            end
-        endcase;
-
-        if (frame) begin
-            dat[11:0] <= 12'd0;
-            adr[15:0] <= 16'd0;
-        end
-
         if (reset) begin
-            vram_data_out <= 16'd0;
-            state <= WRITE;
+            vram_data_out <= 16'hF555;
+            writer_enq <= 1'b0;
+            reader_deq <= 1'b0;
+            state <= IDLE;
+        end else begin
+            case (state)
+                IDLE: begin
+                    if (!writer_full) begin
+                        // write command
+                        writer_d <= {1'b1, 24'h0, 16'hBEEF};
+                        writer_enq <= 1'b1;
+                        state <= WRITE0;
+                    end
+                end
+                WRITE0: begin
+                    writer_enq = 1'b0;
+                    if (!writer_full) begin
+                        // read command
+                        writer_d <= {1'b0, 24'h0, 16'h0};
+                        writer_enq <= 1'b1;
+                        state <= READ0;
+                    end
+                end
+                READ0: begin
+                    writer_enq <= 1'b0;
+                    if (!reader_empty) begin
+                        reader_deq = 1'b1;
+                        state <= READ1;
+                    end
+                end
+
+                READ1: begin
+                    reader_deq <= 1'b0;
+                    if (reader_q != 16'hBEEF) begin
+                        // error - red
+                        vram_data_out <= 16'hFF00;
+                    end else begin
+                        // success - green
+                        vram_data_out <= 16'hF0F0;
+                    end
+                    state <= IDLE;
+                end
+            endcase
         end
     end
+*/
 
 /*    
 

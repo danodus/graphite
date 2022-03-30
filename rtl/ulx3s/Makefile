@@ -13,10 +13,9 @@ SRC := ../reciprocal.sv \
 		uart.sv \
 		ram.sv \
 		hdmi_encoder.v \
-		pll_ecp5.v \
-		generated_pll_25.v \
-		generated_pll_33_75.v \
+		generated_pll.v \
 		sdram_ctrl.v \
+		sdram_test.sv \
 		top.sv
 
 all: top.bin

@@ -315,7 +315,11 @@ module sdram_ctrl #(
                 end
 
                 if (cycle_count >= tCAC) begin
+`ifdef SYNTHESIZE                    
                     dat_o <= dq_i;
+`else
+                    dat_o <= adr_i[15:0];
+`endif
                 end
 
                 if (cycle_count > tCAC) begin

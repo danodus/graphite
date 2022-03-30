@@ -1,6 +1,6 @@
 IVERILOG = iverilog
 
-TB_SOURCE = ../sdram_ctrl.v sdram_ctrl_tb.sv
+TB_SOURCE = ../sdram_ctrl.v ../sdram_test.sv sdram_ctrl_tb.sv
 
 all: sdram_ctrl_tb.out
 
