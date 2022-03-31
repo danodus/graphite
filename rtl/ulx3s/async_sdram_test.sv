@@ -66,7 +66,7 @@ module async_sdram_test #(
         .reader_alm_empty_o()
     );
 
-    enum {IDLE, WRITE0, READ0, READ1} state;
+    enum {IDLE, WRITE0, WRITE1, READ0, READ1} state;
 
     always_ff @(posedge clk) begin
         if (reset_i) begin
@@ -79,7 +79,7 @@ module async_sdram_test #(
                 IDLE: begin
                     if (!writer_full) begin
                         // write command
-                        writer_d <= {1'b1, 24'h0, 16'hBEEF};
+                        writer_d <= {1'b1, 24'h1000, 16'h1000};
                         writer_enq <= 1'b1;
                         state <= WRITE0;
                     end
@@ -87,8 +87,17 @@ module async_sdram_test #(
                 WRITE0: begin
                     writer_enq = 1'b0;
                     if (!writer_full) begin
+                        // write command
+                        writer_d <= {1'b1, 24'h2000, 16'h2000};
+                        writer_enq <= 1'b1;
+                        state <= WRITE1;
+                    end
+                end
+                WRITE1: begin
+                    writer_enq = 1'b0;
+                    if (!writer_full) begin
                         // read command
-                        writer_d <= {1'b0, 24'hBEEF, 16'h0};
+                        writer_d <= {1'b0, 24'h1000, 16'h0};
                         writer_enq <= 1'b1;
                         state <= READ0;
                     end
@@ -103,7 +112,7 @@ module async_sdram_test #(
 
                 READ1: begin
                     reader_deq <= 1'b0;
-                    if (reader_q != 16'hBEEF) begin
+                    if (reader_q != 16'h1000) begin
                         // error
                         error_o <= 1'b1;
                     end else begin

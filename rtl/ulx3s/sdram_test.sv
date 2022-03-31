@@ -43,7 +43,7 @@ module sdram_test #(
 
     sdram_ctrl #(
         .CLK_FREQ_MHZ(SDRAM_CLK_FREQ_MHZ),      // sdram_clk freq in MHZ
-`ifdef SYNTHESIZE        
+`ifdef SYNTHESIS        
         .POWERUP_DELAY(200),    // power up delay in us
 `else
         .POWERUP_DELAY(0),      // power up delay in us

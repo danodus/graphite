@@ -94,7 +94,7 @@ module async_sdram_ctrl #(
 
     sdram_ctrl #(
         .CLK_FREQ_MHZ(SDRAM_CLK_FREQ_MHZ),     // sdram_clk freq in MHZ
-`ifdef SYNTHESIZE
+`ifdef SYNTHESIS
         .POWERUP_DELAY(200),    // power up delay in us
 `else
         .POWERUP_DELAY(0),    // power up delay in us
@@ -195,11 +195,7 @@ module async_sdram_ctrl #(
             WAIT_SC_READ: begin
                 if (sc_ack) begin
                     sc_acc <= 1'b0;
-`ifdef SYNTHESIZE                    
                     data_d   <= sc_dat_out;
-`else
-                    data_d   <= sc_adr_out[15:0];
-`endif
                     state    <= WRITE_FIFO_DATA;
                 end
             end
