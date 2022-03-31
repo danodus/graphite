@@ -16,6 +16,9 @@ SRC := ../reciprocal.sv \
 		generated_pll.v \
 		sdram_ctrl.v \
 		sdram_test.sv \
+		async_fifo.sv \
+		async_sdram_ctrl.sv \
+		async_sdram_test.sv \
 		top.sv
 
 all: top.bin

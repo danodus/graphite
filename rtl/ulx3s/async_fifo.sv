@@ -72,12 +72,20 @@ module async_fifo #(
     always_ff @(posedge writer_clk) begin
         d_gray_head  <= gray_head;
         dd_gray_head <= d_gray_head;
+        if (writer_rst_i) begin
+            d_gray_head <= 0;
+            dd_gray_head <= 0;
+        end
     end
 
     // write pointer (writer_clk -> reader_clk)
     always_ff @(posedge reader_clk) begin
         d_gray_tail  <= gray_tail;
         dd_gray_tail <= d_gray_tail;
+        if (reader_rst_i) begin
+            d_gray_tail <= 0;
+            dd_gray_tail <= 0;
+        end
     end
 
     always_ff @(posedge reader_clk) begin
@@ -87,6 +95,10 @@ module async_fifo #(
         end else begin
             reader_empty_o     <= (dd_gray_tail == to_gray(head));
             reader_alm_empty_o <= (dd_gray_tail == to_gray(head + 1)) || (dd_gray_tail == to_gray(head));
+        end
+        if (reader_rst_i) begin
+            reader_empty_o     <= 1'b1;
+            reader_alm_empty_o <= 1'b1;
         end
     end
 
@@ -98,6 +110,10 @@ module async_fifo #(
             writer_full_o     <= (dd_gray_head == to_gray(tail + 1));
             writer_alm_full_o <= (dd_gray_head == to_gray(tail + 2)) || (dd_gray_head == to_gray(tail + 1));
         end
+        if (writer_rst_i) begin
+            writer_full_o     <= 1'b0;
+            writer_alm_full_o <= 1'b0;
+        end
     end
 
     logic ram_we;
@@ -106,7 +122,7 @@ module async_fifo #(
         .W_A(ADDR_LEN),
         .W_D(DATA_WIDTH)
     ) ram (
-        .clk0(reader_clk), .addr0_i(head), .d0_i('h0), .we0_i(1'b0), .q0_o(reader_q_o), // read
+        .clk0(reader_clk), .addr0_i(head), .d0_i({DATA_WIDTH{1'b0}}), .we0_i(1'b0), .q0_o(reader_q_o), // read
         .clk1(writer_clk), .addr1_i(tail), .d1_i(writer_d_i), .we1_i(ram_we), .q1_o()   // write
     );
 

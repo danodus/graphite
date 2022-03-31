@@ -150,7 +150,7 @@ module top(
     logic error;
 
     assign vram_data_out = error ? 16'hFF00 : 16'hF0F0;
-
+/*
     sdram_test #(
         .SDRAM_CLK_FREQ_MHZ(52)
     ) sdram_test(
@@ -169,100 +169,30 @@ module top(
 
         .error_o(error)
     );
+*/
 
-/*
-
-    logic [40:0] writer_d;
-    logic writer_enq;
-    logic writer_full;
-
-    logic [15:0] reader_q;
-    logic reader_deq;
-    logic reader_empty;    
-
-    async_sdram_ctrl #(
+    async_sdram_test #(
         .SDRAM_CLK_FREQ_MHZ(52)
-    ) async_sdram_ctrl(
+    ) async_sdram_test(
+        .clk(clk_pix),
+        .reset_i(reset),
+
         // SDRAM interface
         .sdram_rst(reset),
         .sdram_clk(clk_sdram),
-        .ba_o(sdram_ba),
-        .a_o(sdram_a),
-        .cs_n_o(sdram_csn),
-        .ras_n_o(sdram_rasn),
-        .cas_n_o(sdram_casn),
-        .we_n_o(sdram_wen),
-        .dq_io(sdram_d),
-        .dqm_o(sdram_dqm),
-        .cke_o(sdram_cke),
+        .sdram_ba_o(sdram_ba),
+        .sdram_a_o(sdram_a),
+        .sdram_cs_n_o(sdram_csn),
+        .sdram_ras_n_o(sdram_rasn),
+        .sdram_cas_n_o(sdram_casn),
+        .sdram_we_n_o(sdram_wen),
+        .sdram_dq_io(sdram_d),
+        .sdram_dqm_o(sdram_dqm),
+        .sdram_cke_o(sdram_cke),
 
-        // Writer (input commands)
-        .writer_clk(clk_pix),
-        .writer_rst_i(reset),
-        .writer_d_i(writer_d),
-        .writer_enq_i(writer_enq),    // enqueue
-        .writer_full_o(writer_full),
-        .writer_alm_full_o(),
-
-        // Reader (output)
-        .reader_clk(clk_pix),
-        .reader_rst_i(reset),
-        .reader_q_o(reader_q),
-        .reader_deq_i(reader_deq),    // dequeue
-        .reader_empty_o(reader_empty),
-        .reader_alm_empty_o()
+        .error_o(error)
     );
 
-    enum {IDLE, WRITE0, READ0, READ1} state;
-
-    always_ff @(posedge clk_pix) begin
-        if (reset) begin
-            vram_data_out <= 16'hF555;
-            writer_enq <= 1'b0;
-            reader_deq <= 1'b0;
-            state <= IDLE;
-        end else begin
-            case (state)
-                IDLE: begin
-                    if (!writer_full) begin
-                        // write command
-                        writer_d <= {1'b1, 24'h0, 16'hBEEF};
-                        writer_enq <= 1'b1;
-                        state <= WRITE0;
-                    end
-                end
-                WRITE0: begin
-                    writer_enq = 1'b0;
-                    if (!writer_full) begin
-                        // read command
-                        writer_d <= {1'b0, 24'h0, 16'h0};
-                        writer_enq <= 1'b1;
-                        state <= READ0;
-                    end
-                end
-                READ0: begin
-                    writer_enq <= 1'b0;
-                    if (!reader_empty) begin
-                        reader_deq = 1'b1;
-                        state <= READ1;
-                    end
-                end
-
-                READ1: begin
-                    reader_deq <= 1'b0;
-                    if (reader_q != 16'hBEEF) begin
-                        // error - red
-                        vram_data_out <= 16'hFF00;
-                    end else begin
-                        // success - green
-                        vram_data_out <= 16'hF0F0;
-                    end
-                    state <= IDLE;
-                end
-            endcase
-        end
-    end
-*/
 
 /*    
 
