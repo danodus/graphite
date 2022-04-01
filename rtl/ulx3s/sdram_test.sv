@@ -21,13 +21,8 @@ module sdram_test #(
     logic [15:0] sdram_dq_in;
     logic        sdram_dq_oe;
 
-    always_ff @(posedge sdram_clk) begin
-        sdram_dq_in <= sdram_dq_io;
-    end
-
+    assign    sdram_dq_in = sdram_dq_io;
     assign sdram_dq_io = sdram_dq_oe ? sdram_dq_out : 16'hZZZZ;
-
-
 
     // Internal interface
     logic sc_idle;
@@ -49,7 +44,7 @@ module sdram_test #(
         .POWERUP_DELAY(0),      // power up delay in us
 `endif
         .REFRESH_MS(64),        // time to wait between refreshes in ms (0 = disable)
-        .BURST_LENGTH(8),       // 0, 1, 2, 4 or 8 (0 = full page)
+        .BURST_LENGTH(1),       // 0, 1, 2, 4 or 8 (0 = full page)
         .ROW_WIDTH(13),         // Row width
         .COL_WIDTH(9),          // Column width
         .BA_WIDTH(2),           // Ba width
@@ -87,35 +82,57 @@ module sdram_test #(
     );
 
 
-    enum { WAIT_IDLE, WRITE, WAIT_WRITE, READ, WAIT_READ } state;
-
-    logic [31:0] adr = 32'd0;
-    logic [15:0] expected_dat = 16'h0;
-    logic [15:0] read_dat;
+    enum { WAIT_IDLE, WRITE0, WRITE1, WRITE2, WRITE3, WRITE4, WRITE5, READ, WAIT_READ } state;
 
     always_ff @(posedge sdram_clk) begin
         case (state)
             WAIT_IDLE: begin
-                if (sc_idle) state <= WRITE;
+                if (sc_idle) state <= WRITE0;
             end
-            WRITE: begin
-                sc_adr_in <= adr;
-                sc_dat_in <= expected_dat;
+            WRITE0: begin
+                sc_adr_in <= 32'h1000;
+                sc_dat_in <= 16'h1000;
                 sc_acc <= 1'b1;
                 sc_we <= 1'b1;
-                state <= WAIT_WRITE;
+                state <= WRITE1;
             end
 
-            WAIT_WRITE: begin
+            WRITE1: begin
                 if (sc_ack) begin
-                    sc_acc <= 1'b0;
                     sc_we <= 1'b0;
-                    state <= READ;
+                    sc_acc <= 1'b0;
+                    state <= WRITE2;
                 end
             end
 
+            WRITE2: begin
+                if (sc_idle)
+                    state <= WRITE3;
+            end
+
+            WRITE3: begin
+                sc_adr_in <= 32'h2000;
+                sc_dat_in <= 16'h2000;
+                sc_acc <= 1'b1;
+                sc_we <= 1'b1;
+                state <= WRITE4;
+            end
+
+            WRITE4: begin
+                if (sc_ack) begin
+                    sc_we <= 1'b0;
+                    sc_acc <= 1'b0;
+                    state <= WRITE5;
+                end
+            end
+
+            WRITE5: begin
+                if (sc_idle)
+                    state <= READ;
+            end
+
             READ: begin
-                sc_adr_in <= adr;
+                sc_adr_in <= 32'h1000;
                 sc_acc <= 1'b1;
                 state <= WAIT_READ;
             end
@@ -123,10 +140,7 @@ module sdram_test #(
             WAIT_READ: begin
                 if (sc_ack) begin
                     sc_acc <= 1'b0;
-                    read_dat <= sc_dat_out;
-                    error_o <= sc_dat_out != expected_dat;
-                    expected_dat <= 16'(expected_dat + 2);
-                    adr <= {7'd0, 25'(adr + 2)};
+                    error_o <= sc_dat_out != 16'h1000;
                     state <= WAIT_IDLE;
                 end
             end
@@ -134,7 +148,6 @@ module sdram_test #(
 
         if (sdram_rst) begin
             error_o <= 1'b0;
-            read_dat <= 16'h0;
             sc_acc <= 1'b0;
             state <= WAIT_IDLE;
         end

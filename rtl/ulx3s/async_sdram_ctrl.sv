@@ -100,7 +100,7 @@ module async_sdram_ctrl #(
         .POWERUP_DELAY(0),    // power up delay in us
 `endif
         .REFRESH_MS(64),        // time to wait between refreshes in ms (0 = disable)
-        .BURST_LENGTH(8),       // 0, 1, 2, 4 or 8 (0 = full page)
+        .BURST_LENGTH(1),       // 0, 1, 2, 4 or 8 (0 = full page)
         .ROW_WIDTH(13),         // Row width
         .COL_WIDTH(9),          // Column width
         .BA_WIDTH(2),           // Ba width
@@ -136,10 +136,7 @@ module async_sdram_ctrl #(
         .we_i(sc_we)
     );
 
-    always_ff @(posedge sdram_clk) begin
-        dq_i <= dq_io;
-    end
-
+    assign dq_i  = dq_io;
     assign dq_io = dq_oe ? dq_o : 16'hZZZZ;
 
     enum { WAIT_CMD, PROCESS_CMD, WRITE, WAIT_SC_WRITE, READ, WAIT_SC_READ, WRITE_FIFO_DATA } state;
