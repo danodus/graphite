@@ -150,7 +150,7 @@ module top(
     logic error;
 
     assign vram_data_out = error ? 16'hFF00 : 16'hF0F0;
-    
+/*    
     sdram_test #(
         .SDRAM_CLK_FREQ_MHZ(52)
     ) sdram_test(
@@ -169,8 +169,8 @@ module top(
 
         .error_o(error)
     );
+*/
 
-/*
     async_sdram_test #(
         .SDRAM_CLK_FREQ_MHZ(52)
     ) async_sdram_test(
@@ -192,7 +192,6 @@ module top(
 
         .error_o(error)
     );
-*/
 
 /*    
 

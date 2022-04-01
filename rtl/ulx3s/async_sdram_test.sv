@@ -66,7 +66,7 @@ module async_sdram_test #(
         .reader_alm_empty_o()
     );
 
-    enum {IDLE, WRITE0, WRITE1, READ0, READ1} state;
+    enum {IDLE, WRITE0, WRITE0B, WRITE0C, WRITE1, WRITE1B, READ0, READ0B, READ1} state;
 
     always_ff @(posedge clk) begin
         if (reset_i) begin
@@ -86,32 +86,50 @@ module async_sdram_test #(
                 end
                 WRITE0: begin
                     writer_enq = 1'b0;
+                    state <= WRITE0B;
+                end
+
+                WRITE0B: begin
                     if (!writer_full) begin
                         // write command
                         writer_d <= {1'b1, 24'h2000, 16'h2000};
                         writer_enq <= 1'b1;
-                        state <= WRITE1;
+                        state <= WRITE0C;
                     end
                 end
-                WRITE1: begin
+                WRITE0C: begin
                     writer_enq = 1'b0;
+                    state <= WRITE1;
+                end
+
+                WRITE1: begin
                     if (!writer_full) begin
                         // read command
                         writer_d <= {1'b0, 24'h1000, 16'h0};
                         writer_enq <= 1'b1;
-                        state <= READ0;
+                        state <= WRITE1B;
                     end
                 end
+
+                WRITE1B: begin
+                    writer_enq <= 1'b0;
+                    state <= READ0;
+                end
+
                 READ0: begin
                     writer_enq <= 1'b0;
                     if (!reader_empty) begin
                         reader_deq = 1'b1;
-                        state <= READ1;
+                        state <= READ0B;
                     end
                 end
 
+                READ0B: begin
+                    reader_deq = 1'b0;
+                    state <= READ1;
+                end
+
                 READ1: begin
-                    reader_deq <= 1'b0;
                     if (reader_q != 16'h1000) begin
                         // error
                         error_o <= 1'b1;
