@@ -617,15 +617,20 @@ int main(int argc, char** argv, char** env) {
             }
         }
 
-        if (top->vram_sel_o && top->vram_addr_o < 2 * FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT) {
-            // assert(top->vram_addr_o < FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT);
+        top->vram_ack_i = 0;
 
-            if (top->vram_wr_o) {
-                vram_data[top->vram_addr_o] = top->vram_data_out_o;
+        if (top->vram_sel_o) {
+            if(top->vram_addr_o < 2 * FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT) {
+                // assert(top->vram_addr_o < FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT);
+
+                if (top->vram_wr_o) {
+                    vram_data[top->vram_addr_o] = top->vram_data_out_o;
+                }
+                top->vram_data_in_i = vram_data[top->vram_addr_o];
+            } else {
+                top->vram_data_in_i = 0xFF00;
             }
-            top->vram_data_in_i = vram_data[top->vram_addr_o];
-        } else {
-            top->vram_data_in_i = 0xFF00;
+            top->vram_ack_i = 1;
         }
 
         if (last_show_depth_value != show_depth_value) {

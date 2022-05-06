@@ -33,6 +33,10 @@ module async_sdram_test #(
     logic reader_deq;
     logic reader_empty;    
 
+    logic [127:0] reader_burst_q;
+    logic reader_burst_deq;
+    logic reader_burst_empty;    
+
     async_sdram_ctrl #(
         .SDRAM_CLK_FREQ_MHZ(SDRAM_CLK_FREQ_MHZ)
     ) async_sdram_ctrl(
@@ -57,13 +61,20 @@ module async_sdram_test #(
         .writer_full_o(writer_full),
         .writer_alm_full_o(),
 
-        // Reader (output)
+        // Reader
         .reader_clk(clk),
         .reader_rst_i(reset_i),
+
+        // Reader (output)
         .reader_q_o(reader_q),
         .reader_deq_i(reader_deq),    // dequeue
         .reader_empty_o(reader_empty),
-        .reader_alm_empty_o()
+        .reader_alm_empty_o(),
+
+        .reader_burst_q_o(reader_burst_q),
+        .reader_burst_deq_i(reader_burst_deq),    // dequeue
+        .reader_burst_empty_o(reader_burst_empty),
+        .reader_burst_alm_empty_o()
     );
 
     enum {IDLE, WRITE0, WRITE0B, WRITE0C, WRITE1, WRITE1B, READ0, READ0B, READ1} state;

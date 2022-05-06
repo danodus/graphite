@@ -44,7 +44,7 @@ module sdram_test #(
         .POWERUP_DELAY(0),      // power up delay in us
 `endif
         .REFRESH_MS(64),        // time to wait between refreshes in ms (0 = disable)
-        .BURST_LENGTH(1),       // 0, 1, 2, 4 or 8 (0 = full page)
+        .BURST_LENGTH(8),       // 0, 1, 2, 4 or 8 (0 = full page)
         .ROW_WIDTH(13),         // Row width
         .COL_WIDTH(9),          // Column width
         .BA_WIDTH(2),           // Ba width
@@ -82,12 +82,12 @@ module sdram_test #(
     );
 
 
-    enum { WAIT_IDLE, WRITE0, WRITE1, WRITE2, WRITE3, WRITE4, WRITE5, READ, WAIT_READ } state;
+    enum { WAIT_IDLE, WRITE0, WRITE1, WRITE2, WRITE3, WRITE4, WRITE5, READ, READ2, WAIT_READ } state;
 
     always_ff @(posedge sdram_clk) begin
         case (state)
             WAIT_IDLE: begin
-                if (sc_idle) state <= WRITE0;
+                if (sc_idle) state <= READ;
             end
             WRITE0: begin
                 sc_adr_in <= 32'h1000;
@@ -132,9 +132,16 @@ module sdram_test #(
             end
 
             READ: begin
-                sc_adr_in <= 32'h1000;
                 sc_acc <= 1'b1;
-                state <= WAIT_READ;
+                //if (sc_ack) begin
+                //    sc_adr_in <= sc_adr_in + 16;
+                //    state <= READ2;
+                //end
+            end
+
+            READ2: begin
+                if (sc_ack)
+                    sc_adr_in <= sc_adr_in + 16;
             end
 
             WAIT_READ: begin
@@ -147,6 +154,7 @@ module sdram_test #(
         endcase;
 
         if (sdram_rst) begin
+            sc_adr_in <= 32'h0000;
             error_o <= 1'b0;
             sc_acc <= 1'b0;
             state <= WAIT_IDLE;

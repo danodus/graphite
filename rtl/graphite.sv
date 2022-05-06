@@ -30,7 +30,7 @@ module graphite #(
     input  wire logic [31:0]                 cmd_axis_tdata_i,
 
     // VRAM write
-    //input  wire logic                        vram_ack_i,
+    input  wire logic                        vram_ack_i,
     output      logic                        vram_sel_o,
     output      logic                        vram_wr_o,
     output      logic  [3:0]                 vram_mask_o,
@@ -357,22 +357,26 @@ module graphite #(
             end
 
             CLEAR_FB: begin
-                if (vram_addr_o < FB_WIDTH * FB_HEIGHT - 1) begin
-                    vram_addr_o <= vram_addr_o + 1;
-                end else begin
-                    vram_sel_o <= 1'b0;
-                    vram_wr_o  <= 1'b0;
-                    state      <= WAIT_COMMAND;
+                if (vram_ack_i) begin
+                    if (vram_addr_o < FB_WIDTH * FB_HEIGHT - 1) begin
+                        vram_addr_o <= vram_addr_o + 1;
+                    end else begin
+                        vram_sel_o <= 1'b0;
+                        vram_wr_o  <= 1'b0;
+                        state      <= WAIT_COMMAND;
+                    end
                 end
             end
 
             CLEAR_DEPTH: begin
-                if (vram_addr_o < 2 * FB_WIDTH * FB_HEIGHT - 1) begin
-                    vram_addr_o <= vram_addr_o + 1;
-                end else begin
-                    vram_sel_o <= 1'b0;
-                    vram_wr_o  <= 1'b0;
-                    state      <= WAIT_COMMAND;
+                if (vram_ack_i) begin
+                    if (vram_addr_o < 2 * FB_WIDTH * FB_HEIGHT - 1) begin
+                        vram_addr_o <= vram_addr_o + 1;
+                    end else begin
+                        vram_sel_o <= 1'b0;
+                        vram_wr_o  <= 1'b0;
+                        state      <= WAIT_COMMAND;
+                    end
                 end
             end
 
@@ -677,7 +681,8 @@ module graphite #(
 
             DRAW_TRIANGLE36: begin
                 // wait memory access
-                state <= DRAW_TRIANGLE37;
+                if (vram_ack_i)
+                    state <= DRAW_TRIANGLE37;
             end
 
             DRAW_TRIANGLE37: begin
@@ -703,7 +708,8 @@ module graphite #(
 
             DRAW_TRIANGLE40: begin
                 // wait memory access
-                state <= DRAW_TRIANGLE41;
+                if (vram_ack_i)
+                    state <= DRAW_TRIANGLE41;
             end
 
             DRAW_TRIANGLE41: begin
@@ -779,7 +785,8 @@ module graphite #(
 
             DRAW_TRIANGLE52: begin
                 // wait memory access
-                state <= DRAW_TRIANGLE53;
+                if (vram_ack_i)
+                    state <= DRAW_TRIANGLE53;
             end
 
             DRAW_TRIANGLE53: begin
@@ -822,7 +829,8 @@ module graphite #(
 
             DRAW_TRIANGLE58: begin
                 // wait memory access
-                state <= DRAW_TRIANGLE59;
+                if (vram_ack_i)
+                    state <= DRAW_TRIANGLE59;
             end
 
             DRAW_TRIANGLE59: begin

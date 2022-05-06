@@ -12,7 +12,7 @@ module top(
     input wire [31:0]                  cmd_axis_tdata_i,
 
     // VRAM write
-    //input  wire logic                        vram_ack_i,
+    input  wire logic                        vram_ack_i,
     output      logic                        vram_sel_o,
     output      logic                        vram_wr_o,
     output      logic  [3:0]                 vram_mask_o,
@@ -38,6 +38,7 @@ module top(
         .cmd_axis_tvalid_i(cmd_axis_tvalid_i),
         .cmd_axis_tready_o(cmd_axis_tready_o),
         .cmd_axis_tdata_i(cmd_axis_tdata_i),
+        .vram_ack_i(vram_ack_i),
         .vram_sel_o(vram_sel_o),
         .vram_wr_o(vram_wr_o),
         .vram_mask_o(vram_mask_o),
