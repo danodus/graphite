@@ -4,6 +4,8 @@
 
 `include "../graphite.svh"
 
+`define TEST_PATTERN
+
 module top(
     input  wire logic       clk_25mhz,
 
@@ -98,6 +100,7 @@ module top(
     );
 
     logic [15:0] vram_data, stream_data;
+    logic stream_err_underflow;
 
     framebuffer #(
         .SDRAM_CLK_FREQ_MHZ(52),
@@ -130,9 +133,11 @@ module top(
         .data_out_o(vram_data),
 
         // Framebuffer output data stream
+        .stream_start_frame_i(frame),
         .stream_base_address_i(24'h0),
         .stream_ena_i(de),
-        .stream_data_o(stream_data)
+        .stream_data_o(stream_data),
+        .stream_err_underflow_o(stream_err_underflow)
     );
 
     assign sdram_clk = clk_sdram;
@@ -157,10 +162,16 @@ module top(
 
         if (de) begin
             col_counter <= col_counter + 1;
-            if (line_counter < 12'(FB_WIDTH) && col_counter < 12'(FB_HEIGHT)) begin
-                vga_r <= stream_data[11:8];
-                vga_g <= stream_data[7:4];
-                vga_b <= stream_data[3:0];
+            if (col_counter < 12'(FB_WIDTH) && line_counter < 12'(FB_HEIGHT)) begin
+                if (stream_err_underflow) begin
+                    vga_r <= 4'hF;
+                    vga_g <= 4'h0;
+                    vga_b <= 4'h0;
+                end else begin
+                    vga_r <= stream_data[11:8];
+                    vga_g <= stream_data[7:4];
+                    vga_b <= stream_data[3:0];
+                end
             end else begin
                 vga_r <= 4'h2;
                 vga_g <= 4'h2;
@@ -185,6 +196,7 @@ module top(
     logic [31:0] vram_address;
     logic [15:0] vram_data_out;
 
+`ifdef TEST_PATTERN
     //
     // test pattern
     //
@@ -204,11 +216,11 @@ module top(
         .vram_data_out_o(vram_data_out)
     );
 
+`else
+
     //
     // graphite
     //
-
-    /*
 
     logic        graphite_tvalid;
     logic        graphite_tready;
@@ -305,6 +317,6 @@ module top(
         end
     end
 
-    */
+`endif
 
 endmodule

@@ -6,6 +6,7 @@ module framebuffer_tb;
 
     logic reset;
     logic clk = 0;
+    logic clk2 = 0;
     logic error;
 
     // SDRAM interface
@@ -25,6 +26,7 @@ module framebuffer_tb;
     logic [15:0] data_in, data_out;
     logic stream_ena;
     logic [15:0] stream_data;
+    logic stream_err_underflow;
 
     framebuffer #(
         .SDRAM_CLK_FREQ_MHZ(100),
@@ -36,7 +38,7 @@ module framebuffer_tb;
 
         // SDRAM interface
         .sdram_rst(reset),
-        .sdram_clk(clk),
+        .sdram_clk(clk2),
         .sdram_ba_o(sdram_ba),
         .sdram_a_o(sdram_a),
         .sdram_cs_n_o(sdram_cs_n),
@@ -57,9 +59,11 @@ module framebuffer_tb;
         .data_out_o(data_out),
 
         // Framebuffer output data stream
+        .stream_start_frame_i(1'd0),
         .stream_base_address_i(24'd0),
         .stream_ena_i(stream_ena),
-        .stream_data_o(stream_data)
+        .stream_data_o(stream_data),
+        .stream_err_underflow_o(stream_err_underflow)
     );
 
     initial begin
@@ -70,7 +74,7 @@ module framebuffer_tb;
         mask = 4'hF;
         stream_ena = 1'b0;
         reset = 1'b1;
-        #3
+        #6
         reset = 1'b0;
         #200
         // Write BEEF at address 0
@@ -78,19 +82,23 @@ module framebuffer_tb;
         address = 24'd0;
         wr = 1'b1;
         sel = 1'b1;
-        #2
+        #4
         while (!ack)
             #2
         sel = 1'b0;
         wr = 1'b0;
-        #100
+        #200
         // Enable stream
         stream_ena = 1'b1;
-        #1000
+        #200
+        stream_ena = 1'b0;
+        #200
+        stream_ena = 1'b1;
+        #2000
         $finish;
     end
 
-    always #1 clk = !clk;
-
+    always #2 clk = !clk;
+    always #1 clk2 = !clk2;
 
 endmodule
