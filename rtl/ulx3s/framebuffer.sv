@@ -57,6 +57,7 @@ module framebuffer #(
             state              <= IDLE;
             ack_o              <= 1'b0;
             writer_enq         <= 1'b0;
+            writer_burst_enq   <= 1'b0;
             reader_deq         <= 1'b0;
             burst_word_counter <= 3'd0;
             current_burst_data <= 128'd0;
@@ -95,10 +96,10 @@ module framebuffer #(
                             state              <= READ_BURST0;
                         end else begin
                             // always read data
-                            if (!writer_full) begin
+                            if (!writer_burst_full) begin
                                 // read burst command
-                                writer_d <= {1'b0, burst_address, 16'h1};
-                                writer_enq <= 1'b1;
+                                writer_burst_d <= {8'd0, burst_address};
+                                writer_burst_enq <= 1'b1;
 
                                 burst_address  <= burst_address + 8;
                                 if (burst_address >= stream_base_address_i + FB_SIZE)
@@ -111,7 +112,7 @@ module framebuffer #(
                 end
 
                 WAIT_BURST: begin
-                    writer_enq <= 1'b0;
+                    writer_burst_enq <= 1'b0;
                     state <= IDLE;
                 end
 
@@ -181,6 +182,10 @@ module framebuffer #(
     logic writer_enq;
     logic writer_full;
 
+    logic [31:0] writer_burst_d;
+    logic writer_burst_enq;
+    logic writer_burst_full;
+
     logic [15:0] reader_q;
     logic reader_deq;
     logic reader_empty;    
@@ -208,10 +213,16 @@ module framebuffer #(
         // Writer (input commands)
         .writer_clk(clk_pix),
         .writer_rst_i(reset_i),
+
         .writer_d_i(writer_d),
         .writer_enq_i(writer_enq),    // enqueue
         .writer_full_o(writer_full),
         .writer_alm_full_o(),
+
+        .writer_burst_d_i(writer_burst_d),
+        .writer_burst_enq_i(writer_burst_enq),    // enqueue
+        .writer_burst_full_o(writer_burst_full),
+        .writer_burst_alm_full_o(),
 
         // Reader
         .reader_clk(clk_pix),

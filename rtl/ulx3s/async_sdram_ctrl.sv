@@ -21,10 +21,16 @@ module async_sdram_ctrl #(
     // Writer (input commands)
     input  wire logic                  writer_clk,
     input  wire logic                  writer_rst_i,
+
     input  wire logic [40:0]           writer_d_i,
     input  wire logic                  writer_enq_i,    // enqueue
     output      logic                  writer_full_o,
     output      logic                  writer_alm_full_o,
+
+    input  wire logic [31:0]           writer_burst_d_i,
+    input  wire logic                  writer_burst_enq_i,    // enqueue
+    output      logic                  writer_burst_full_o,
+    output      logic                  writer_burst_alm_full_o,
 
     // Reader (output)
     input  wire logic                  reader_clk,
@@ -58,6 +64,10 @@ module async_sdram_ctrl #(
     logic cmd_reader_deq;
     logic cmd_reader_empty, cmd_reader_alm_empty;
 
+    logic [31:0] cmd_burst_reader_q;
+    logic cmd_burst_reader_deq;
+    logic cmd_burst_reader_empty, cmd_burst_reader_alm_empty;
+
     logic [15:0] data_d;  // data to enqueue in the output FIFO
     logic data_enq;
     logic data_full;
@@ -85,6 +95,25 @@ module async_sdram_ctrl #(
         .writer_enq_i(writer_enq_i),
         .writer_full_o(writer_full_o),
         .writer_alm_full_o(writer_alm_full_o)
+    );
+
+    async_fifo #(
+        .ADDR_LEN(10),
+        .DATA_WIDTH(32)
+    ) cmd_burst_async_fifo(
+        .reader_clk(sdram_clk),
+        .reader_rst_i(sdram_rst),
+        .reader_q_o(cmd_burst_reader_q),
+        .reader_deq_i(cmd_burst_reader_deq),
+        .reader_empty_o(cmd_burst_reader_empty),
+        .reader_alm_empty_o(cmd_burst_reader_alm_empty),
+
+        .writer_clk(writer_clk),
+        .writer_rst_i(writer_rst_i),
+        .writer_d_i(writer_burst_d_i),
+        .writer_enq_i(writer_burst_enq_i),
+        .writer_full_o(writer_burst_full_o),
+        .writer_alm_full_o(writer_burst_alm_full_o)
     );
 
     async_fifo #(
@@ -133,7 +162,7 @@ module async_sdram_ctrl #(
         .POWERUP_DELAY(0),    // power up delay in us
 `endif
         .REFRESH_MS(64),        // time to wait between refreshes in ms (0 = disable)
-        .BURST_LENGTH(1),       // 0, 1, 2, 4 or 8 (0 = full page)
+        .BURST_LENGTH(8),       // 0, 1, 2, 4 or 8 (0 = full page)
         .ROW_WIDTH(13),         // Row width
         .COL_WIDTH(9),          // Column width
         .BA_WIDTH(2),           // Ba width
@@ -172,7 +201,7 @@ module async_sdram_ctrl #(
     assign dq_i  = dq_io;
     assign dq_io = dq_oe ? dq_o : 16'hZZZZ;
 
-    enum { WAIT_CMD, PROCESS_CMD, WRITE, WAIT_SC_WRITE, READ, READ_SINGLE, WRITE_FIFO_DATA,
+    enum { WAIT_CMD, WAIT_CMD_0, WAIT_CMD_1, PROCESS_CMD, PROCESS_BURST_CMD, WRITE, WAIT_SC_WRITE, READ, READ_SINGLE, READ_BURST, WRITE_FIFO_DATA,
     READ_BURST_0, READ_BURST_1, READ_BURST_2, READ_BURST_3, READ_BURST_4, READ_BURST_5, READ_BURST_6, READ_BURST_7,
     WRITE_FIFO_DATA_BURST } state;
 
@@ -187,6 +216,9 @@ module async_sdram_ctrl #(
                 if (!cmd_reader_empty) begin
                     cmd_reader_deq <= 1'b1;
                     state          <= PROCESS_CMD;
+                end else if (!cmd_burst_reader_empty) begin
+                    cmd_burst_reader_deq <= 1'b1;
+                    state          <= PROCESS_BURST_CMD;
                 end
             end
 
@@ -197,10 +229,16 @@ module async_sdram_ctrl #(
                 state      <= cmd_reader_q[40] ? WRITE : READ;
             end
 
+            PROCESS_BURST_CMD: begin
+                cmd_burst_reader_deq <= 1'b0;
+                addr       <= cmd_burst_reader_q;
+                state      <= READ_BURST;
+            end
+
             WRITE: begin
                 // Write a single word to SDRAM
                 if (sc_idle) begin
-                    sc_adr_in <= addr;
+                    sc_adr_in <= {7'b0, addr, 1'b0};
                     sc_dat_in <= param;
                     sc_acc    <= 1'b1;
                     sc_we     <= 1'b1;
@@ -218,10 +256,19 @@ module async_sdram_ctrl #(
 
             READ: begin
                 if (sc_idle) begin
-                    sc_adr_in <= addr;
+                    sc_adr_in <= {7'b0, addr, 1'b0};
                     sc_acc    <= 1'b1;
                     sc_we     <= 1'b0;
-                    state     <= param[0] ? READ_BURST_0 : READ_SINGLE;
+                    state     <= READ_SINGLE;
+                end
+            end
+
+            READ_BURST: begin
+                if (sc_idle) begin
+                    sc_adr_in <= {7'b0, addr, 1'b0};
+                    sc_acc    <= 1'b1;
+                    sc_we     <= 1'b0;
+                    state     <= READ_BURST_0;
                 end
             end
 
@@ -244,6 +291,7 @@ module async_sdram_ctrl #(
                 // Wait for ack for the first word.
                 // The remaining 7 words will follow at each clock cycles as long as we do not cross the 512 words page.
                 if (sc_ack) begin
+                    sc_acc                <= 1'b0;
                     data_burst_d[127:112] <= sc_dat_out;
                     state                 <= READ_BURST_1;
                 end
@@ -281,7 +329,6 @@ module async_sdram_ctrl #(
 
             READ_BURST_7: begin
                 data_burst_d[15:0]  <= sc_dat_out;
-                sc_acc              <= 1'b0;
                 state               <= WRITE_FIFO_DATA_BURST;
             end
 
@@ -298,6 +345,7 @@ module async_sdram_ctrl #(
             data_enq       <= 1'b0;
             data_burst_enq <= 1'b0;
             cmd_reader_deq <= 1'b0;
+            cmd_burst_reader_deq <= 1'b0;
             sc_acc         <= 1'b0;
         end
     end

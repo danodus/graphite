@@ -88,12 +88,29 @@ module framebuffer_tb;
         sel = 1'b0;
         wr = 1'b0;
         #200
+        
+        // Read at address 0
+        address = 24'd0;
+        sel = 1'b1;
+        #4
+        while (!ack)
+            #2
+        sel = 1'b0;
+        #200
+
         // Enable stream
         stream_ena = 1'b1;
         #200
-        stream_ena = 1'b0;
+
+        // Read at address 0
+        address = 24'd0;
+        sel = 1'b1;
+        #4
+        while (!ack)
+            #2
+        sel = 1'b0;
         #200
-        stream_ena = 1'b1;
+
         #2000
         $finish;
     end
