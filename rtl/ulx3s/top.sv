@@ -213,7 +213,9 @@ module top(
         .vram_wr_o(vram_wr),
         .vram_mask_o(vram_mask),
         .vram_addr_o(vram_address),
-        .vram_data_out_o(vram_data_out)
+        .vram_data_out_o(vram_data_out),
+
+        .fill_i(btn[1])
     );
 
 `else

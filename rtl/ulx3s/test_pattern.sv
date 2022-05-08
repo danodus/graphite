@@ -15,7 +15,9 @@ module test_pattern #(
     output      logic                        vram_wr_o,
     output      logic  [3:0]                 vram_mask_o,
     output      logic [31:0]                 vram_addr_o,
-    output      logic [15:0]                 vram_data_out_o
+    output      logic [15:0]                 vram_data_out_o,
+
+    input  wire logic                        fill_i
 );
 
     enum { FILL0, FILL1, HOLD } state;
@@ -23,9 +25,10 @@ module test_pattern #(
     logic [31:0] addr;
     logic [11:0] line_counter, col_counter;
 
-    logic [15:0] color;
+    logic [11:0] bg_color;
+    logic [11:0] color;
 
-    assign color = line_counter == 0 || line_counter == (FB_HEIGHT - 1) || col_counter == 0 || col_counter == (FB_WIDTH - 1) ? 16'hFFFF : 16'hF00F;
+    assign color = line_counter == 0 || line_counter == (FB_HEIGHT - 1) || col_counter == 0 || col_counter == (FB_WIDTH - 1) ? 12'hFFF : bg_color;
 
     always_ff @(posedge clk) begin
         if (reset_i) begin
@@ -33,10 +36,11 @@ module test_pattern #(
             state           <= FILL0;
             vram_sel_o      <= 1'b0;
             vram_mask_o     <= 4'hF;
-            vram_wr_o  <= 1'b0;
+            vram_wr_o       <= 1'b0;
             vram_data_out_o <= 16'h0;
-            line_counter <= 12'd0;
-            col_counter <= 12'd0;
+            line_counter    <= 12'd0;
+            col_counter     <= 12'd0;
+            bg_color        <= 12'h00F;
         end else begin
             case (state)
                 FILL0: begin
@@ -53,7 +57,7 @@ module test_pattern #(
                         vram_sel_o      <= 1'b1;
                         vram_wr_o       <= 1'b1;
                         vram_addr_o     <= addr;
-                        vram_data_out_o <= color;
+                        vram_data_out_o <= {4'hF, color};
                         state <= FILL1;
                     end
                 end
@@ -68,7 +72,10 @@ module test_pattern #(
                 end
 
                 HOLD: begin
-                    state <= HOLD;
+                    if (fill_i) begin
+                        bg_color <= bg_color + 12'h00F;
+                        state    <= FILL0;
+                    end
                 end
             endcase
         end
