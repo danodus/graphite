@@ -54,7 +54,7 @@ module top_tb;
     logic stream_err_underflow;
 
     framebuffer #(
-        .SDRAM_CLK_FREQ_MHZ(25),
+        .SDRAM_CLK_FREQ_MHZ(52),
         .FB_WIDTH(FB_WIDTH),
         .FB_HEIGHT(FB_HEIGHT)
     ) framebuffer(
@@ -98,7 +98,7 @@ module top_tb;
     logic [11:0] line_counter, col_counter;
 
     logic inside_fb;
-    assign inside_fb = col_counter < 12'(FB_WIDTH) && line_counter < 12'(FB_HEIGHT);
+    assign inside_fb = col_counter < 12'(FB_WIDTH) && line_counter <= 12'(FB_HEIGHT);
 
     always_ff @(posedge clk_pix) begin
         vga_hsync <= hsync;
@@ -165,8 +165,7 @@ module top_tb;
         .vram_addr_o(vram_address),
         .vram_data_out_o(vram_data_out),
 
-        .fill_i(fill),
-        .activity_o(activity)
+        .fill_i(fill)
     );
 
     initial begin
@@ -177,11 +176,11 @@ module top_tb;
         #6
         reset = 1'b0;
 
-        #3000000
+        #1500000
         $finish;
     end
 
     always #2 clk_pix = !clk_pix;
-    always #2 clk_sdram = !clk_sdram;
+    always #1 clk_sdram = !clk_sdram;
 
 endmodule

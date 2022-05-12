@@ -46,19 +46,22 @@ module framebuffer #(
 );
 
     localparam FB_SIZE = FB_WIDTH * FB_HEIGHT;
+    localparam PRELOAD_DELAY_COUNT = 16'd64;
 
     enum {
-        IDLE, WAIT_BURST, WRITE, READ0, READ1, READ2, READ_BURST0, READ_BURST1, PRELOAD0, PRELOAD1, PRELOAD2, PRELOAD3, PRELOAD4
+        IDLE, WAIT_BURST, WRITE, READ0, READ1, READ2, READ_BURST0, READ_BURST1, PRELOAD_DELAY, PRELOAD0, PRELOAD1, PRELOAD2, PRELOAD3, PRELOAD4
     } state;
 
     assign dbg_state_o = state;
     assign stream_preloading_o = req_burst_preload;
+    assign stream_data_o = current_burst_data[127:112];
 
     logic [2:0]     burst_word_counter;
     logic [127:0]   current_burst_data, new_burst_data;
     logic [23:0]    burst_address;
     logic           req_burst_preload;
     logic           req_burst_read;
+    logic [15:0]    preload_counter;
 
     always_ff @(posedge clk_pix) begin
 
@@ -68,6 +71,7 @@ module framebuffer #(
             writer_enq         <= 1'b0;
             writer_burst_enq   <= 1'b0;
             reader_deq         <= 1'b0;
+            reader_burst_deq   <= 1'b0;
             burst_word_counter <= 3'd0;
             current_burst_data <= 128'd0;
             new_burst_data     <= 128'd0;
@@ -75,10 +79,12 @@ module framebuffer #(
             req_burst_preload  <= 1'b0;
             req_burst_read     <= 1'b0;
             stream_err_underflow_o <= 1'b0;
+            reader_burst_q_addr <= 32'd0;
+
         end else begin
             if (stream_start_frame_i) begin
                 burst_address  <= stream_base_address_i;
-                burst_word_counter <= 3'd0;
+                burst_word_counter <= 3'd1;
                 req_burst_preload <= 1'b1;
             end else if (stream_ena_i) begin
                 if (burst_word_counter == 3'd0) begin
@@ -87,7 +93,6 @@ module framebuffer #(
                 end else begin
                     current_burst_data <= current_burst_data << 16;
                 end
-                stream_data_o <= current_burst_data[127:112];
                 burst_word_counter <= burst_word_counter + 3'd1;
             end
 
@@ -103,8 +108,9 @@ module framebuffer #(
                         // output data stream
                         if (req_burst_preload) begin
                             req_burst_preload  <= 1'b0;
-                            state              <= PRELOAD0;
-                        end else if (req_burst_read) begin
+                            preload_counter    <= PRELOAD_DELAY_COUNT;
+                            state              <= PRELOAD_DELAY;
+                        end else if (stream_ena_i && req_burst_read) begin
                             req_burst_read     <= 1'b0;
                             state              <= READ_BURST0;
                         end else begin
@@ -182,6 +188,12 @@ module framebuffer #(
                     state            <= IDLE;
                 end
 
+                PRELOAD_DELAY: begin
+                    preload_counter = preload_counter - 1;
+                    if (preload_counter == 0)
+                        state <= PRELOAD0;
+                end
+
                 PRELOAD0: begin
                     // clear
                     if (!reader_burst_empty) begin
@@ -199,11 +211,13 @@ module framebuffer #(
 
                 PRELOAD2: begin
                     // request burst
-                    writer_burst_d <= {8'd0, burst_address};
-                    writer_burst_enq <= 1'b1;
-                    if (burst_address < stream_base_address_i + FB_SIZE - 8)
-                        burst_address <= burst_address + 8;
-                    state <= PRELOAD3;
+                    if (!writer_burst_full) begin
+                        writer_burst_d <= {8'd0, burst_address};
+                        writer_burst_enq <= 1'b1;
+                        if (burst_address < stream_base_address_i + FB_SIZE - 8)
+                            burst_address <= burst_address + 8;
+                        state <= PRELOAD3;
+                    end
                 end
 
                 PRELOAD3: begin
@@ -219,7 +233,7 @@ module framebuffer #(
                     reader_burst_q_addr <= reader_burst_q[159:128];
                     new_burst_data      <= reader_burst_q[127:0];
                     current_burst_data  <= reader_burst_q[127:0];
-                    stream_data_o       <= reader_burst_q[127:0];
+                    req_burst_read      <= 1'b1;
                     state               <= IDLE;
                 end
 

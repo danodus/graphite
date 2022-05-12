@@ -105,7 +105,7 @@ module top(
     logic stream_preloading;
     logic stream_err_underflow;
 
-    assign led[5:4] = 3'd0;
+    assign led[7:4] = 3'd0;
 
     framebuffer #(
         .SDRAM_CLK_FREQ_MHZ(52),
@@ -154,7 +154,7 @@ module top(
     logic [11:0] line_counter, col_counter;
 
     logic inside_fb;
-    assign inside_fb = col_counter < 12'(FB_WIDTH) && line_counter < 12'(FB_HEIGHT);
+    assign inside_fb = col_counter < 12'(FB_WIDTH) && line_counter <= 12'(FB_HEIGHT);
 
     always_ff @(posedge clk_pix) begin
         vga_hsync <= hsync;
@@ -226,9 +226,7 @@ module top(
         .vram_addr_o(vram_address),
         .vram_data_out_o(vram_data_out),
 
-        .fill_i(btn[1]),
-        .activity_o(),
-        .state_o(led[7:6])
+        .fill_i(btn[1])
     );
 
 `else
