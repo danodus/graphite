@@ -18,9 +18,9 @@
 #include <iostream>
 #include <limits>
 
-#define FB_WIDTH 256
-#define FB_HEIGHT 256
-#define WINDOW_SCALE 2
+#define FB_WIDTH 640
+#define FB_HEIGHT 480
+#define WINDOW_SCALE 1
 #define TEXTURE_WIDTH 32
 #define TEXTURE_HEIGHT 32
 
@@ -538,7 +538,11 @@ int main(int argc, char** argv, char** env) {
                         b[2] = (cmd.param >> 8) & 0xFF;
                         b[3] = cmd.param & 0xFF;
                         write(g_serial_fd, &b, 4);
-                        usleep((7 + 25) * 100);
+                        if (cmd.opcode == OP_CLEAR) {
+                            usleep((7 + 25) * 4000);
+                        } else {
+                            usleep((7 + 25) * 400);
+                        }
                     } else {
                         printf("    send_command(b'\\x%02x\\x%02x\\x%02x\\x%02x')", cmd.opcode, cmd.param >> 16,
                                (cmd.param >> 8) & 0xFF, cmd.param & 0xFF);

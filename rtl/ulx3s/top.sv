@@ -4,7 +4,7 @@
 
 `include "../graphite.svh"
 
-`define TEST_PATTERN
+//`define TEST_PATTERN
 
 module top(
     input  wire logic       clk_25mhz,
@@ -31,8 +31,8 @@ module top(
     inout       logic [15:0] sdram_d
 );
 
-    localparam FB_WIDTH = 256;
-    localparam FB_HEIGHT = 256;
+    localparam FB_WIDTH = 640;
+    localparam FB_HEIGHT = 480;
 
     logic clk_pix, clk_pix_x5, clk_sdram;
     logic clk_locked;

@@ -20,15 +20,13 @@ module test_pattern #(
     input  wire logic                        fill_i
 );
 
-    enum { FILL0, FILL1, FILL2, HOLD } state;
+    enum { FILL0, FILL1, HOLD } state;
 
     logic [31:0] addr;
     logic [11:0] line_counter, col_counter;
 
     logic [11:0] bg_color;
     logic [11:0] color;
-
-    logic [15:0] counter;
 
     assign color = (col_counter == line_counter) || line_counter == 0 || line_counter == (FB_HEIGHT - 1) || col_counter == 0 || col_counter == (FB_WIDTH - 1) ? 12'hFFF : {4'hF, addr[0] ? bg_color : 12'h000};
     
@@ -69,15 +67,8 @@ module test_pattern #(
                         vram_sel_o <= 1'b0;
                         vram_wr_o  <= 1'b0;
                         addr       <= addr + 32'd1;
-                        state      <= FILL2;
-                        counter <= 16'h00FF;
+                        state      <= FILL0;
                     end
-                end
-
-                FILL2: begin
-                    counter <= counter - 1;
-                    if (counter == 0)
-                        state <= FILL0;
                 end
 
                 HOLD: begin

@@ -41,7 +41,7 @@ module graphite #(
     output      logic                        swap_o
     );
 
-    enum { WAIT_COMMAND, PROCESS_COMMAND, CLEAR_FB, CLEAR_DEPTH,
+    enum { WAIT_COMMAND, PROCESS_COMMAND, CLEAR_FB0, CLEAR_FB1, CLEAR_DEPTH0, CLEAR_DEPTH1, WRITE_TEX,
            DRAW_TRIANGLE00, DRAW_TRIANGLE01, DRAW_TRIANGLE02, DRAW_TRIANGLE03, DRAW_TRIANGLE04, DRAW_TRIANGLE05,
            DRAW_TRIANGLE06, DRAW_TRIANGLE07, DRAW_TRIANGLE08, DRAW_TRIANGLE09, DRAW_TRIANGLE10, DRAW_TRIANGLE11,
            DRAW_TRIANGLE12, DRAW_TRIANGLE13, DRAW_TRIANGLE14, DRAW_TRIANGLE15, DRAW_TRIANGLE16, DRAW_TRIANGLE17,
@@ -106,8 +106,6 @@ module graphite #(
         case (state)
             WAIT_COMMAND: begin
                 swap_o <= 1'b0;
-                vram_sel_o <= 1'b0;
-                vram_wr_o  <= 1'b0;
                 if (cmd_axis_tvalid_i)
                     state <= PROCESS_COMMAND;
             end
@@ -312,7 +310,7 @@ module graphite #(
                         vram_mask_o     <= 4'hF;
                         vram_sel_o      <= 1'b1;
                         vram_wr_o       <= 1'b1;
-                        state           <= (cmd_axis_tdata_i[16] == 0) ? CLEAR_FB : CLEAR_DEPTH;
+                        state           <= (cmd_axis_tdata_i[16] == 0) ? CLEAR_FB0 : CLEAR_DEPTH0;
                     end
                     OP_DRAW: begin
                         // Draw triangle
@@ -348,38 +346,60 @@ module graphite #(
                         vram_mask_o <= 4'hF;
                         vram_sel_o <= 1'b1;
                         vram_wr_o  <= 1'b1;
-                        texture_write_address <= texture_write_address + 1;
-                        state <= WAIT_COMMAND;
+                        state <= WRITE_TEX;
                     end
                     default:
                         state <= WAIT_COMMAND;
                 endcase
             end
 
-            CLEAR_FB: begin
+            CLEAR_FB0: begin
                 if (vram_ack_i) begin
-                    if (vram_addr_o < FB_WIDTH * FB_HEIGHT - 1) begin
-                        vram_addr_o <= vram_addr_o + 1;
-                    end else begin
-                        vram_sel_o <= 1'b0;
-                        vram_wr_o  <= 1'b0;
-                        state      <= WAIT_COMMAND;
-                    end
+                    vram_sel_o <= 1'b0;
+                    vram_wr_o  <= 1'b0;
+                    state <= CLEAR_FB1;
                 end
             end
 
-            CLEAR_DEPTH: begin
-                if (vram_ack_i) begin
-                    if (vram_addr_o < 2 * FB_WIDTH * FB_HEIGHT - 1) begin
-                        vram_addr_o <= vram_addr_o + 1;
-                    end else begin
-                        vram_sel_o <= 1'b0;
-                        vram_wr_o  <= 1'b0;
-                        state      <= WAIT_COMMAND;
-                    end
+            CLEAR_FB1: begin
+                if (vram_addr_o < FB_WIDTH * FB_HEIGHT - 1) begin
+                    vram_addr_o <= vram_addr_o + 1;
+                    vram_sel_o  <= 1'b1;
+                    vram_wr_o   <= 1'b1;
+                    state       <= CLEAR_FB0;
+                end else begin
+                    state       <= WAIT_COMMAND;
                 end
             end
 
+            CLEAR_DEPTH0: begin
+                if (vram_ack_i) begin
+                    vram_sel_o <= 1'b0;
+                    vram_wr_o  <= 1'b0;
+                    state  <= CLEAR_DEPTH1;
+                end
+            end
+
+            CLEAR_DEPTH1: begin
+                if (vram_addr_o < 2 * FB_WIDTH * FB_HEIGHT - 1) begin
+                    vram_addr_o <= vram_addr_o + 1;
+                    vram_sel_o  <= 1'b1;
+                    vram_wr_o   <= 1'b1;
+                    state       <= CLEAR_DEPTH0;
+                end else begin
+                    state      <= WAIT_COMMAND;
+                end
+            end
+
+            WRITE_TEX: begin
+                if (vram_ack_i) begin
+                    vram_sel_o <= 1'b0;
+                    vram_wr_o  <= 1'b0;
+                    texture_write_address <= texture_write_address + 1;
+                    state <= WAIT_COMMAND;
+                end
+            end
+            
             DRAW_TRIANGLE00: begin
                 min_x <= max(min_x, 0);
                 min_y <= max(min_y, 0);
@@ -861,6 +881,7 @@ module graphite #(
         if (reset_i) begin
             swap_o            <= 1'b0;
             vram_sel_o        <= 1'b0;
+            vram_wr_o         <= 1'b0;
             texture_address   <= 2 * FB_WIDTH * FB_HEIGHT;
             state             <= WAIT_COMMAND;
         end

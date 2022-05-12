@@ -200,7 +200,7 @@ module async_sdram_ctrl #(
     assign dq_i  = dq_io;
     assign dq_io = dq_oe ? dq_o : 16'hZZZZ;
 
-    enum { WAIT_CMD, WAIT_CMD_0, WAIT_CMD_1, PROCESS_CMD, PROCESS_BURST_CMD, WRITE, WAIT_SC_WRITE, READ, READ_SINGLE, READ_BURST, WRITE_FIFO_DATA,
+    enum { WAIT_CMD, WAIT_CMD_0, WAIT_CMD_1, PROCESS_CMD, PROCESS_BURST_CMD, WRITE, WAIT_SC_WRITE, WRITE_DELAY, READ, READ_SINGLE, READ_BURST, WRITE_FIFO_DATA,
     READ_BURST_0, READ_BURST_1, READ_BURST_2, READ_BURST_3, READ_BURST_4, READ_BURST_5, READ_BURST_6, READ_BURST_7,
     WRITE_FIFO_DATA_BURST } state;
 
@@ -249,8 +249,12 @@ module async_sdram_ctrl #(
                 if (sc_ack) begin
                     sc_acc   <= 1'b0;
                     sc_we    <= 1'b0;
-                    state    <= WAIT_CMD;
+                    state    <= WRITE_DELAY;
                 end
+            end
+
+            WRITE_DELAY: begin
+                    state <= WAIT_CMD;
             end
 
             READ: begin
@@ -349,6 +353,7 @@ module async_sdram_ctrl #(
             data_burst_enq <= 1'b0;
             cmd_reader_deq <= 1'b0;
             cmd_burst_reader_deq <= 1'b0;
+            sc_we          <= 1'b0;
             sc_acc         <= 1'b0;
         end
     end
