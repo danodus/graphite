@@ -49,7 +49,7 @@ module framebuffer #(
     localparam PRELOAD_DELAY_COUNT = 16'd64;
 
     enum {
-        IDLE, WAIT_BURST, WRITE, READ0, READ1, READ2, READ_BURST0, READ_BURST1, PRELOAD_DELAY, PRELOAD0, PRELOAD1, PRELOAD2, PRELOAD3, PRELOAD4
+        IDLE, WAIT_BURST, WRITE0, WRITE1, READ0, READ1, READ2, READ_BURST0, READ_BURST1, PRELOAD_DELAY, PRELOAD0, PRELOAD1, PRELOAD2, PRELOAD3, PRELOAD4
     } state;
 
     assign dbg_state_o = state;
@@ -99,11 +99,10 @@ module framebuffer #(
             case (state)
                 IDLE: begin
                     ack_o      <= 1'b0;
-                    writer_enq <= 1'b0;
                     stream_err_underflow_o <= 1'b0;
 
                     if (sel_i) begin
-                            state <= wr_i ? WRITE : READ0;
+                            state <= wr_i ? WRITE0 : READ0;
                     end else begin
                         // output data stream
                         if (req_burst_preload) begin
@@ -134,14 +133,19 @@ module framebuffer #(
                     state <= IDLE;
                 end
 
-                WRITE: begin
+                WRITE0: begin
                     if (!writer_full) begin
                         // write command
                         writer_d   <= {1'b1, address_i, data_in_i};
                         writer_enq <= 1'b1;
                         ack_o      <= 1'b1;
-                        state      <= IDLE;
+                        state      <= WRITE1;
                     end
+                end
+
+                WRITE1: begin
+                        writer_enq <= 1'b0;
+                        state      <= IDLE;
                 end
 
                 READ0: begin
