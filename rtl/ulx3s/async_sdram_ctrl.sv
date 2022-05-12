@@ -43,11 +43,10 @@ module async_sdram_ctrl #(
     output      logic                  reader_alm_empty_o,
 
     // Reader burst (output)
-    output      logic [127:0]          reader_burst_q_o,
+    output      logic [159:0]          reader_burst_q_o,
     input  wire logic                  reader_burst_deq_i,    // dequeue
     output      logic                  reader_burst_empty_o,
     output      logic                  reader_burst_alm_empty_o
-
 );
     logic [15:0] dq_o;
     logic [15:0] dq_i;
@@ -73,7 +72,7 @@ module async_sdram_ctrl #(
     logic data_full;
     logic data_alm_full;
 
-    logic [127:0] data_burst_d;  // data to enqueue in the burst output FIFO
+    logic [159:0] data_burst_d;  // data to enqueue in the burst output FIFO
     logic data_burst_enq;
     logic data_burst_full;
     logic data_burst_alm_full;
@@ -98,7 +97,7 @@ module async_sdram_ctrl #(
     );
 
     async_fifo #(
-        .ADDR_LEN(10),
+        .ADDR_LEN(2),
         .DATA_WIDTH(32)
     ) cmd_burst_async_fifo(
         .reader_clk(sdram_clk),
@@ -136,8 +135,8 @@ module async_sdram_ctrl #(
     );
 
     async_fifo #(
-        .ADDR_LEN(10),
-        .DATA_WIDTH(128)
+        .ADDR_LEN(6),
+        .DATA_WIDTH(160)
     ) data_burst_async_fifo(
         .reader_clk(reader_clk),
         .reader_rst_i(reader_rst_i),
@@ -216,7 +215,7 @@ module async_sdram_ctrl #(
                 if (!cmd_reader_empty) begin
                     cmd_reader_deq <= 1'b1;
                     state          <= PROCESS_CMD;
-                end else if (!cmd_burst_reader_empty) begin
+                end else if (!cmd_burst_reader_empty && !data_burst_alm_full) begin
                     cmd_burst_reader_deq <= 1'b1;
                     state          <= PROCESS_BURST_CMD;
                 end
@@ -334,6 +333,8 @@ module async_sdram_ctrl #(
 
             WRITE_FIFO_DATA_BURST: begin
                 if (!data_burst_full) begin
+                    //data_burst_d[127:0]   <= (addr == 0) ? 128'hFFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF : 128'hF00F_F00F_F00F_F00F_F00F_F00F_F00F_F00F;
+                    data_burst_d[159:128] <= {8'b0, addr};
                     data_burst_enq <= 1'b1;
                     state          <= WAIT_CMD;
                 end

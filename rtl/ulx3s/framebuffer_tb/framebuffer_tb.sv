@@ -27,6 +27,7 @@ module framebuffer_tb;
     logic stream_ena;
     logic [15:0] stream_data;
     logic stream_err_underflow;
+    logic stream_start_frame;
 
     framebuffer #(
         .SDRAM_CLK_FREQ_MHZ(100),
@@ -59,10 +60,11 @@ module framebuffer_tb;
         .data_out_o(data_out),
 
         // Framebuffer output data stream
-        .stream_start_frame_i(1'd0),
+        .stream_start_frame_i(stream_start_frame),
         .stream_base_address_i(24'd0),
         .stream_ena_i(stream_ena),
         .stream_data_o(stream_data),
+        .stream_preloading_o(),
         .stream_err_underflow_o(stream_err_underflow)
     );
 
@@ -73,10 +75,12 @@ module framebuffer_tb;
         wr = 1'b0;
         mask = 4'hF;
         stream_ena = 1'b0;
+        stream_start_frame = 1'b0;
         reset = 1'b1;
         #6
         reset = 1'b0;
         #200
+        /*
         // Write BEEF at address 0
         data_in = 16'hBEEF;
         address = 24'd0;
@@ -97,12 +101,19 @@ module framebuffer_tb;
             #2
         sel = 1'b0;
         #200
+        */
+
+        stream_start_frame = 1'b1;
+        #4
+        stream_start_frame = 1'b0;
+        #500
 
         // Enable stream
         stream_ena = 1'b1;
         #200
 
         // Read at address 0
+        /*
         address = 24'd0;
         sel = 1'b1;
         #4
@@ -110,6 +121,7 @@ module framebuffer_tb;
             #2
         sel = 1'b0;
         #200
+        */
 
         #2000
         $finish;

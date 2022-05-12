@@ -13,6 +13,7 @@ module top(
     output      logic [3:0] gpdi_dn,
 
     input  wire logic [6:0] btn,
+    output      logic [7:0] led,
 
     input  wire logic       ftdi_txd,
     output      logic       ftdi_rxd,
@@ -30,8 +31,8 @@ module top(
     inout       logic [15:0] sdram_d
 );
 
-    localparam FB_WIDTH = 128;
-    localparam FB_HEIGHT = 128;
+    localparam FB_WIDTH = 256;
+    localparam FB_HEIGHT = 256;
 
     logic clk_pix, clk_pix_x5, clk_sdram;
     logic clk_locked;
@@ -44,6 +45,7 @@ module top(
     // reset
     assign auto_reset = auto_reset_counter < 5'b11111;
     assign reset = auto_reset || !btn[0];
+
 
 	always @(posedge clk_pix) begin
         if (clk_locked)
@@ -100,7 +102,10 @@ module top(
     );
 
     logic [15:0] vram_data, stream_data;
+    logic stream_preloading;
     logic stream_err_underflow;
+
+    assign led[5:4] = 3'd0;
 
     framebuffer #(
         .SDRAM_CLK_FREQ_MHZ(52),
@@ -135,9 +140,11 @@ module top(
         // Framebuffer output data stream
         .stream_start_frame_i(frame),
         .stream_base_address_i(24'h0),
-        .stream_ena_i(de),
+        .stream_ena_i(de && inside_fb),
         .stream_data_o(stream_data),
-        .stream_err_underflow_o(stream_err_underflow)
+        .stream_preloading_o(stream_preloading),
+        .stream_err_underflow_o(stream_err_underflow),
+        .dbg_state_o(led[3:0])
     );
 
     assign sdram_clk = clk_sdram;
@@ -145,6 +152,10 @@ module top(
     // VGA output
     
     logic [11:0] line_counter, col_counter;
+
+    logic inside_fb;
+    assign inside_fb = col_counter < 12'(FB_WIDTH) && line_counter < 12'(FB_HEIGHT);
+
     always_ff @(posedge clk_pix) begin
         vga_hsync <= hsync;
         vga_vsync <= vsync;
@@ -162,7 +173,7 @@ module top(
 
         if (de) begin
             col_counter <= col_counter + 1;
-            if (col_counter < 12'(FB_WIDTH) && line_counter < 12'(FB_HEIGHT)) begin
+            if (inside_fb) begin
                 if (stream_err_underflow) begin
                     vga_r <= 4'hF;
                     vga_g <= 4'h0;
@@ -215,7 +226,9 @@ module top(
         .vram_addr_o(vram_address),
         .vram_data_out_o(vram_data_out),
 
-        .fill_i(btn[1])
+        .fill_i(btn[1]),
+        .activity_o(),
+        .state_o(led[7:6])
     );
 
 `else

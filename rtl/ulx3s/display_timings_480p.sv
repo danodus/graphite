@@ -6,17 +6,17 @@
 `timescale 1ns / 1ps
 
 module display_timings_480p #(
-    CORDW=16,   // signed coordinate width (bits)
-    H_RES=640,  // horizontal resolution (pixels)
-    V_RES=480,  // vertical resolution (lines)
-    H_FP=16,    // horizontal front porch
-    H_SYNC=96,  // horizontal sync
-    H_BP=48,    // horizontal back porch
-    V_FP=10,    // vertical front porch
-    V_SYNC=2,   // vertical sync
-    V_BP=33,    // vertical back porch
-    H_POL=0,    // horizontal sync polarity (0:neg, 1:pos)
-    V_POL=0     // vertical sync polarity (0:neg, 1:pos)
+    parameter CORDW=16,   // signed coordinate width (bits)
+    parameter H_RES=640,  // horizontal resolution (pixels)
+    parameter V_RES=480,  // vertical resolution (lines)
+    parameter H_FP=16,    // horizontal front porch
+    parameter H_SYNC=96,  // horizontal sync
+    parameter H_BP=48,    // horizontal back porch
+    parameter V_FP=10,    // vertical front porch
+    parameter V_SYNC=2,   // vertical sync
+    parameter V_BP=33,    // vertical back porch
+    parameter H_POL=0,    // horizontal sync polarity (0:neg, 1:pos)
+    parameter V_POL=0     // vertical sync polarity (0:neg, 1:pos)
     ) (
     input  wire logic clk_pix,  // pixel clock
     input  wire logic rst,      // reset

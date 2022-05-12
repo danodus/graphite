@@ -18,8 +18,9 @@
 #include <iostream>
 #include <limits>
 
-#define FB_WIDTH 128
-#define FB_HEIGHT 128
+#define FB_WIDTH 256
+#define FB_HEIGHT 256
+#define WINDOW_SCALE 2
 #define TEXTURE_WIDTH 32
 #define TEXTURE_HEIGHT 32
 
@@ -424,7 +425,7 @@ int main(int argc, char** argv, char** env) {
     SDL_Init(SDL_INIT_VIDEO);
 
     SDL_Window* window = SDL_CreateWindow("Graphite", SDL_WINDOWPOS_UNDEFINED_DISPLAY(1), SDL_WINDOWPOS_UNDEFINED,
-                                          FB_WIDTH * 4, FB_HEIGHT * 4, 0);
+                                          FB_WIDTH * WINDOW_SCALE, FB_HEIGHT * WINDOW_SCALE, 0);
 
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
@@ -620,7 +621,7 @@ int main(int argc, char** argv, char** env) {
         top->vram_ack_i = 0;
 
         if (top->vram_sel_o) {
-            if(top->vram_addr_o < 2 * FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT) {
+            if (top->vram_addr_o < 2 * FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT) {
                 // assert(top->vram_addr_o < FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT);
 
                 if (top->vram_wr_o) {
