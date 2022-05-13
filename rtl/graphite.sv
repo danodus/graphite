@@ -695,9 +695,9 @@ module graphite #(
                 z <= t0 + t1 + dsp_mul_z;
                 vram_addr_o <= FB_WIDTH * FB_HEIGHT + 32'(y) * FB_WIDTH + 32'(x);
                 if (is_depth_test) begin
-                vram_wr_o <= 1'b0;
-                vram_sel_o <= 1'b1;
-                state <= DRAW_TRIANGLE36;
+                    vram_wr_o <= 1'b0;
+                    vram_sel_o <= 1'b1;
+                    state <= DRAW_TRIANGLE36;
                 end else begin
                     state <= DRAW_TRIANGLE39;
                 end
@@ -705,18 +705,19 @@ module graphite #(
 
             DRAW_TRIANGLE36: begin
                 // wait memory access
-                if (vram_ack_i)
+                if (vram_ack_i) begin
+                    vram_sel_o <= 1'b0;
                     state <= DRAW_TRIANGLE37;
+                end
             end
 
             DRAW_TRIANGLE37: begin
-                vram_sel_o <= 1'b0;
                 depth <= 16'(vram_data_in_i);
                 state <= DRAW_TRIANGLE38;
             end
 
             DRAW_TRIANGLE38: begin
-                if (!is_depth_test || (16'(z) > depth)) begin
+                if (16'(z) > depth) begin
                     state <= DRAW_TRIANGLE39;
                 end else begin
                     state <= DRAW_TRIANGLE59;
@@ -732,12 +733,13 @@ module graphite #(
 
             DRAW_TRIANGLE40: begin
                 // wait memory access
-                if (vram_ack_i)
+                if (vram_ack_i) begin
+                    vram_sel_o <= 1'b0;
                     state <= DRAW_TRIANGLE41;
+                end
             end
 
             DRAW_TRIANGLE41: begin
-                vram_sel_o <= 1'b0;
                 reciprocal_x <= z << 12;
                 state <= DRAW_TRIANGLE42;
             end
@@ -809,12 +811,13 @@ module graphite #(
 
             DRAW_TRIANGLE52: begin
                 // wait memory access
-                if (vram_ack_i)
+                if (vram_ack_i) begin
                     state <= DRAW_TRIANGLE53;
+                    vram_sel_o <= 1'b0;
+                end
             end
 
             DRAW_TRIANGLE53: begin
-                vram_sel_o <= 1'b0;
                 sample <= vram_data_in_i;
                 state <= DRAW_TRIANGLE54;
             end
@@ -853,14 +856,14 @@ module graphite #(
 
             DRAW_TRIANGLE58: begin
                 // wait memory access
-                if (vram_ack_i)
+                if (vram_ack_i) begin
                     state <= DRAW_TRIANGLE59;
+                    vram_sel_o <= 1'b0;
+                    vram_wr_o  <= 1'b0;
+                end
             end
 
             DRAW_TRIANGLE59: begin
-                vram_sel_o <= 1'b0;
-                vram_wr_o  <= 1'b0;
-
                 if (x < max_x) begin
                     x <= x + 1;
                     raster_addr <= raster_addr + 1;
