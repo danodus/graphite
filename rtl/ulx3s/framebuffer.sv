@@ -101,28 +101,28 @@ module framebuffer #(
                     ack_o      <= 1'b0;
                     stream_err_underflow_o <= 1'b0;
 
-                    if (sel_i) begin
-                            state <= wr_i ? WRITE0 : READ0;
+                    // output data stream
+                    if (req_burst_preload) begin
+                        req_burst_preload  <= 1'b0;
+                        preload_counter    <= PRELOAD_DELAY_COUNT;
+                        state              <= PRELOAD_DELAY;
+                    end else if (stream_ena_i && req_burst_read) begin
+                        req_burst_read     <= 1'b0;
+                        state              <= READ_BURST0;
                     end else begin
-                        // output data stream
-                        if (req_burst_preload) begin
-                            req_burst_preload  <= 1'b0;
-                            preload_counter    <= PRELOAD_DELAY_COUNT;
-                            state              <= PRELOAD_DELAY;
-                        end else if (stream_ena_i && req_burst_read) begin
-                            req_burst_read     <= 1'b0;
-                            state              <= READ_BURST0;
+                        // always read data
+                        if (!writer_burst_full) begin
+                            // read burst command
+                            writer_burst_d <= {8'd0, burst_address};
+                            writer_burst_enq <= 1'b1;
+
+                            if (burst_address < stream_base_address_i + FB_SIZE - 8)
+                                burst_address <= burst_address + 8;
+
+                            state <= WAIT_BURST;
                         end else begin
-                            // always read data
-                            if (!writer_burst_full) begin
-                                // read burst command
-                                writer_burst_d <= {8'd0, burst_address};
-                                writer_burst_enq <= 1'b1;
-
-                                if (burst_address < stream_base_address_i + FB_SIZE - 8)
-                                    burst_address <= burst_address + 8;
-
-                                state <= WAIT_BURST;
+                            if (sel_i && !writer_full && !reader_burst_alm_empty) begin
+                                state <= wr_i ? WRITE0 : READ0;
                             end
                         end
                     end
@@ -265,7 +265,7 @@ module framebuffer #(
     logic [31:0] reader_burst_q_addr; // debug only
 
     logic reader_burst_deq;
-    logic reader_burst_empty;
+    logic reader_burst_empty, reader_burst_alm_empty;
 
     async_sdram_ctrl #(
         .SDRAM_CLK_FREQ_MHZ(SDRAM_CLK_FREQ_MHZ)
@@ -311,7 +311,7 @@ module framebuffer #(
         .reader_burst_q_o(reader_burst_q),
         .reader_burst_deq_i(reader_burst_deq),    // dequeue
         .reader_burst_empty_o(reader_burst_empty),
-        .reader_burst_alm_empty_o()
+        .reader_burst_alm_empty_o(reader_burst_alm_empty)
     );
 
 endmodule

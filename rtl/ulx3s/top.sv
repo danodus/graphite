@@ -108,7 +108,7 @@ module top(
     assign led[7:4] = 3'd0;
 
     framebuffer #(
-        .SDRAM_CLK_FREQ_MHZ(52),
+        .SDRAM_CLK_FREQ_MHZ(78),
         .FB_WIDTH(FB_WIDTH),
         .FB_HEIGHT(FB_HEIGHT)
     ) framebuffer(
@@ -226,7 +226,8 @@ module top(
         .vram_addr_o(vram_address),
         .vram_data_out_o(vram_data_out),
 
-        .fill_i(btn[1])
+        .fill_i(btn[1]),
+        .fill_square_i(btn[2])
     );
 
 `else
