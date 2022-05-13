@@ -694,9 +694,13 @@ module graphite #(
             DRAW_TRIANGLE35: begin
                 z <= t0 + t1 + dsp_mul_z;
                 vram_addr_o <= FB_WIDTH * FB_HEIGHT + 32'(y) * FB_WIDTH + 32'(x);
+                if (is_depth_test) begin
                 vram_wr_o <= 1'b0;
                 vram_sel_o <= 1'b1;
                 state <= DRAW_TRIANGLE36;
+                end else begin
+                    state <= DRAW_TRIANGLE39;
+                end
             end
 
             DRAW_TRIANGLE36: begin
