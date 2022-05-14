@@ -53,18 +53,19 @@ face_t faces[] = {
     {{5, 7, 0}, {1, 0, 2}, {1, 0, 2}},
     {{5, 0, 3}, {1, 2, 3}, {1, 2, 3}}};
 
+static model_t g_model;
+static triangle_t g_triangles_to_raster[sizeof(faces) / sizeof(face_t)];
+
 model_t* load_cube() {
-    model_t* model = (model_t*)malloc(sizeof(model_t));
+    g_model.mesh.nb_faces = sizeof(faces) / sizeof(face_t);
+    g_model.mesh.nb_vertices = sizeof(vertices) / sizeof(vec3d);
+    g_model.mesh.nb_texcoords = sizeof(texcoords) / sizeof(vec2d);
+    g_model.mesh.nb_colors = sizeof(colors) / sizeof(vec3d);
+    g_model.mesh.faces = faces;
+    g_model.mesh.vertices = vertices;
+    g_model.mesh.texcoords = texcoords;
+    g_model.mesh.colors = colors;
+    g_model.triangles_to_raster = g_triangles_to_raster;
 
-    model->mesh.nb_faces = sizeof(faces) / sizeof(face_t);
-    model->mesh.nb_vertices = sizeof(vertices) / sizeof(vec3d);
-    model->mesh.nb_texcoords = sizeof(texcoords) / sizeof(vec2d);
-    model->mesh.nb_colors = sizeof(colors) / sizeof(vec3d);
-    model->mesh.faces = faces;
-    model->mesh.vertices = vertices;
-    model->mesh.texcoords = texcoords;
-    model->mesh.colors = colors;
-    model->triangles_to_raster = (triangle_t*)malloc(sizeof(triangle_t) * model->mesh.nb_faces);
-
-    return model;
+    return &g_model;
 }
