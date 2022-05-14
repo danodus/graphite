@@ -49,7 +49,7 @@ module framebuffer #(
     localparam PRELOAD_DELAY_COUNT = 16'd64;
 
     enum {
-        IDLE, WAIT_BURST, WRITE0, WRITE1, READ0, READ1, READ2, READ3, READ_BURST0, READ_BURST1, PRELOAD_DELAY, PRELOAD0, PRELOAD1, PRELOAD2, PRELOAD3, PRELOAD4
+        IDLE, WAIT_BURST, WRITE0, WRITE1, READ0, READ1, READ2, READ3, READ4, READ_BURST0, READ_BURST1, PRELOAD_DELAY, PRELOAD0, PRELOAD1, PRELOAD2, PRELOAD3, PRELOAD4
     } state;
 
     assign dbg_state_o = state;
@@ -62,6 +62,7 @@ module framebuffer #(
     logic           req_burst_preload;
     logic           req_burst_read;
     logic [15:0]    preload_counter;
+    logic           read_pending;
 
     always_ff @(posedge clk_pix) begin
 
@@ -80,6 +81,7 @@ module framebuffer #(
             req_burst_read     <= 1'b0;
             stream_err_underflow_o <= 1'b0;
             reader_burst_q_addr <= 32'd0;
+            read_pending       <= 1'b0;
 
         end else begin
             if (stream_start_frame_i) begin
@@ -120,7 +122,12 @@ module framebuffer #(
 
                             state <= WAIT_BURST;
                         end else begin
-                            if (sel_i && !writer_full && !reader_burst_alm_empty) begin
+                            if (read_pending) begin
+                                if (!reader_empty) begin
+                                    read_pending <= 1'b0;
+                                    state <= READ2;
+                                end
+                            end else if (sel_i && !writer_full && !reader_burst_alm_empty) begin
                                 state <= wr_i ? WRITE0 : READ0;
                             end
                         end
@@ -159,21 +166,26 @@ module framebuffer #(
 
                 READ1: begin
                     writer_enq <= 1'b0;
-                    // if a value is available, return it
-                    if (!reader_empty) begin
-                        reader_deq <= 1'b1;
-                        state      <= READ2;
-                    end
+                    read_pending <= 1'b1;
+                    state <= IDLE;
                 end
 
                 READ2: begin
-                    reader_deq <= 1'b0;
-                    data_out_o <= reader_q;
-                    ack_o      <= 1'b1;
-                    state      <= READ3;
+                    // if a value is available, return it
+                    if (!reader_empty) begin
+                        reader_deq <= 1'b1;
+                        state      <= READ3;
+                    end
                 end
 
                 READ3: begin
+                    reader_deq <= 1'b0;
+                    data_out_o <= reader_q;
+                    ack_o      <= 1'b1;
+                    state      <= READ4;
+                end
+
+                READ4: begin
                     ack_o      <= 1'b0;
                     state      <= IDLE;
                 end
