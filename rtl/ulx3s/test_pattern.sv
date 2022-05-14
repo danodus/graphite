@@ -118,7 +118,7 @@ module test_pattern #(
                     if (vram_ack_i) begin
                         vram_sel_o <= 1'b0;
                         vram_wr_o  <= 1'b0;
-                        state      <= FILL_SQUARE0;
+                        state      <= FILL_SQUARE4;
                     end                    
                 end
 
