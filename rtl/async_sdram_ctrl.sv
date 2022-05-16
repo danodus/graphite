@@ -43,7 +43,7 @@ module async_sdram_ctrl #(
     output      logic                  reader_alm_empty_o,
 
     // Reader burst (output)
-    output      logic [159:0]          reader_burst_q_o,
+    output      logic [127:0]          reader_burst_q_o,
     input  wire logic                  reader_burst_deq_i,    // dequeue
     output      logic                  reader_burst_empty_o,
     output      logic                  reader_burst_alm_empty_o
@@ -72,7 +72,7 @@ module async_sdram_ctrl #(
     logic data_full;
     logic data_alm_full;
 
-    logic [159:0] data_burst_d;  // data to enqueue in the burst output FIFO
+    logic [127:0] data_burst_d;  // data to enqueue in the burst output FIFO
     logic data_burst_enq;
     logic data_burst_full;
     logic data_burst_alm_full;
@@ -136,7 +136,7 @@ module async_sdram_ctrl #(
 
     async_fifo #(
         .ADDR_LEN(6),
-        .DATA_WIDTH(160)
+        .DATA_WIDTH(128)
     ) data_burst_async_fifo(
         .reader_clk(reader_clk),
         .reader_rst_i(reader_rst_i),
@@ -338,9 +338,8 @@ module async_sdram_ctrl #(
             WRITE_FIFO_DATA_BURST: begin
                 if (!data_burst_full) begin
 `ifndef SYNTHESIS                    
-                    data_burst_d[127:0]   <= (addr == 0 || addr == 128) ? 128'hF111_F222_F333_F444_F555_F666_F777_F888 : 128'hF00F_F00F_F00F_F00F_F00F_F00F_F00F_F00F;
+                    data_burst_d   <= (addr == 0 || addr == 128) ? 128'hF111_F222_F333_F444_F555_F666_F777_F888 : 128'hF00F_F00F_F00F_F00F_F00F_F00F_F00F_F00F;
 `endif                    
-                    data_burst_d[159:128] <= {8'b0, addr};
                     data_burst_enq <= 1'b1;
                     state          <= WAIT_CMD;
                 end

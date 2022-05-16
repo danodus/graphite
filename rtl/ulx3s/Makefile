@@ -15,10 +15,10 @@ SRC := ../reciprocal.sv \
 		ram.sv \
 		hdmi_encoder.v \
 		generated_pll.v \
-		sdram_ctrl.v \
-		async_fifo.sv \
-		async_sdram_ctrl.sv \
-		framebuffer.sv \
+		../sdram_ctrl.v \
+		../async_fifo.sv \
+		../async_sdram_ctrl.sv \
+		../framebuffer.sv \
 		test_pattern.sv \
 		top.sv
 

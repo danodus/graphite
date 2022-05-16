@@ -80,7 +80,6 @@ module framebuffer #(
             req_burst_preload  <= 1'b0;
             req_burst_read     <= 1'b0;
             stream_err_underflow_o <= 1'b0;
-            reader_burst_q_addr <= 32'd0;
             read_pending       <= 1'b0;
 
         end else begin
@@ -196,7 +195,7 @@ module framebuffer #(
                         state <= READ_BURST1;
                     end else begin
                         // Should not happen
-                        $display("Framebuffer stream underflow");
+                        //$display("Framebuffer stream underflow");
                         stream_err_underflow_o <= 1'b1;
                         state <= IDLE;
                     end
@@ -204,13 +203,12 @@ module framebuffer #(
 
                 READ_BURST1: begin
                     reader_burst_deq <= 1'b0;
-                    reader_burst_q_addr <= reader_burst_q[159:128];
                     new_burst_data <= reader_burst_q[127:0];
                     state            <= IDLE;
                 end
 
                 PRELOAD_DELAY: begin
-                    preload_counter = preload_counter - 1;
+                    preload_counter <= preload_counter - 1;
                     if (preload_counter == 0)
                         state <= PRELOAD0;
                 end
@@ -251,7 +249,6 @@ module framebuffer #(
 
                 PRELOAD4: begin
                     reader_burst_deq    <= 1'b0;
-                    reader_burst_q_addr <= reader_burst_q[159:128];
                     new_burst_data      <= reader_burst_q[127:0];
                     current_burst_data  <= reader_burst_q[127:0];
                     req_burst_read      <= 1'b1;
@@ -278,8 +275,7 @@ module framebuffer #(
     logic reader_deq;
     logic reader_empty;    
 
-    logic [159:0] reader_burst_q;
-    logic [31:0] reader_burst_q_addr; // debug only
+    logic [127:0] reader_burst_q;
 
     logic reader_burst_deq;
     logic reader_burst_empty, reader_burst_alm_empty;

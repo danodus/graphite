@@ -118,7 +118,7 @@ module async_fifo #(
 
     logic ram_we;
     assign ram_we = writer_enq_i && !writer_full_o;
-    bram2 #(
+    async_bram2 #(
         .W_A(ADDR_LEN),
         .W_D(DATA_WIDTH)
     ) ram (
@@ -129,7 +129,7 @@ module async_fifo #(
 endmodule
 
 // Dual-port BRAM
-module bram2 #(
+module async_bram2 #(
     parameter W_A = 10,
     parameter W_D = 32
 ) (
