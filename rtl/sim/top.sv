@@ -20,7 +20,8 @@ module top(
     input       logic [15:0]                 vram_data_in_i,
     output      logic [15:0]                 vram_data_out_o,
 
-    output      logic                        swap_o
+    output      logic                        swap_o,
+    output      logic [31:0]                 front_addr_o
     );
 
     logic        vram_sel;
@@ -45,7 +46,9 @@ module top(
         .vram_addr_o(vram_addr_o),
         .vram_data_in_i(vram_data_in_i),
         .vram_data_out_o(vram_data_out_o),
-        .swap_o(swap_o)
+        .vsync_i(1'b1),
+        .swap_o(swap_o),
+        .front_addr_o(front_addr_o)
     );
 
 endmodule

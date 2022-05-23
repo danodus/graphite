@@ -392,7 +392,7 @@ void send_command(const char* s) {
 }
 
 void write_texture() {
-    uint32_t tex_addr = 2 * FB_WIDTH * FB_HEIGHT;
+    uint32_t tex_addr = 3 * FB_WIDTH * FB_HEIGHT;
 
     Command c;
     c.opcode = OP_SET_TEX_ADDR;
@@ -429,7 +429,7 @@ int main(int argc, char** argv, char** env) {
 
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-    const size_t vram_size = 2 * FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT;
+    const size_t vram_size = 3 * FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT;
     uint16_t* vram_data = new uint16_t[vram_size];
     for (size_t i = 0; i < vram_size; ++i) vram_data[i] = 0x0000;
 
@@ -625,8 +625,7 @@ int main(int argc, char** argv, char** env) {
         top->vram_ack_i = 0;
 
         if (top->vram_sel_o) {
-            if (top->vram_addr_o < 2 * FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT) {
-                // assert(top->vram_addr_o < FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT);
+            if (top->vram_addr_o < 3 * FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT) {
 
                 if (top->vram_wr_o) {
                     vram_data[top->vram_addr_o] = top->vram_data_out_o;
@@ -649,7 +648,7 @@ int main(int argc, char** argv, char** env) {
             assert(pitch == FB_WIDTH * 2);
             if (show_depth) {
                 uint16_t* pp = (uint16_t*)p;
-                uint16_t* d = &vram_data[FB_WIDTH * FB_HEIGHT];
+                uint16_t* d = &vram_data[2 * FB_WIDTH * FB_HEIGHT];
                 for (int y = 0; y < FB_HEIGHT; ++y)
                     for (int x = 0; x < FB_WIDTH; ++x) {
                         // if (*d > show_depth_value - 1000 && *d < show_depth_value + 1000) {
@@ -663,7 +662,7 @@ int main(int argc, char** argv, char** env) {
                     }
 
             } else {
-                memcpy(p, vram_data, FB_WIDTH * FB_HEIGHT * 2);
+                memcpy(p, vram_data + top->front_addr_o, FB_WIDTH * FB_HEIGHT * 2);
             }
             SDL_UnlockTexture(texture);
 
