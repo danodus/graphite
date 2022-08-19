@@ -31,8 +31,8 @@ module top(
     logic [15:0] vram_data_in;
 
     graphite #(
-        .FB_WIDTH(640),
-        .FB_HEIGHT(480)
+        .FB_WIDTH(320),
+        .FB_HEIGHT(240)
     ) graphite (
         .clk(clk),
         .reset_i(reset_i),

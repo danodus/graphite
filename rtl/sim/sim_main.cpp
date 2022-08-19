@@ -18,9 +18,9 @@
 #include <iostream>
 #include <limits>
 
-#define FB_WIDTH 640
-#define FB_HEIGHT 480
-#define WINDOW_SCALE 1
+#define FB_WIDTH 320
+#define FB_HEIGHT 240
+#define WINDOW_SCALE 3
 #define TEXTURE_WIDTH 32
 #define TEXTURE_HEIGHT 32
 
