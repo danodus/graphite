@@ -12,8 +12,8 @@ SRC :=
 
 all: graphite_ref_impl
 
-graphite_ref_impl: Makefile graphite_ref_impl.c sw_rasterizer.c ../common/graphite.h ../common/cube.h ../common/teapot.h ../common/graphite.c ../common/cube.c ../common/teapot.c
-	$(CC) $(CFLAGS) graphite_ref_impl.c sw_rasterizer.c ../common/graphite.c ../common/cube.c ../common/teapot.c -o graphite_ref_impl $(LDFLAGS) 
+graphite_ref_impl: Makefile graphite_ref_impl.c sw_rasterizer_2.c ../common/graphite.h ../common/cube.h ../common/teapot.h ../common/graphite.c ../common/cube.c ../common/teapot.c
+	$(CC) $(CFLAGS) graphite_ref_impl.c sw_rasterizer_2.c ../common/graphite.c ../common/cube.c ../common/teapot.c -o graphite_ref_impl $(LDFLAGS) 
 
 clean:
 	rm -f graphite_ref_impl

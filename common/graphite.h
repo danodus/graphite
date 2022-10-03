@@ -22,12 +22,12 @@
 #define _FRACTION_PART(x, scale) ((x)&FRACTION_MASK(scale))
 #define _WHOLE_PART(x, scale) ((x)&WHOLE_MASK(scale))
 
-//#define _MUL(x, y, scale) (((long long)(x) * (long long)(y)) >> scale)
-#define _MUL(x, y, scale) ((int)((x) >> (scale / 2)) * (int)((y) >> (scale / 2)))
+#define _MUL(x, y, scale) (int)(((long long)(x) * (long long)(y)) >> scale)
+//#define _MUL(x, y, scale) ((int)((x) >> (scale / 2)) * (int)((y) >> (scale / 2)))
 
-//#define _DIV(x, y, scale) (((long long)(x) << scale) / (y))
-#define _DIV(x, y, scale) (((int)(x) << (scale / 2)) / (int)((y) >> (scale / 2)))
-#define _DIV2(x, y, scale, adj) (((int)(x) << (scale / 2 - (adj))) / (int)((y) >> (scale / 2 + (adj))))
+#define _DIV(x, y, scale) (int)(((long long)(x) << scale) / (y))
+//#define _DIV(x, y, scale) (((int)(x) << (scale / 2)) / (int)((y) >> (scale / 2)))
+//#define _DIV2(x, y, scale, adj) (((int)(x) << (scale / 2 - (adj))) / (int)((y) >> (scale / 2 + (adj))))
 
 #if FIXED_POINT
 

@@ -5,9 +5,9 @@
 
 #include "sw_rasterizer.h"
 
-static int screen_width = 128;
-static int screen_height = 128;
-static int screen_scale = 4;
+static int screen_width = 320;
+static int screen_height = 240;
+static int screen_scale = 3;
 
 static SDL_Renderer* renderer;
 
@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
     // Projection matrix
     mat4x4 mat_proj = matrix_make_projection(screen_width, screen_height, 60.0f);
 
-    float theta = 0.0f;
+    float theta = 0.5f;
 
     model_t* cube_model = load_cube();
     model_t* teapot_model = load_teapot();
@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
     vec3d vec_up = {FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
     vec3d vec_camera = {FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
     while (!quit) {
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+        SDL_SetRenderDrawColor(renderer, 50, 50, 50, SDL_ALPHA_OPAQUE);
         SDL_RenderClear(renderer);
         sw_clear_depth_buffer();
 
@@ -89,14 +89,14 @@ int main(int argc, char* argv[]) {
         mat4x4 mat_rot_z = matrix_make_rotation_z(theta);
         mat4x4 mat_rot_x = matrix_make_rotation_x(theta);
 
-        mat4x4 mat_trans = matrix_make_translation(FX(0.0f), FX(0.0f), FX(3.0f));
+        mat4x4 mat_trans = matrix_make_translation(FX(0.0f), FX(0.0f), FX(2.0f));
         mat4x4 mat_world;
         mat_world = matrix_make_identity();
         mat_world = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
         mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
 
         // Draw cube
-        draw_model(screen_width, screen_height, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, false,
+        draw_model(screen_width, screen_height, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, true,
                    is_wireframe, NULL, true, true);
 
         SDL_RenderPresent(renderer);

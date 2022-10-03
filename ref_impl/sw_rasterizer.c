@@ -5,11 +5,11 @@
 #include <string.h>
 
 #if FIXED_POINT
-#define SAFE_DIV(x) (x > 0xFF)
-#define SAFE_RDIV(x) (x > 0xFFFF)
-#define RMUL(x, y) ((int)((x) >> (SCALE)) * (int)((y)))
-#define RDIV(x, y) (((int)(x)) / (int)((y) >> (SCALE)))
-#define FX_SHIFT(x) (x << 12)
+#define SAFE_DIV(x) (x != 0)
+#define SAFE_RDIV(x) (x != 0)
+#define RMUL(x, y) MUL(x, y)
+#define RDIV(x, y) DIV(x, y)
+#define FX_SHIFT(x) (x)
 #else
 #define SAFE_DIV(x) (x != 0.0f)
 #define SAFE_RDIV(x) (x != 0.0f)
@@ -53,13 +53,14 @@ vec3d texture_sample_color(texture_t* tex, fx32 u, fx32 v) {
         if (u < FX(0.5) && v >= FX(0.5)) return (vec3d){FX(0.25f), FX(0.25f), FX(0.25f), FX(1.0f)};
         return (vec3d){FX(0.75f), FX(0.75f), FX(0.75f), FX(1.0f)};
     }
-    return (vec3d){FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
+    return (vec3d){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
 }
 
 void sw_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1, fx32 y1,
                       fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2, fx32 z2, fx32 u2,
                       fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex, bool clamp_s, bool clamp_t,
                       bool depth_test) {
+    
     fx32 vv0[3] = {x0, y0, z0};
     fx32 vv1[3] = {x1, y1, z1};
     fx32 vv2[3] = {x2, y2, z2};
@@ -111,12 +112,10 @@ void sw_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32
                         b = MUL(b, FX_SHIFT(inv_z));
                         a = MUL(a, FX_SHIFT(inv_z));
 
-                        if (tex != NULL) {
-                            vec3d sample = texture_sample_color(tex, u, v);
-                            r = MUL(r, sample.x);
-                            g = MUL(g, sample.y);
-                            b = MUL(b, sample.z);
-                        }
+                        vec3d sample = texture_sample_color(tex, u, v);
+                        r = MUL(r, sample.x);
+                        g = MUL(g, sample.y);
+                        b = MUL(b, sample.z);
 
                         int rr = INT(MUL(r, FX(15.0f)));
                         int gg = INT(MUL(g, FX(15.0f)));

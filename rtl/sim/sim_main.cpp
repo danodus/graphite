@@ -318,7 +318,27 @@ void swap() {
     g_commands.push_back(c);
 }
 
-const uint16_t img[] = {
+uint16_t img[TEXTURE_WIDTH * TEXTURE_HEIGHT];
+
+void init_img() {
+    uint16_t *p = img;
+    for (int v = 0; v < TEXTURE_HEIGHT; ++v) {
+        for (int u = 0; u < TEXTURE_WIDTH; ++u) {
+            if (u < TEXTURE_WIDTH / 2 && v < TEXTURE_HEIGHT / 2) {
+                *p = 0xFFFF;
+            } else if (u >= TEXTURE_WIDTH / 2 && v < TEXTURE_HEIGHT / 2) {
+                *p = 0xFF00;
+            } else if (u < TEXTURE_WIDTH / 2 && v >= TEXTURE_HEIGHT / 2) {
+                *p = 0xF0F0;
+            } else {
+                *p = 0xF00F;
+            }
+            ++p;
+        }
+    }
+}
+
+const uint16_t brick_img[] = {
     64373, 64373, 64373, 64373, 64373, 64373, 62770, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373,
     64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373, 64373,
     64118, 64118, 64118, 64118, 64118, 63060, 62770, 64373, 64972, 64972, 64972, 64972, 64972, 64169, 64169, 64118,
@@ -453,7 +473,7 @@ int main(int argc, char** argv, char** env) {
     model_t* cube_model = load_cube();
     model_t* current_model = cube_model;
 
-    float theta = 0.0f;
+    float theta = 0.5f;
 
     float yaw = 0.0f;
 
@@ -466,7 +486,7 @@ int main(int argc, char** argv, char** env) {
     bool anim = false;
     bool wireframe = false;
     bool lighting = false;
-    bool textured = false;
+    bool textured = true;
     bool clamp_s = false;
     bool clamp_t = false;
     bool show_depth = false;
@@ -479,6 +499,8 @@ int main(int argc, char** argv, char** env) {
     bool dump = false;
 
     unsigned int time = SDL_GetTicks();
+
+    init_img();
 
     bool texture_dirty = true;
 
@@ -509,7 +531,7 @@ int main(int argc, char** argv, char** env) {
             mat4x4 mat_rot_z = matrix_make_rotation_z(theta);
             mat4x4 mat_rot_x = matrix_make_rotation_x(theta);
 
-            mat4x4 mat_trans = matrix_make_translation(FX(0.0f), FX(0.0f), FX(3.0f));
+            mat4x4 mat_trans = matrix_make_translation(FX(0.0f), FX(0.0f), FX(2.0f));
             mat4x4 mat_world;
             mat_world = matrix_make_identity();
             mat_world = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
