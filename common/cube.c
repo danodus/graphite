@@ -54,7 +54,8 @@ face_t faces[] = {
     {{5, 0, 3}, {1, 2, 3}, {1, 2, 3}}};
 
 static model_t g_model;
-static triangle_t g_triangles_to_raster[sizeof(faces) / sizeof(face_t)];
+// note: clipping can produce an additional triangle
+static triangle_t g_triangles_to_raster[2 * sizeof(faces) / sizeof(face_t)];
 
 model_t* load_cube() {
     g_model.mesh.nb_faces = sizeof(faces) / sizeof(face_t);

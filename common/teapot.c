@@ -1625,7 +1625,8 @@ static face_t faces[] = {{{0, 5, 6}, {0, 1, 2}, {-1, -1, -1}},
                          {{469, 529, 528}, {151, 219, 217}, {-1, -1, -1}}};
 
 static model_t g_model;
-static triangle_t g_triangles_to_raster[sizeof(faces) / sizeof(face_t)];
+// note: clipping can produce an additional triangle
+static triangle_t g_triangles_to_raster[2 * sizeof(faces) / sizeof(face_t)];
 
 model_t* load_teapot() {
     g_model.mesh.nb_faces = sizeof(faces) / sizeof(face_t);
