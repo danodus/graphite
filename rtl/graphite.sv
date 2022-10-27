@@ -519,7 +519,7 @@ module graphite #(
                 if (w0[31] || w1[31] || w2[31]) begin
                     state <= DRAW_TRIANGLE59;
                 end else begin
-                    // w0 = rmul(w0, inv_area)
+                    // w0 = mul(w0, inv_area)
                     dsp_mul_p0 <= w0;
                     dsp_mul_p1 <= inv_area;
                     state <= DRAW_TRIANGLE13;
@@ -528,14 +528,14 @@ module graphite #(
 
             DRAW_TRIANGLE13: begin
                 w0 <= dsp_mul_z >> 8;
-                // w1 = rmul(w1, inv_area)
+                // w1 = mul(w1, inv_area)
                 dsp_mul_p0 <= w1;
                 state <= DRAW_TRIANGLE14;
             end
 
             DRAW_TRIANGLE14: begin
                 w1 <= dsp_mul_z >> 8;
-                // w2 = rmul(w2, inv_area)
+                // w2 = mul(w2, inv_area)
                 dsp_mul_p0 <= w2;
                 state <= DRAW_TRIANGLE15;
             end
@@ -803,15 +803,15 @@ module graphite #(
             end
 
             DRAW_TRIANGLE49: begin
-                // t0 = rmul(rmul((TEXTURE_HEIGHT - 1) << 16, clamp(t)), TEXTURE_WIDTH << 16)
+                // t0 = mul(mul((TEXTURE_HEIGHT - 1) << 16, clamp(t)), TEXTURE_WIDTH << 16)
                 dsp_mul_p0 <= ((TEXTURE_HEIGHT - 1) << 16);
                 dsp_mul_p1 <= (is_clamp_t ? clamp(t) : wrap(t));
                 state <= DRAW_TRIANGLE50;
             end
 
             DRAW_TRIANGLE50: begin
-                t0 <= rmul(dsp_mul_z, TEXTURE_WIDTH << 16);
-                // t1 = rmul((TEXTURE_WIDTH - 1) << 16, clamp(s))
+                t0 <= mul(dsp_mul_z, TEXTURE_WIDTH << 16);
+                // t1 = mul((TEXTURE_WIDTH - 1) << 16, clamp(s))
                 dsp_mul_p0 <= ((TEXTURE_WIDTH - 1) << 16);
                 dsp_mul_p1 <= (is_clamp_s ? clamp(s) : wrap(s));
                 state <= DRAW_TRIANGLE51;
