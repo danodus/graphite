@@ -56,10 +56,8 @@
 
 #if FIXED_POINT
 #define PARAM(x) (x)
-#define RMUL(x, y) ((int)((x) >> (SCALE)) * (int)((y)))
 #else
 #define PARAM(x) (_FLOAT_TO_FIXED(x, 16))
-#define RMUL(x, y) (x * y)
 #endif
 
 // Serial
@@ -621,12 +619,12 @@ int main(int argc, char** argv, char** env) {
                 }
             }
 
-            vec3d vec_forward = vector_mul(&vec_look_dir, RMUL(FX(2.0f), FX(elapsed_time)));
+            vec3d vec_forward = vector_mul(&vec_look_dir, MUL(FX(2.0f), FX(elapsed_time)));
             const Uint8* state = SDL_GetKeyboardState(NULL);
-            if (state[SDL_SCANCODE_UP]) vec_camera.y += RMUL(FX(8.0f), FX(elapsed_time));
-            if (state[SDL_SCANCODE_DOWN]) vec_camera.y -= RMUL(FX(8.0f), FX(elapsed_time));
-            if (state[SDL_SCANCODE_LEFT]) vec_camera.x -= RMUL(FX(8.0f), FX(elapsed_time));
-            if (state[SDL_SCANCODE_RIGHT]) vec_camera.x += RMUL(FX(8.0f), FX(elapsed_time));
+            if (state[SDL_SCANCODE_UP]) vec_camera.y += MUL(FX(8.0f), FX(elapsed_time));
+            if (state[SDL_SCANCODE_DOWN]) vec_camera.y -= MUL(FX(8.0f), FX(elapsed_time));
+            if (state[SDL_SCANCODE_LEFT]) vec_camera.x -= MUL(FX(8.0f), FX(elapsed_time));
+            if (state[SDL_SCANCODE_RIGHT]) vec_camera.x += MUL(FX(8.0f), FX(elapsed_time));
             if (state[SDL_SCANCODE_W]) vec_camera = vector_add(&vec_camera, &vec_forward);
             if (state[SDL_SCANCODE_S]) vec_camera = vector_sub(&vec_camera, &vec_forward);
             if (state[SDL_SCANCODE_A]) yaw -= 2.0f * elapsed_time;

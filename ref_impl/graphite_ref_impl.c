@@ -56,6 +56,8 @@ int main(int argc, char* argv[]) {
 
     bool is_anim = false;
     bool is_wireframe = false;
+    bool is_lighting = false;
+    bool is_textured = true;
 
     unsigned int time = SDL_GetTicks();
 
@@ -96,8 +98,9 @@ int main(int argc, char* argv[]) {
         mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
 
         // Draw cube
-        draw_model(screen_width, screen_height, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, true,
-                   is_wireframe, NULL, true, true);
+        texture_t dummy_texture;
+        draw_model(screen_width, screen_height, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, is_lighting,
+                   is_wireframe, is_textured ? &dummy_texture : NULL, true, true);
 
         SDL_RenderPresent(renderer);
 
@@ -148,6 +151,12 @@ int main(int argc, char* argv[]) {
                     case SDL_SCANCODE_TAB:
                         is_wireframe = !is_wireframe;
                         break;
+                    case SDL_SCANCODE_L:
+                        is_lighting = !is_lighting;
+                        break;
+                    case SDL_SCANCODE_T:
+                        is_textured = !is_textured;
+                        break;                                                
                     case SDL_SCANCODE_SPACE:
                         is_anim = !is_anim;
                         break;

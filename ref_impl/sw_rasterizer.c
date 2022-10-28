@@ -39,7 +39,7 @@ int min3(int a, int b, int c) { return min(a, min(b, c)); }
 int max3(int a, int b, int c) { return max(a, max(b, c)); }
 
 vec3d texture_sample_color(texture_t* tex, fx32 u, fx32 v) {
-    if (tex == NULL) {
+    if (tex != NULL) {
         if (u < FX(0.5) && v < FX(0.5)) return (vec3d){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
         if (u >= FX(0.5) && v < FX(0.5)) return (vec3d){FX(1.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
         if (u < FX(0.5) && v >= FX(0.5)) return (vec3d){FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
