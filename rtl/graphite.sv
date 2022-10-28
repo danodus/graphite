@@ -810,7 +810,7 @@ module graphite #(
             end
 
             DRAW_TRIANGLE50: begin
-                t0 <= rmul(dsp_mul_z, TEXTURE_WIDTH << 16);
+                t0 <= mul(dsp_mul_z & 32'hFFFF0000, TEXTURE_WIDTH << 16);
                 // t1 = mul((TEXTURE_WIDTH - 1) << 16, clamp(s))
                 dsp_mul_p0 <= ((TEXTURE_WIDTH - 1) << 16);
                 dsp_mul_p1 <= (is_clamp_s ? clamp(s) : wrap(s));

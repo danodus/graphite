@@ -39,21 +39,23 @@ localparam OP_POS   = 24;
 localparam OP_SIZE  = 8;
 
 function logic signed [31:0] mul(logic signed [31:0] x, logic signed [31:0] y);
-    logic signed [63:0] x2 = {{32{x[31]}}, x};
-    logic signed [63:0] y2 = {{32{y[31]}}, y};
-    logic signed [63:0] mul2 = (x2 * y2) >>> 16;
-    mul = mul2[31:0];
-endfunction
-
-function logic signed [31:0] rmul(logic signed [31:0] x, logic signed [31:0] y);
-    rmul = (x >>> 16) * y;
+    logic signed [63:0] x2, y2, mul2;
+    begin
+        x2 = {{32{x[31]}}, x};
+        y2 = {{32{y[31]}}, y};
+        mul2 = (x2 * y2) >>> 16;
+        mul = mul2[31:0];
+    end
 endfunction
 
 function logic signed [31:0] div(logic signed [31:0] x, logic signed [31:0] y);
-    logic signed [63:0] x2 = {{32{x[31]}}, x};
-    logic signed [63:0] y2 = {{32{y[31]}}, y};
-    logic signed [63:0] div2 = (x2 << 16) / y2;
-    div = div2[31:0];
+    logic signed [63:0] x2, y2, div2;
+    begin
+        x2 = {{32{x[31]}}, x};
+        y2 = {{32{y[31]}}, y};
+        div2 = (x2 << 16) / y2;
+        div = div2[31:0];
+    end
 endfunction
 
 function logic signed [31:0] rdiv(logic signed [31:0] x, logic signed [31:0] y);
