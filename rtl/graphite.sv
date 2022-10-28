@@ -803,14 +803,14 @@ module graphite #(
             end
 
             DRAW_TRIANGLE49: begin
-                // t0 = mul(mul((TEXTURE_HEIGHT - 1) << 16, clamp(t)), TEXTURE_WIDTH << 16)
+                // t0 = rmul(mul((TEXTURE_HEIGHT - 1) << 16, clamp(t)), TEXTURE_WIDTH << 16)
                 dsp_mul_p0 <= ((TEXTURE_HEIGHT - 1) << 16);
                 dsp_mul_p1 <= (is_clamp_t ? clamp(t) : wrap(t));
                 state <= DRAW_TRIANGLE50;
             end
 
             DRAW_TRIANGLE50: begin
-                t0 <= mul(dsp_mul_z, TEXTURE_WIDTH << 16);
+                t0 <= rmul(dsp_mul_z, TEXTURE_WIDTH << 16);
                 // t1 = mul((TEXTURE_WIDTH - 1) << 16, clamp(s))
                 dsp_mul_p0 <= ((TEXTURE_WIDTH - 1) << 16);
                 dsp_mul_p1 <= (is_clamp_s ? clamp(s) : wrap(s));
