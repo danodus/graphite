@@ -97,7 +97,17 @@ int main(int argc, char* argv[]) {
         mat_world = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
         mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
 
-        // Draw cube
+        // Draw lines
+        vec3d v0, v1, c0, c1;
+        v0.x = FX(0.0f), v0.y = FX(0.0f), v0.z = FX(1.0f), v0.w = FX(1.0f);
+        c0.x = FX(1.0f), c0.y = FX(1.0f), c0.z = FX(1.0f), c0.w = FX(1.0f);
+
+        for(fx32 x = FX(0.0); x < FX(120.0f); x+=FX(10.0f)) {
+            v1.x = x, v1.y = FX(140.0f), v1.z = FX(1.0f), v1.w = FX(1.0f);
+            draw_line(v0, v1, (vec2d){FX(0.0f), FX(0.0f), FX(0.0f)}, (vec2d){FX(0.0f), FX(0.0f), FX(0.0f)}, c0, c0, FX(1.0f), NULL, true, true);
+        }
+
+        // Draw model
         texture_t dummy_texture;
         draw_model(screen_width, screen_height, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, is_lighting,
                    is_wireframe, is_textured ? &dummy_texture : NULL, true, true);

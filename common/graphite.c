@@ -439,7 +439,8 @@ fx32 clamp(fx32 x) {
     return x;
 }
 
-void draw_line(vec3d v0, vec3d v1, vec3d c0, vec3d c1, fx32 thickness) {
+void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx32 thickness, texture_t* texture,
+                bool clamp_s, bool clamp_t) {
     // skip if zero thickness or length
     if (thickness == FX(0.0f) || (v0.x == v1.x && v0.y == v1.y)) return;
 
@@ -454,17 +455,17 @@ void draw_line(vec3d v0, vec3d v1, vec3d c0, vec3d c1, fx32 thickness) {
 
     vec3d miter = vector_mul(&normal, thickness);
 
-    vec3d vv0 = vector_add(&v0, &miter);  // u,v=0,1
-    vec3d vv1 = vector_sub(&v0, &miter);  // u,v=0,0
-    vec3d vv2 = vector_add(&v1, &miter);  // u,v=1,1
-    vec3d vv3 = vector_sub(&v1, &miter);  // u,v=1,0
+    vec3d vv0 = vector_add(&v0, &miter);
+    vec3d vv1 = vector_sub(&v0, &miter);
+    vec3d vv2 = vector_add(&v1, &miter);
+    vec3d vv3 = vector_sub(&v1, &miter);
 
-    xd_draw_triangle(vv0.x, vv0.y, vv0.z, FX(0.0f), FX(1.0f), c0.x, c0.y, c0.z, c0.w, vv2.x, vv2.y, vv2.z, FX(1.0f),
-                     FX(1.0f), c1.x, c1.y, c1.z, c1.w, vv3.x, vv3.y, vv3.z, FX(1.0f), FX(0.0f), c1.x, c1.y, c1.z, c1.w,
-                     NULL, true, true, false);
-    xd_draw_triangle(vv1.x, vv1.y, vv1.z, FX(0.0f), FX(0.0f), c0.x, c0.y, c0.z, c0.w, vv0.x, vv0.y, vv0.z, FX(0.0f),
-                     FX(1.0f), c0.x, c0.y, c0.z, c0.w, vv3.x, vv3.y, vv3.z, FX(1.0f), FX(0.0f), c1.x, c1.y, c1.z, c1.w,
-                     NULL, true, true, false);
+    xd_draw_triangle(vv0.x, vv0.y, vv0.z, uv0.u, uv0.v, c0.x, c0.y, c0.z, c0.w, vv2.x, vv2.y, vv2.z, uv1.u,
+                     uv1.v, c1.x, c1.y, c1.z, c1.w, vv3.x, vv3.y, vv3.z, uv1.u, uv1.v, c1.x, c1.y, c1.z, c1.w,
+                     texture, clamp_s, clamp_t, false);
+    xd_draw_triangle(vv1.x, vv1.y, vv1.z, uv0.u, uv0.v, c0.x, c0.y, c0.z, c0.w, vv0.x, vv0.y, vv0.z, uv0.u,
+                     uv0.v, c0.x, c0.y, c0.z, c0.w, vv3.x, vv3.y, vv3.z, uv1.u, uv1.v, c1.x, c1.y, c1.z, c1.w,
+                     texture, clamp_s, clamp_t, false);
 }
 
 void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
@@ -746,16 +747,22 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
             if (is_wireframe) {
                 draw_line((vec3d){t->p[0].x, t->p[0].y, t->t[0].w, FX(0.0f)},
                           (vec3d){t->p[1].x, t->p[1].y, t->t[1].w, FX(0.0f)},
+                          (vec2d){t->t[0].u, t->t[0].v, FX(0.0f)},
+                          (vec2d){t->t[1].u, t->t[1].v, FX(0.0f)},
                           (vec3d){t->c[0].x, t->c[0].y, t->c[0].z, t->c[0].w},
-                          (vec3d){t->c[1].x, t->c[1].y, t->c[1].z, t->c[1].w}, FX(1.0f));
+                          (vec3d){t->c[1].x, t->c[1].y, t->c[1].z, t->c[1].w}, FX(1.0f), texture, clamp_s, clamp_t);
                 draw_line((vec3d){t->p[1].x, t->p[1].y, t->t[1].w, FX(0.0f)},
                           (vec3d){t->p[2].x, t->p[2].y, t->t[2].w, FX(0.0f)},
+                          (vec2d){t->t[1].u, t->t[1].v, FX(0.0f)},
+                          (vec2d){t->t[2].u, t->t[2].v, FX(0.0f)},
                           (vec3d){t->c[1].x, t->c[1].y, t->c[1].z, t->c[1].w},
-                          (vec3d){t->c[2].x, t->c[2].y, t->c[2].z, t->c[2].w}, FX(1.0f));
+                          (vec3d){t->c[2].x, t->c[2].y, t->c[2].z, t->c[2].w}, FX(1.0f), texture, clamp_s, clamp_t);
                 draw_line((vec3d){t->p[2].x, t->p[2].y, t->t[2].w, FX(0.0f)},
                           (vec3d){t->p[0].x, t->p[0].y, t->t[0].w, FX(0.0f)},
+                          (vec2d){t->t[2].u, t->t[2].v, FX(0.0f)},
+                          (vec2d){t->t[0].u, t->t[0].v, FX(0.0f)},
                           (vec3d){t->c[2].x, t->c[2].y, t->c[2].z, t->c[2].w},
-                          (vec3d){t->c[0].x, t->c[0].y, t->c[0].z, t->c[0].w}, FX(1.0f));
+                          (vec3d){t->c[0].x, t->c[0].y, t->c[0].z, t->c[0].w}, FX(1.0f), texture, clamp_s, clamp_t);
             } else {
                 xd_draw_triangle(t->p[0].x, t->p[0].y, t->t[0].w, t->t[0].u, t->t[0].v, t->c[0].x, t->c[0].y, t->c[0].z,
                                  t->c[0].w, t->p[1].x, t->p[1].y, t->t[1].w, t->t[1].u, t->t[1].v, t->c[1].x, t->c[1].y,
