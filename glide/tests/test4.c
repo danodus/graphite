@@ -1,8 +1,8 @@
-// test3.c
+// test4.c
 // Copyright (c) 2022 Daniel Cliche
 // SPDX-License-Identifier: MIT
 
-// Draws gouraud shaded lines
+// Draws gouraud shaded triangle
 
 #include <SDL2/SDL.h>
 #include <assert.h>
@@ -31,17 +31,20 @@ int main(int argc, char* argv[]) {
                    FXFALSE);
 
     while (!quit) {
-        GrVertex vtxA, vtxB;
+        GrVertex vtxA, vtxB, vtxC;
 
         grBufferClear(0x00, 0, GR_WDEPTHVALUE_FARTHEST);
 
-        vtxA.x = tlScaleX(0.0f), vtxA.y = tlScaleY(0.0f);
+        vtxA.x = tlScaleX(0.3f), vtxA.y = tlScaleY(0.3f);
         vtxA.r = 255.0f, vtxA.g = 0.0f, vtxA.b = 0.0f;
 
-        vtxB.x = tlScaleX(1.0f), vtxB.y = tlScaleY(1.0f);
+        vtxB.x = tlScaleX(0.8f), vtxB.y = tlScaleY(0.4f);
         vtxB.r = 0.0f, vtxB.g = 255.0f, vtxB.b = 0.0f;
 
-        grDrawLine(&vtxA, &vtxB);
+        vtxC.x = tlScaleX(0.5f), vtxC.y = tlScaleY(0.8f);
+        vtxC.r = 0.0f, vtxC.g = 0.0f, vtxC.b = 255.0f;
+
+        grDrawTriangle(&vtxA, &vtxB, &vtxC);
 
         grBufferSwap(1);
 

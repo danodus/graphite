@@ -130,6 +130,30 @@ void grDrawLine(const GrVertex* a, const GrVertex* b) {
                      FX(c1.a / 255.0f), false, true, true, false);
 }
 
+void grDrawTriangle(const GrVertex* a, const GrVertex* b, const GrVertex* c) {
+    GrVertex c0, c1, c2;
+
+    if (combine_local == GR_COMBINE_LOCAL_CONSTANT) {
+        c0.r = (float)((constant_color >> 16) & 0xFF);
+        c0.g = (float)((constant_color >> 8) & 0xFF);
+        c0.b = (float)(constant_color & 0xFF);
+        c0.a = 255.0f;
+        c1 = c0;
+        c2 = c0;
+    } else {
+        // GR_COMBINE_LOCAL_ITERATED
+        c0.r = a->r, c0.g = a->g, c0.b = a->b, c0.a = 255.0f;
+        c1.r = b->r, c1.g = b->g, c1.b = b->b, c1.a = 255.0f;
+        c2.r = c->r, c2.g = c->g, c2.b = c->b, c2.a = 255.0f;
+    }
+
+    xd_draw_triangle(FX(a->x), FX(a->y), FX(1.0f), FX(0.0f), FX(0.0f), FX(c0.r / 255.0f), FX(c0.g / 255.0f),
+                     FX(c0.b / 255.0f), FX(c0.a / 255.0f), FX(b->x), FX(b->y), FX(1.0f), FX(0.0f), FX(0.0f),
+                     FX(c1.r / 255.0f), FX(c1.g / 255.0f), FX(c1.b / 255.0f), FX(c1.a / 255.0f), FX(c->x), FX(c->y),
+                     FX(1.0f), FX(0.0f), FX(0.0f), FX(c2.r / 255.0f), FX(c2.g / 255.0f), FX(c2.b / 255.0f),
+                     FX(c2.a / 255.0f), false, true, true, false);
+}
+
 void grBufferClear(GrColor_t color, GrAlpha_t alpha, FxU16 depth) {
     sw_clear_depth_buffer();
     SDL_SetRenderDrawColor(renderer, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, alpha);
