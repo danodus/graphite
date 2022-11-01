@@ -78,6 +78,7 @@ typedef FxI32 GrCombineFactor_t;
 #define GR_COMBINE_FACTOR_NONE GR_COMBINE_FACTOR_ZERO
 
 typedef FxI32 GrCombineLocal_t;
+#define GR_COMBINE_LOCAL_ITERATED 0x0
 #define GR_COMBINE_LOCAL_CONSTANT 0x1
 
 typedef FxI32 GrCombineOther_t;

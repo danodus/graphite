@@ -49,6 +49,7 @@ static int screen_scale = 3;
 static SDL_Renderer* renderer = NULL;
 static SDL_Window* window = NULL;
 
+static GrCombineLocal_t combine_local = GR_COMBINE_LOCAL_ITERATED;
 static GrColor_t constant_color = 0x000000;
 
 void draw_pixel(int x, int y, int color) {
@@ -104,12 +105,18 @@ void grDrawLine(const GrVertex* a, const GrVertex* b) {
     GrVertex uv0 = (GrVertex){0.0f, 0.0f};
     GrVertex uv1 = (GrVertex){0.0f, 1.0f};
 
-    GrVertex c0;
-    c0.r = (float)((constant_color >> 16) & 0xFF);
-    c0.g = (float)((constant_color >> 8) & 0xFF);
-    c0.b = (float)(constant_color & 0xFF);
-    c0.a = 255.0f;
-    GrVertex c1 = c0;
+    GrVertex c0, c1;
+
+    if (combine_local == GR_COMBINE_LOCAL_CONSTANT) {
+        c0.r = (float)((constant_color >> 16) & 0xFF);
+        c0.g = (float)((constant_color >> 8) & 0xFF);
+        c0.b = (float)(constant_color & 0xFF);
+        c0.a = 255.0f;
+        c1 = c0;
+    } else {
+        c0.r = a->r, c0.g = a->g, c0.b = a->b, c0.a = 255.0f;
+        c1.r = b->r, c1.g = b->g, c1.b = b->b, c1.a = 255.0f;
+    }
 
     xd_draw_triangle(FX(vv0.x), FX(vv0.y), FX(1.0f), FX(uv0.x), FX(uv0.y), FX(c0.r / 255.0f), FX(c0.g / 255.0f),
                      FX(c0.b / 255.0f), FX(c0.a / 255.0f), FX(vv2.x), FX(vv2.y), FX(1.0f), FX(uv1.x), FX(uv1.y),
@@ -174,5 +181,8 @@ void grGlideInit(void) { sw_init_rasterizer(screen_width, screen_height, draw_pi
 void grGlideGetVersion(char version[80]) { strcpy(version, GLIDE_VERSION_STR); }
 
 void grColorCombine(GrCombineFunction_t func, GrCombineFactor_t factor, GrCombineLocal_t local, GrCombineOther_t other,
-                    FxBool invert) {}
+                    FxBool invert) {
+    combine_local = local;
+}
+
 void grConstantColorValue(GrColor_t value) { constant_color = value; }
