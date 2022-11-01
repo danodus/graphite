@@ -2,11 +2,11 @@
 // Copyright (c) 2021-2022 Daniel Cliche
 // SPDX-License-Identifier: MIT
 
-#include "sw_rasterizer_barycentric.h"
-
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "sw_rasterizer.h"
 
 #define RECIPROCAL_NUMERATOR 256
 

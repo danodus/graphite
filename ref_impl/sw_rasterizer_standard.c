@@ -2,11 +2,11 @@
 // Copyright (c) 2021-2022 Daniel Cliche
 // SPDX-License-Identifier: MIT
 
-#include "sw_rasterizer_standard.h"
-
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "sw_rasterizer.h"
 
 typedef struct {
     fx32 r, g, b, a;

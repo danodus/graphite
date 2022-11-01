@@ -6,7 +6,7 @@
 
 #include <SDL2/SDL.h>
 #include <string.h>
-#include <sw_rasterizer_barycentric.h>
+#include <sw_rasterizer.h>
 
 #define GLIDE_VERSION_STR "Glide Version 2.2"
 

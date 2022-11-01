@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <teapot.h>
 
-#include "sw_rasterizer_barycentric.h"
+#include "sw_rasterizer.h"
 
 static int screen_width = 320;
 static int screen_height = 240;

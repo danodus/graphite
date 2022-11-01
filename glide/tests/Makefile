@@ -6,7 +6,7 @@ SDL_CFLAGS	:= $(shell sdl2-config --cflags)
 
 CFLAGS		:= -g -std=c99 $(SDL_CFLAGS) -I.. -I../../common -I../../ref_impl
 
-COMMON_SRC := ../../ref_impl/sw_rasterizer_barycentric.c ../glide.c tlib.c
+COMMON_SRC := ../../ref_impl/sw_rasterizer_standard.c ../glide.c tlib.c
 
 all: test0 test1 test2
 
