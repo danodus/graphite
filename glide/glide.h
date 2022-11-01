@@ -89,6 +89,7 @@ typedef FxI32 GrCombineOther_t;
 //
 
 void grDrawPoint(const GrVertex* pt);
+void grDrawLine(const GrVertex* a, const GrVertex* b);
 
 //
 // Buffer management

@@ -10,6 +10,38 @@
 
 #define GLIDE_VERSION_STR "Glide Version 2.2"
 
+static GrVertex vectorAdd(const GrVertex* v1, const GrVertex* v2) {
+    GrVertex r = {v1->x + v2->x, v1->y + v2->y, v1->z + v2->z};
+    return r;
+}
+
+static GrVertex vectorSub(const GrVertex* v1, const GrVertex* v2) {
+    GrVertex r = {v1->x - v2->x, v1->y - v2->y, v1->z - v2->z};
+    return r;
+}
+
+static GrVertex vectorMul(const GrVertex* v1, float k) {
+    GrVertex r = {v1->x * k, v1->y * k, v1->z * k};
+    return r;
+}
+
+static float vectorDotProduct(const GrVertex* v1, const GrVertex* v2) {
+    return v1->x * v2->x + v1->y * v2->y + v1->z * v2->z;
+}
+
+static float vectorLength(const GrVertex* v) { return sqrtf(vectorDotProduct(v, v)); }
+
+static GrVertex vectorNormalize(const GrVertex* v) {
+    float l = vectorLength(v);
+    if (l > 0.0f) {
+        GrVertex r = {v->x / l, v->y / l, v->z / l};
+        return r;
+    } else {
+        GrVertex r = {0.0f, 0.0f, 0.0f};
+        return r;
+    }
+}
+
 static int screen_width = 320;
 static int screen_height = 240;
 static int screen_scale = 3;
@@ -49,6 +81,46 @@ void grDrawPoint(const GrVertex* pt) {
     xd_draw_triangle(FX(pt->x + 1.0f), FX(pt->y), FX(1.0f), FX(0.0f), FX(0.0f), r, g, b, a, FX(pt->x), FX(pt->y),
                      FX(1.0f), FX(0.0f), FX(0.0f), r, g, b, a, FX(pt->x), FX(pt->y + 1.0f), FX(1.0f), FX(0.0f),
                      FX(0.0f), r, g, b, a, NULL, false, false, false);
+}
+
+void grDrawLine(const GrVertex* a, const GrVertex* b) {
+    // skip if zero length
+    if (a->x == b->x && a->y == b->y) return;
+
+    // define the line between the two points
+    GrVertex line = vectorSub(b, a);
+
+    // find the normal vector of this line
+    GrVertex normal = (GrVertex){-line.y, line.x, 0.0f};
+    normal = vectorNormalize(&normal);
+
+    GrVertex miter = vectorMul(&normal, 0.5f);
+
+    GrVertex vv0 = vectorAdd(a, &miter);
+    GrVertex vv1 = vectorSub(a, &miter);
+    GrVertex vv2 = vectorAdd(b, &miter);
+    GrVertex vv3 = vectorSub(b, &miter);
+
+    GrVertex uv0 = (GrVertex){0.0f, 0.0f};
+    GrVertex uv1 = (GrVertex){0.0f, 1.0f};
+
+    GrVertex c0;
+    c0.r = (float)((constant_color >> 16) & 0xFF);
+    c0.g = (float)((constant_color >> 8) & 0xFF);
+    c0.b = (float)(constant_color & 0xFF);
+    c0.a = 255.0f;
+    GrVertex c1 = c0;
+
+    xd_draw_triangle(FX(vv0.x), FX(vv0.y), FX(1.0f), FX(uv0.x), FX(uv0.y), FX(c0.r / 255.0f), FX(c0.g / 255.0f),
+                     FX(c0.b / 255.0f), FX(c0.a / 255.0f), FX(vv2.x), FX(vv2.y), FX(1.0f), FX(uv1.x), FX(uv1.y),
+                     FX(c1.r / 255.0f), FX(c1.g / 255.0f), FX(c1.b / 255.0f), FX(c1.a / 255.0f), FX(vv3.x), FX(vv3.y),
+                     FX(1.0f), FX(uv1.x), FX(uv1.y), FX(c1.r / 255.0f), FX(c1.g / 255.0f), FX(c1.b / 255.0f),
+                     FX(c1.a / 255.0f), false, true, true, false);
+    xd_draw_triangle(FX(vv1.x), FX(vv1.y), FX(1.0f), FX(uv0.x), FX(uv0.y), FX(c0.r / 255.0f), FX(c0.g / 255.0f),
+                     FX(c0.b / 255.0f), FX(c0.a / 255.0f), FX(vv0.x), FX(vv0.y), FX(1.0f), FX(uv0.x), FX(uv0.y),
+                     FX(c0.r / 255.0f), FX(c0.g / 255.0f), FX(c0.b / 255.0f), FX(c0.a / 255.0f), FX(vv3.x), FX(vv3.y),
+                     FX(1.0f), FX(uv1.x), FX(uv1.y), FX(c1.r / 255.0f), FX(c1.g / 255.0f), FX(c1.b / 255.0f),
+                     FX(c1.a / 255.0f), false, true, true, false);
 }
 
 void grBufferClear(GrColor_t color, GrAlpha_t alpha, FxU16 depth) {

@@ -8,7 +8,7 @@ CFLAGS		:= -g -std=c99 $(SDL_CFLAGS) -I.. -I../../common -I../../ref_impl
 
 COMMON_SRC := ../../ref_impl/sw_rasterizer.c ../glide.c tlib.c
 
-all: test0 test1
+all: test0 test1 test2
 
 test0: Makefile ../glide.h $(COMMON_SRC) test0.c
 	$(CC) $(CFLAGS) $(COMMON_SRC) test0.c -o test0 $(LDFLAGS) 
@@ -16,7 +16,10 @@ test0: Makefile ../glide.h $(COMMON_SRC) test0.c
 test1: Makefile ../glide.h $(COMMON_SRC) test1.c
 	$(CC) $(CFLAGS) $(COMMON_SRC) test1.c -o test1 $(LDFLAGS) 
 
+test2: Makefile ../glide.h $(COMMON_SRC) test2.c
+	$(CC) $(CFLAGS) $(COMMON_SRC) test2.c -o test2 $(LDFLAGS) 
+
 clean:
-	rm -f test0 test1
+	rm -f test0 test1 test2
 
 .PHONY: all clean
