@@ -1,9 +1,9 @@
-// sw_rasterizer_barycentric.h
+// sw_rasterizer_standard.h
 // Copyright (c) 2021-2022 Daniel Cliche
 // SPDX-License-Identifier: MIT
 
-#ifndef SW_RASTERIZER_BARYCENTRIC_H
-#define SW_RASTERIZER_BARYCENTRIC_H
+#ifndef SW_RASTERIZER_STANDARD_H
+#define SW_RASTERIZER_STANDARD_H
 
 #include <fx.h>
 #include <stdbool.h>
