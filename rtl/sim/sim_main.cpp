@@ -143,7 +143,7 @@ static void swap(fx32* a, fx32* b) {
 
 void xd_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1, fx32 y1,
                       fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2, fx32 z2, fx32 u2,
-                      fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex, bool clamp_s, bool clamp_t,
+                      fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, bool texture, bool clamp_s, bool clamp_t,
                       bool depth_test) {
     Command c;
 
@@ -293,7 +293,7 @@ void xd_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32
 
     c.opcode = OP_DRAW;
     c.param = (depth_test ? 0b1000 : 0b0000) | (clamp_s ? 0b0100 : 0b0000) | (clamp_t ? 0b0010 : 0b0000) |
-              ((tex != nullptr) ? 0b0001 : 0b0000);
+              (texture ? 0b0001 : 0b0000);
     g_commands.push_back(c);
 }
 
@@ -319,7 +319,7 @@ void swap() {
 uint16_t img[TEXTURE_WIDTH * TEXTURE_HEIGHT];
 
 void init_img() {
-    uint16_t *p = img;
+    uint16_t* p = img;
     for (int v = 0; v < TEXTURE_HEIGHT; ++v) {
         for (int u = 0; u < TEXTURE_WIDTH; ++u) {
             if (u < TEXTURE_WIDTH / 2 && v < TEXTURE_HEIGHT / 2) {
@@ -542,9 +542,8 @@ int main(int argc, char** argv, char** env) {
 
             if (current_model) {
                 // Draw cube
-                texture_t dummy_texture;
                 draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, lighting,
-                           wireframe, textured ? &dummy_texture : NULL, clamp_s, clamp_t);
+                           wireframe, textured, clamp_s, clamp_t);
 
                 swap();
             }
@@ -646,7 +645,6 @@ int main(int argc, char** argv, char** env) {
 
         if (top->vram_sel_o) {
             if (top->vram_addr_o < 3 * FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT) {
-
                 if (top->vram_wr_o) {
                     vram_data[top->vram_addr_o] = top->vram_data_out_o;
                 }

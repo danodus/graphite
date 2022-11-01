@@ -4,7 +4,7 @@
 LDFLAGS		:= $(shell sdl2-config --libs) -lm
 SDL_CFLAGS	:= $(shell sdl2-config --cflags)
 
-CFLAGS		:= -g -std=c99 $(SDL_CFLAGS) -I.. -I../../common -I../../ref_impl -DFIXED_POINT=1
+CFLAGS		:= -g -std=c99 $(SDL_CFLAGS) -I.. -I../../common -I../../ref_impl
 
 COMMON_SRC := ../../ref_impl/sw_rasterizer.c ../glide.c tlib.c
 

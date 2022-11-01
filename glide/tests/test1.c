@@ -1,4 +1,4 @@
-// test1.h
+// test1.c
 // Copyright (c) 2022 Daniel Cliche
 // SPDX-License-Identifier: MIT
 

@@ -22,10 +22,10 @@ void draw_pixel(int x, int y, int color) {
 
 void xd_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1, fx32 y1,
                       fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2, fx32 z2, fx32 u2,
-                      fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex, bool clamp_s, bool clamp_t,
+                      fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, bool texture, bool clamp_s, bool clamp_t,
                       bool depth_test) {
     sw_draw_triangle(x0, y0, z0, u0, v0, r0, g0, b0, a0, x1, y1, z1, u1, v1, r1, g1, b1, a1, x2, y2, z2, u2, v2, r2, g2,
-                     b2, a2, tex, clamp_s, clamp_t, depth_test);
+                     b2, a2, texture, clamp_s, clamp_t, depth_test);
 }
 
 int main(int argc, char* argv[]) {
@@ -102,15 +102,15 @@ int main(int argc, char* argv[]) {
         v0.x = FX(0.0f), v0.y = FX(0.0f), v0.z = FX(1.0f), v0.w = FX(1.0f);
         c0.x = FX(1.0f), c0.y = FX(1.0f), c0.z = FX(1.0f), c0.w = FX(1.0f);
 
-        for(fx32 x = FX(0.0); x < FX(120.0f); x+=FX(10.0f)) {
+        for (fx32 x = FX(0.0); x < FX(120.0f); x += FX(10.0f)) {
             v1.x = x, v1.y = FX(140.0f), v1.z = FX(1.0f), v1.w = FX(1.0f);
-            draw_line(v0, v1, (vec2d){FX(0.0f), FX(0.0f), FX(0.0f)}, (vec2d){FX(0.0f), FX(0.0f), FX(0.0f)}, c0, c0, FX(1.0f), NULL, true, true);
+            draw_line(v0, v1, (vec2d){FX(0.0f), FX(0.0f), FX(0.0f)}, (vec2d){FX(0.0f), FX(0.0f), FX(0.0f)}, c0, c0,
+                      FX(1.0f), NULL, true, true);
         }
 
         // Draw model
-        texture_t dummy_texture;
-        draw_model(screen_width, screen_height, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, is_lighting,
-                   is_wireframe, is_textured ? &dummy_texture : NULL, true, true);
+        draw_model(screen_width, screen_height, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view,
+                   is_lighting, is_wireframe, is_textured, true, true);
 
         SDL_RenderPresent(renderer);
 
@@ -166,7 +166,7 @@ int main(int argc, char* argv[]) {
                         break;
                     case SDL_SCANCODE_T:
                         is_textured = !is_textured;
-                        break;                                                
+                        break;
                     case SDL_SCANCODE_SPACE:
                         is_anim = !is_anim;
                         break;

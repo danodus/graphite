@@ -4,7 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define RECIPROCAL_NUMERATOR    256
+#define RECIPROCAL_NUMERATOR 256
+
+typedef struct {
+    fx32 r, g, b, a;
+} color_t;
 
 int g_fb_width, g_fb_height;
 static draw_pixel_fn_t g_draw_pixel_fn;
@@ -22,9 +26,7 @@ void sw_dispose_rasterizer() { free(g_depth_buffer); }
 
 void sw_clear_depth_buffer() { memset(g_depth_buffer, FX(0.0f), g_fb_width * g_fb_height * sizeof(fx32)); }
 
-fx32 reciprocal(fx32 x) {
-    return x > 0 ? DIV(FX(RECIPROCAL_NUMERATOR), x) : FX(RECIPROCAL_NUMERATOR);
-}
+fx32 reciprocal(fx32 x) { return x > 0 ? DIV(FX(RECIPROCAL_NUMERATOR), x) : FX(RECIPROCAL_NUMERATOR); }
 
 fx32 edge_function(fx32 a[2], fx32 b[2], fx32 c[2]) {
     return MUL(c[0] - a[0], b[1] - a[1]) - MUL(c[1] - a[1], b[0] - a[0]);
@@ -38,21 +40,20 @@ int min3(int a, int b, int c) { return min(a, min(b, c)); }
 
 int max3(int a, int b, int c) { return max(a, max(b, c)); }
 
-vec3d texture_sample_color(texture_t* tex, fx32 u, fx32 v) {
-    if (tex != NULL) {
-        if (u < FX(0.5) && v < FX(0.5)) return (vec3d){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
-        if (u >= FX(0.5) && v < FX(0.5)) return (vec3d){FX(1.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
-        if (u < FX(0.5) && v >= FX(0.5)) return (vec3d){FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
-        return (vec3d){FX(0.0f), FX(0.0f), FX(1.0f), FX(1.0f)};
+color_t texture_sample_color(bool texture, fx32 u, fx32 v) {
+    if (texture) {
+        if (u < FX(0.5) && v < FX(0.5)) return (color_t){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
+        if (u >= FX(0.5) && v < FX(0.5)) return (color_t){FX(1.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
+        if (u < FX(0.5) && v >= FX(0.5)) return (color_t){FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
+        return (color_t){FX(0.0f), FX(0.0f), FX(1.0f), FX(1.0f)};
     }
-    return (vec3d){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
+    return (color_t){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
 }
 
 void sw_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1, fx32 y1,
                       fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2, fx32 z2, fx32 u2,
-                      fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex, bool clamp_s, bool clamp_t,
+                      fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, bool texture, bool clamp_s, bool clamp_t,
                       bool depth_test) {
-    
     fx32 vv0[3] = {x0, y0, z0};
     fx32 vv1[3] = {x1, y1, z1};
     fx32 vv2[3] = {x2, y2, z2};
@@ -105,10 +106,10 @@ void sw_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32
                     b = MUL(b, inv_z);
                     a = MUL(a, inv_z);
 
-                    vec3d sample = texture_sample_color(tex, u, v);
-                    r = MUL(r, sample.x);
-                    g = MUL(g, sample.y);
-                    b = MUL(b, sample.z);
+                    color_t sample = texture_sample_color(texture, u, v);
+                    r = MUL(r, sample.r);
+                    g = MUL(g, sample.g);
+                    b = MUL(b, sample.b);
 
                     int rr = INT(MUL(r, FX(15.0f)));
                     int gg = INT(MUL(g, FX(15.0f)));
