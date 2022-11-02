@@ -1,7 +1,7 @@
 VERILATOR = verilator
 
-LDFLAGS := -LDFLAGS "$(shell sdl2-config --libs)"
-CFLAGS := -CFLAGS "$(shell sdl2-config --cflags) -g -I ../../../common"
+LDFLAGS := -LDFLAGS "$(shell pkg-config sdl2 --libs)"
+CFLAGS := -CFLAGS "$(shell pkg-config sdl2 --cflags) -g -I ../../../common"
 
 all: sim
 

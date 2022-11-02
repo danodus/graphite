@@ -9,49 +9,49 @@
 #include "sw_rasterizer.h"
 
 typedef struct {
-    fx32 r, g, b, a;
+    rfx32 r, g, b, a;
 } color_t;
 
 int g_fb_width, g_fb_height;
 static draw_pixel_fn_t g_draw_pixel_fn;
 
-fx32* g_depth_buffer;
+rfx32* g_depth_buffer;
 
 typedef struct {
-    fx32 y1, y2, y3;
-    fx32 x1, x2;
-    fx32 u1, v1, w1;
-    fx32 u2, v2, w2;
-    fx32 r1, g1, b1, a1;
-    fx32 r2, g2, b2, a2;
-    fx32 dax_step, dbx_step;
-    fx32 du1_step, dv1_step, dw1_step;
-    fx32 du2_step, dv2_step, dw2_step;
-    fx32 dr1_step, dg1_step, db1_step, da1_step;
-    fx32 dr2_step, dg2_step, db2_step, da2_step;
-    fx32 sy, ey, sx, su, sv, sw, sr, sg, sb, sa;
+    rfx32 y1, y2, y3;
+    rfx32 x1, x2;
+    rfx32 u1, v1, w1;
+    rfx32 u2, v2, w2;
+    rfx32 r1, g1, b1, a1;
+    rfx32 r2, g2, b2, a2;
+    rfx32 dax_step, dbx_step;
+    rfx32 du1_step, dv1_step, dw1_step;
+    rfx32 du2_step, dv2_step, dw2_step;
+    rfx32 dr1_step, dg1_step, db1_step, da1_step;
+    rfx32 dr2_step, dg2_step, db2_step, da2_step;
+    rfx32 sy, ey, sx, su, sv, sw, sr, sg, sb, sa;
     bool tex;
 } rasterize_triangle_half_params_t;
 
 void sw_init_rasterizer(int fb_width, int fb_height, draw_pixel_fn_t draw_pixel_fn) {
     g_fb_width = fb_width;
     g_fb_height = fb_height;
-    g_depth_buffer = (fx32*)malloc(fb_width * fb_height * sizeof(fx32));
+    g_depth_buffer = (rfx32*)malloc(fb_width * fb_height * sizeof(rfx32));
     g_draw_pixel_fn = draw_pixel_fn;
 }
 
 void sw_dispose_rasterizer() { free(g_depth_buffer); }
 
-void sw_clear_depth_buffer() { memset(g_depth_buffer, FX(0.0f), g_fb_width * g_fb_height * sizeof(fx32)); }
+void sw_clear_depth_buffer() { memset(g_depth_buffer, RFX(0.0f), g_fb_width * g_fb_height * sizeof(rfx32)); }
 
-color_t texture_sample_color(bool texture, fx32 u, fx32 v) {
+color_t texture_sample_color(bool texture, rfx32 u, rfx32 v) {
     if (texture) {
-        if (u < FX(0.5) && v < FX(0.5)) return (color_t){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
-        if (u >= FX(0.5) && v < FX(0.5)) return (color_t){FX(1.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
-        if (u < FX(0.5) && v >= FX(0.5)) return (color_t){FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
-        return (color_t){FX(0.0f), FX(0.0f), FX(1.0f), FX(1.0f)};
+        if (u < RFX(0.5f) && v < RFX(0.5f)) return (color_t){RFX(1.0f), RFX(1.0f), RFX(1.0f), RFX(1.0f)};
+        if (u >= RFX(0.5f) && v < RFX(0.5f)) return (color_t){RFX(1.0f), RFX(0.0f), RFX(0.0f), RFX(1.0f)};
+        if (u < RFX(0.5f) && v >= RFX(0.5f)) return (color_t){RFX(0.0f), RFX(1.0f), RFX(0.0f), RFX(1.0f)};
+        return (color_t){RFX(0.0f), RFX(0.0f), RFX(1.0f), RFX(1.0f)};
     }
-    return (color_t){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
+    return (color_t){RFX(1.0f), RFX(1.0f), RFX(1.0f), RFX(1.0f)};
 }
 
 void swapi(int* a, int* b) {
@@ -60,34 +60,34 @@ void swapi(int* a, int* b) {
     *b = t;
 }
 
-void swapf(fx32* a, fx32* b) {
-    fx32 t = *a;
+void swapf(rfx32* a, rfx32* b) {
+    rfx32 t = *a;
     *a = *b;
     *b = t;
 }
 
 void rasterize_triangle_half(rasterize_triangle_half_params_t* p) {
     for (int i = p->sy; i <= p->ey; i++) {
-        int ax = INT(FXI(p->sx) + MUL(FXI(i - p->sy), p->dax_step));
-        int bx = INT(FXI(p->x1) + MUL(FXI(i - p->y1), p->dbx_step));
+        int ax = RINT(RFXI(p->sx) + RMUL(RFXI(i - p->sy), p->dax_step));
+        int bx = RINT(RFXI(p->x1) + RMUL(RFXI(i - p->y1), p->dbx_step));
 
-        fx32 tex_su = p->su + MUL(FXI(i - p->sy), p->du1_step);
-        fx32 tex_sv = p->sv + MUL(FXI(i - p->sy), p->dv1_step);
-        fx32 tex_sw = p->sw + MUL(FXI(i - p->sy), p->dw1_step);
+        rfx32 tex_su = p->su + RMUL(RFXI(i - p->sy), p->du1_step);
+        rfx32 tex_sv = p->sv + RMUL(RFXI(i - p->sy), p->dv1_step);
+        rfx32 tex_sw = p->sw + RMUL(RFXI(i - p->sy), p->dw1_step);
 
-        fx32 tex_eu = p->u1 + MUL(FXI(i - p->y1), p->du2_step);
-        fx32 tex_ev = p->v1 + MUL(FXI(i - p->y1), p->dv2_step);
-        fx32 tex_ew = p->w1 + MUL(FXI(i - p->y1), p->dw2_step);
+        rfx32 tex_eu = p->u1 + RMUL(RFXI(i - p->y1), p->du2_step);
+        rfx32 tex_ev = p->v1 + RMUL(RFXI(i - p->y1), p->dv2_step);
+        rfx32 tex_ew = p->w1 + RMUL(RFXI(i - p->y1), p->dw2_step);
 
-        fx32 col_sr = p->sr + MUL(FXI(i - p->sy), p->dr1_step);
-        fx32 col_sg = p->sg + MUL(FXI(i - p->sy), p->dg1_step);
-        fx32 col_sb = p->sb + MUL(FXI(i - p->sy), p->db1_step);
-        fx32 col_sa = p->sa + MUL(FXI(i - p->sy), p->da1_step);
+        rfx32 col_sr = p->sr + RMUL(RFXI(i - p->sy), p->dr1_step);
+        rfx32 col_sg = p->sg + RMUL(RFXI(i - p->sy), p->dg1_step);
+        rfx32 col_sb = p->sb + RMUL(RFXI(i - p->sy), p->db1_step);
+        rfx32 col_sa = p->sa + RMUL(RFXI(i - p->sy), p->da1_step);
 
-        fx32 col_er = p->r1 + MUL(FXI(i - p->y1), p->dr2_step);
-        fx32 col_eg = p->g1 + MUL(FXI(i - p->y1), p->dg2_step);
-        fx32 col_eb = p->b1 + MUL(FXI(i - p->y1), p->db2_step);
-        fx32 col_ea = p->a1 + MUL(FXI(i - p->y1), p->da2_step);
+        rfx32 col_er = p->r1 + RMUL(RFXI(i - p->y1), p->dr2_step);
+        rfx32 col_eg = p->g1 + RMUL(RFXI(i - p->y1), p->dg2_step);
+        rfx32 col_eb = p->b1 + RMUL(RFXI(i - p->y1), p->db2_step);
+        rfx32 col_ea = p->a1 + RMUL(RFXI(i - p->y1), p->da2_step);
 
         if (ax > bx) {
             swapi(&ax, &bx);
@@ -101,51 +101,51 @@ void rasterize_triangle_half(rasterize_triangle_half_params_t* p) {
             swapf(&col_sa, &col_ea);
         }
 
-        fx32 tex_u = tex_su;
-        fx32 tex_v = tex_sv;
-        fx32 tex_w = tex_sw;
+        rfx32 tex_u = tex_su;
+        rfx32 tex_v = tex_sv;
+        rfx32 tex_w = tex_sw;
 
-        fx32 col_r = col_sr;
-        fx32 col_g = col_sg;
-        fx32 col_b = col_sb;
-        fx32 col_a = col_sa;
+        rfx32 col_r = col_sr;
+        rfx32 col_g = col_sg;
+        rfx32 col_b = col_sb;
+        rfx32 col_a = col_sa;
 
-        fx32 tstep = FXI(bx - ax) > 0 ? DIV(FX(1.0f), FXI(bx - ax)) : 0;
-        fx32 t = FX(0.0f);
+        rfx32 tstep = RFXI(bx - ax) > 0 ? RDIV(RFX(1.0f), RFXI(bx - ax)) : 0;
+        rfx32 t = RFX(0.0f);
 
         for (int j = ax; j < bx; j++) {
-            tex_u = MUL(FX(1.0f) - t, tex_su) + MUL(t, tex_eu);
-            tex_v = MUL(FX(1.0f) - t, tex_sv) + MUL(t, tex_ev);
-            tex_w = MUL(FX(1.0f) - t, tex_sw) + MUL(t, tex_ew);
+            tex_u = RMUL(RFX(1.0f) - t, tex_su) + RMUL(t, tex_eu);
+            tex_v = RMUL(RFX(1.0f) - t, tex_sv) + RMUL(t, tex_ev);
+            tex_w = RMUL(RFX(1.0f) - t, tex_sw) + RMUL(t, tex_ew);
 
-            col_r = MUL(FX(1.0f) - t, col_sr) + MUL(t, col_er);
-            col_g = MUL(FX(1.0f) - t, col_sg) + MUL(t, col_eg);
-            col_b = MUL(FX(1.0f) - t, col_sb) + MUL(t, col_eb);
-            col_a = MUL(FX(1.0f) - t, col_sa) + MUL(t, col_ea);
+            col_r = RMUL(RFX(1.0f) - t, col_sr) + RMUL(t, col_er);
+            col_g = RMUL(RFX(1.0f) - t, col_sg) + RMUL(t, col_eg);
+            col_b = RMUL(RFX(1.0f) - t, col_sb) + RMUL(t, col_eb);
+            col_a = RMUL(RFX(1.0f) - t, col_sa) + RMUL(t, col_ea);
 
             // Perspective correction
-            tex_u = DIV(tex_u, tex_w);
-            tex_v = DIV(tex_v, tex_w);
+            tex_u = RDIV(tex_u, tex_w);
+            tex_v = RDIV(tex_v, tex_w);
 
             int depth_index = i * g_fb_width + j;
             if (tex_w > g_depth_buffer[depth_index]) {
                 color_t sample = texture_sample_color(p->tex, tex_u, tex_v);
 
                 // Perspective correction
-                col_r = DIV(col_r, tex_w);
-                col_g = DIV(col_g, tex_w);
-                col_b = DIV(col_b, tex_w);
-                col_a = DIV(col_a, tex_w);
+                col_r = RDIV(col_r, tex_w);
+                col_g = RDIV(col_g, tex_w);
+                col_b = RDIV(col_b, tex_w);
+                col_a = RDIV(col_a, tex_w);
 
-                col_r = MUL(col_r, sample.r);
-                col_g = MUL(col_g, sample.g);
-                col_b = MUL(col_b, sample.b);
-                col_a = MUL(col_a, sample.a);
+                col_r = RMUL(col_r, sample.r);
+                col_g = RMUL(col_g, sample.g);
+                col_b = RMUL(col_b, sample.b);
+                col_a = RMUL(col_a, sample.a);
 
-                int rr = INT(MUL(col_r, FX(15.0f)));
-                int gg = INT(MUL(col_g, FX(15.0f)));
-                int bb = INT(MUL(col_b, FX(15.0f)));
-                int aa = INT(MUL(col_a, FX(15.0f)));
+                int rr = RINT(RMUL(col_r, RFX(15.0f)));
+                int gg = RINT(RMUL(col_g, RFX(15.0f)));
+                int bb = RINT(RMUL(col_b, RFX(15.0f)));
+                int aa = RINT(RMUL(col_a, RFX(15.0f)));
 
                 (*g_draw_pixel_fn)(j, i, aa << 12 | rr << 8 | gg << 4 | bb);
                 g_depth_buffer[depth_index] = tex_w;
@@ -155,16 +155,16 @@ void rasterize_triangle_half(rasterize_triangle_half_params_t* p) {
     }
 }
 
-void sw_draw_triangle(fx32 x1a, fx32 y1a, fx32 w1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2a,
-                      fx32 y2a, fx32 w2, fx32 u2, fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, fx32 x3a, fx32 y3a,
-                      fx32 w3, fx32 u3, fx32 v3, fx32 r3, fx32 g3, fx32 b3, fx32 a3, bool texture, bool clamp_s,
-                      bool clamp_t, bool depth_test) {
-    int x1 = INT(x1a);
-    int y1 = INT(y1a);
-    int x2 = INT(x2a);
-    int y2 = INT(y2a);
-    int x3 = INT(x3a);
-    int y3 = INT(y3a);
+void sw_draw_triangle(rfx32 x1a, rfx32 y1a, rfx32 w1, rfx32 u1, rfx32 v1, rfx32 r1, rfx32 g1, rfx32 b1, rfx32 a1,
+                      rfx32 x2a, rfx32 y2a, rfx32 w2, rfx32 u2, rfx32 v2, rfx32 r2, rfx32 g2, rfx32 b2, rfx32 a2,
+                      rfx32 x3a, rfx32 y3a, rfx32 w3, rfx32 u3, rfx32 v3, rfx32 r3, rfx32 g3, rfx32 b3, rfx32 a3,
+                      bool texture, bool clamp_s, bool clamp_t, bool depth_test) {
+    int x1 = RINT(x1a);
+    int y1 = RINT(y1a);
+    int x2 = RINT(x2a);
+    int y2 = RINT(y2a);
+    int x3 = RINT(x3a);
+    int y3 = RINT(y3a);
 
     if (y2 < y1) {
         swapi(&y1, &y2);
@@ -230,46 +230,46 @@ void sw_draw_triangle(fx32 x1a, fx32 y1a, fx32 w1, fx32 u1, fx32 v1, fx32 r1, fx
 
     int dy1 = y2 - y1;
     int dx1 = x2 - x1;
-    fx32 dv1 = v2 - v1;
-    fx32 du1 = u2 - u1;
-    fx32 dw1 = w2 - w1;
+    rfx32 dv1 = v2 - v1;
+    rfx32 du1 = u2 - u1;
+    rfx32 dw1 = w2 - w1;
 
-    fx32 dr1 = r2 - r1;
-    fx32 dg1 = g2 - g1;
-    fx32 db1 = b2 - b1;
-    fx32 da1 = a2 - a1;
+    rfx32 dr1 = r2 - r1;
+    rfx32 dg1 = g2 - g1;
+    rfx32 db1 = b2 - b1;
+    rfx32 da1 = a2 - a1;
 
     int dy2 = y3 - y1;
     int dx2 = x3 - x1;
-    fx32 dv2 = v3 - v1;
-    fx32 du2 = u3 - u1;
-    fx32 dw2 = w3 - w1;
+    rfx32 dv2 = v3 - v1;
+    rfx32 du2 = u3 - u1;
+    rfx32 dw2 = w3 - w1;
 
-    fx32 dr2 = r3 - r1;
-    fx32 dg2 = g3 - g1;
-    fx32 db2 = b3 - b1;
-    fx32 da2 = a3 - a1;
+    rfx32 dr2 = r3 - r1;
+    rfx32 dg2 = g3 - g1;
+    rfx32 db2 = b3 - b1;
+    rfx32 da2 = a3 - a1;
 
-    if (dy1) p.dax_step = DIV(FXI(dx1), FXI(abs(dy1)));
-    if (dy2) p.dbx_step = DIV(FXI(dx2), FXI(abs(dy2)));
+    if (dy1) p.dax_step = RDIV(RFXI(dx1), RFXI(abs(dy1)));
+    if (dy2) p.dbx_step = RDIV(RFXI(dx2), RFXI(abs(dy2)));
 
-    if (dy1) p.du1_step = DIV(du1, FXI(abs(dy1)));
-    if (dy1) p.dv1_step = DIV(dv1, FXI(abs(dy1)));
-    if (dy1) p.dw1_step = DIV(dw1, FXI(abs(dy1)));
+    if (dy1) p.du1_step = RDIV(du1, RFXI(abs(dy1)));
+    if (dy1) p.dv1_step = RDIV(dv1, RFXI(abs(dy1)));
+    if (dy1) p.dw1_step = RDIV(dw1, RFXI(abs(dy1)));
 
-    if (dy2) p.du2_step = DIV(du2, FXI(abs(dy2)));
-    if (dy2) p.dv2_step = DIV(dv2, FXI(abs(dy2)));
-    if (dy2) p.dw2_step = DIV(dw2, FXI(abs(dy2)));
+    if (dy2) p.du2_step = RDIV(du2, RFXI(abs(dy2)));
+    if (dy2) p.dv2_step = RDIV(dv2, RFXI(abs(dy2)));
+    if (dy2) p.dw2_step = RDIV(dw2, RFXI(abs(dy2)));
 
-    if (dy1) p.dr1_step = DIV(dr1, FXI(abs(dy1)));
-    if (dy1) p.dg1_step = DIV(dg1, FXI(abs(dy1)));
-    if (dy1) p.db1_step = DIV(db1, FXI(abs(dy1)));
-    if (dy1) p.da1_step = DIV(da1, FXI(abs(dy1)));
+    if (dy1) p.dr1_step = RDIV(dr1, RFXI(abs(dy1)));
+    if (dy1) p.dg1_step = RDIV(dg1, RFXI(abs(dy1)));
+    if (dy1) p.db1_step = RDIV(db1, RFXI(abs(dy1)));
+    if (dy1) p.da1_step = RDIV(da1, RFXI(abs(dy1)));
 
-    if (dy2) p.dr2_step = DIV(dr2, FXI(abs(dy2)));
-    if (dy2) p.dg2_step = DIV(dg2, FXI(abs(dy2)));
-    if (dy2) p.db2_step = DIV(db2, FXI(abs(dy2)));
-    if (dy2) p.da2_step = DIV(da2, FXI(abs(dy2)));
+    if (dy2) p.dr2_step = RDIV(dr2, RFXI(abs(dy2)));
+    if (dy2) p.dg2_step = RDIV(dg2, RFXI(abs(dy2)));
+    if (dy2) p.db2_step = RDIV(db2, RFXI(abs(dy2)));
+    if (dy2) p.da2_step = RDIV(da2, RFXI(abs(dy2)));
 
     p.sy = y1;
     p.ey = y2;
@@ -297,19 +297,19 @@ void sw_draw_triangle(fx32 x1a, fx32 y1a, fx32 w1, fx32 u1, fx32 v1, fx32 r1, fx
     db1 = b3 - b2;
     da1 = a3 - a2;
 
-    if (dy1) p.dax_step = DIV(FXI(dx1), FXI(abs(dy1)));
-    if (dy2) p.dbx_step = DIV(FXI(dx2), FXI(abs(dy2)));
+    if (dy1) p.dax_step = RDIV(RFXI(dx1), RFXI(abs(dy1)));
+    if (dy2) p.dbx_step = RDIV(RFXI(dx2), RFXI(abs(dy2)));
 
-    p.du1_step = FX(0.0f), p.dv1_step = FX(0.0f);
-    if (dy1) p.du1_step = DIV(du1, FXI(abs(dy1)));
-    if (dy1) p.dv1_step = DIV(dv1, FXI(abs(dy1)));
-    if (dy1) p.dw1_step = DIV(dw1, FXI(abs(dy1)));
+    p.du1_step = RFX(0.0f), p.dv1_step = RFX(0.0f);
+    if (dy1) p.du1_step = RDIV(du1, RFXI(abs(dy1)));
+    if (dy1) p.dv1_step = RDIV(dv1, RFXI(abs(dy1)));
+    if (dy1) p.dw1_step = RDIV(dw1, RFXI(abs(dy1)));
 
-    p.dr1_step = FX(0.0f), p.dg1_step = FX(0.0f), p.db1_step = FX(0.0f), p.da1_step = FX(0.0f);
-    if (dy1) p.dr1_step = DIV(dr1, FXI(abs(dy1)));
-    if (dy1) p.dg1_step = DIV(dg1, FXI(abs(dy1)));
-    if (dy1) p.db1_step = DIV(db1, FXI(abs(dy1)));
-    if (dy1) p.da1_step = DIV(da1, FXI(abs(dy1)));
+    p.dr1_step = RFX(0.0f), p.dg1_step = RFX(0.0f), p.db1_step = RFX(0.0f), p.da1_step = RFX(0.0f);
+    if (dy1) p.dr1_step = RDIV(dr1, RFXI(abs(dy1)));
+    if (dy1) p.dg1_step = RDIV(dg1, RFXI(abs(dy1)));
+    if (dy1) p.db1_step = RDIV(db1, RFXI(abs(dy1)));
+    if (dy1) p.da1_step = RDIV(da1, RFXI(abs(dy1)));
 
     p.sy = y2;
     p.ey = y3;

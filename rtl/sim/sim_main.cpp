@@ -54,7 +54,7 @@
 #define OP_SET_TEX_ADDR 27
 #define OP_WRITE_TEX 28
 
-#if FIXED_POINT
+#if RASTERIZER_FIXED_POINT
 #define PARAM(x) (x)
 #else
 #define PARAM(x) (_FLOAT_TO_FIXED(x, 16))
@@ -141,10 +141,10 @@ static void swap(fx32* a, fx32* b) {
     *b = c;
 }
 
-void xd_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1, fx32 y1,
-                      fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2, fx32 z2, fx32 u2,
-                      fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, bool texture, bool clamp_s, bool clamp_t,
-                      bool depth_test) {
+void xd_draw_triangle(rfx32 x0, rfx32 y0, rfx32 z0, rfx32 u0, rfx32 v0, rfx32 r0, rfx32 g0, rfx32 b0, rfx32 a0,
+                      rfx32 x1, rfx32 y1, rfx32 z1, rfx32 u1, rfx32 v1, rfx32 r1, rfx32 g1, rfx32 b1, rfx32 a1,
+                      rfx32 x2, rfx32 y2, rfx32 z2, rfx32 u2, rfx32 v2, rfx32 r2, rfx32 g2, rfx32 b2, rfx32 a2,
+                      bool texture, bool clamp_s, bool clamp_t, bool depth_test) {
     Command c;
 
     c.opcode = OP_SET_X0;

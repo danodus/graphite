@@ -1,10 +1,10 @@
 # Makefile
 # vim: set noet ts=8 sw=8
 
-LDFLAGS		:= $(shell sdl2-config --libs) -lm
-SDL_CFLAGS	:= $(shell sdl2-config --cflags)
+LDFLAGS		:= $(shell pkg-config sdl2 --libs) -lm
+SDL_CFLAGS	:= $(shell pkg-config sdl2 --cflags)
 
-CFLAGS		:= -g -std=c99 $(SDL_CFLAGS) -I.. -I../../common -I../../ref_impl
+CFLAGS		:= -g -std=c99 $(SDL_CFLAGS) -I.. -I../../common -I../../ref_impl -DFIXED_POINT=0 -DRASTERIZER_FIXED_POINT=1
 
 COMMON_SRC := ../../ref_impl/sw_rasterizer_standard.c ../glide.c tlib.c
 

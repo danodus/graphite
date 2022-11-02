@@ -14,10 +14,10 @@
 
 #define SORT_TRIANGLES 0
 
-void xd_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1, fx32 y1,
-                      fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2, fx32 z2, fx32 u2,
-                      fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, bool texture, bool clamp_s, bool clamp_t,
-                      bool depth_test);
+void xd_draw_triangle(rfx32 x0, rfx32 y0, rfx32 z0, rfx32 u0, rfx32 v0, rfx32 r0, rfx32 g0, rfx32 b0, rfx32 a0,
+                      rfx32 x1, rfx32 y1, rfx32 z1, rfx32 u1, rfx32 v1, rfx32 r1, rfx32 g1, rfx32 b1, rfx32 a1,
+                      rfx32 x2, rfx32 y2, rfx32 z2, rfx32 u2, rfx32 v2, rfx32 r2, rfx32 g2, rfx32 b2, rfx32 a2,
+                      bool texture, bool clamp_s, bool clamp_t, bool depth_test);
 
 vec3d matrix_multiply_vector(mat4x4* m, vec3d* i) {
     vec3d r = {MUL(i->x, m->m[0][0]) + MUL(i->y, m->m[1][0]) + MUL(i->z, m->m[2][0]) + m->m[3][0],
@@ -460,12 +460,14 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
     vec3d vv2 = vector_add(&v1, &miter);
     vec3d vv3 = vector_sub(&v1, &miter);
 
-    xd_draw_triangle(vv0.x, vv0.y, vv0.z, uv0.u, uv0.v, c0.x, c0.y, c0.z, c0.w, vv2.x, vv2.y, vv2.z, uv1.u, uv1.v, c1.x,
-                     c1.y, c1.z, c1.w, vv3.x, vv3.y, vv3.z, uv1.u, uv1.v, c1.x, c1.y, c1.z, c1.w, texture, clamp_s,
-                     clamp_t, false);
-    xd_draw_triangle(vv1.x, vv1.y, vv1.z, uv0.u, uv0.v, c0.x, c0.y, c0.z, c0.w, vv0.x, vv0.y, vv0.z, uv0.u, uv0.v, c0.x,
-                     c0.y, c0.z, c0.w, vv3.x, vv3.y, vv3.z, uv1.u, uv1.v, c1.x, c1.y, c1.z, c1.w, texture, clamp_s,
-                     clamp_t, false);
+    xd_draw_triangle(RFXP(vv0.x), RFXP(vv0.y), RFXP(vv0.z), RFXP(uv0.u), RFXP(uv0.v), RFXP(c0.x), RFXP(c0.y),
+                     RFXP(c0.z), RFXP(c0.w), RFXP(vv2.x), RFXP(vv2.y), RFXP(vv2.z), RFXP(uv1.u), RFXP(uv1.v),
+                     RFXP(c1.x), RFXP(c1.y), RFXP(c1.z), RFXP(c1.w), RFXP(vv3.x), RFXP(vv3.y), RFXP(vv3.z), RFXP(uv1.u),
+                     RFXP(uv1.v), RFXP(c1.x), RFXP(c1.y), RFXP(c1.z), RFXP(c1.w), texture, clamp_s, clamp_t, false);
+    xd_draw_triangle(RFXP(vv1.x), RFXP(vv1.y), RFXP(vv1.z), RFXP(uv0.u), RFXP(uv0.v), RFXP(c0.x), RFXP(c0.y),
+                     RFXP(c0.z), RFXP(c0.w), RFXP(vv0.x), RFXP(vv0.y), RFXP(vv0.z), RFXP(uv0.u), RFXP(uv0.v),
+                     RFXP(c0.x), RFXP(c0.y), RFXP(c0.z), RFXP(c0.w), RFXP(vv3.x), RFXP(vv3.y), RFXP(vv3.z), RFXP(uv1.u),
+                     RFXP(uv1.v), RFXP(c1.x), RFXP(c1.y), RFXP(c1.z), RFXP(c1.w), texture, clamp_s, clamp_t, false);
 }
 
 void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
@@ -758,10 +760,12 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                           (vec2d){t->t[0].u, t->t[0].v, FX(0.0f)}, (vec3d){t->c[2].x, t->c[2].y, t->c[2].z, t->c[2].w},
                           (vec3d){t->c[0].x, t->c[0].y, t->c[0].z, t->c[0].w}, FX(1.0f), texture, clamp_s, clamp_t);
             } else {
-                xd_draw_triangle(t->p[0].x, t->p[0].y, t->t[0].w, t->t[0].u, t->t[0].v, t->c[0].x, t->c[0].y, t->c[0].z,
-                                 t->c[0].w, t->p[1].x, t->p[1].y, t->t[1].w, t->t[1].u, t->t[1].v, t->c[1].x, t->c[1].y,
-                                 t->c[1].z, t->c[1].w, t->p[2].x, t->p[2].y, t->t[2].w, t->t[2].u, t->t[2].v, t->c[2].x,
-                                 t->c[2].y, t->c[2].z, t->c[2].w, texture, clamp_s, clamp_t, true);
+                xd_draw_triangle(RFXP(t->p[0].x), RFXP(t->p[0].y), RFXP(t->t[0].w), RFXP(t->t[0].u), RFXP(t->t[0].v),
+                                 RFXP(t->c[0].x), RFXP(t->c[0].y), RFXP(t->c[0].z), RFXP(t->c[0].w), RFXP(t->p[1].x),
+                                 RFXP(t->p[1].y), RFXP(t->t[1].w), RFXP(t->t[1].u), RFXP(t->t[1].v), RFXP(t->c[1].x),
+                                 RFXP(t->c[1].y), RFXP(t->c[1].z), RFXP(t->c[1].w), RFXP(t->p[2].x), RFXP(t->p[2].y),
+                                 RFXP(t->t[2].w), RFXP(t->t[2].u), RFXP(t->t[2].v), RFXP(t->c[2].x), RFXP(t->c[2].y),
+                                 RFXP(t->c[2].z), RFXP(t->c[2].w), texture, clamp_s, clamp_t, true);
             }
         }
     }

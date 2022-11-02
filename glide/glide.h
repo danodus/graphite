@@ -7,6 +7,7 @@
 #ifndef GLIDE_H
 #define GLIDE_H
 
+#include <fx.h>
 #include <stdint.h>
 
 #define FXFALSE 0
@@ -56,17 +57,17 @@ typedef struct {
 } GrHwConfiguration;
 
 typedef struct {
-    float sow;  // s texture coordinate (s over w)
-    float tow;  // t texture coordinate (t over w)
-    float oow;  // 1/w (used mipmapping - really 0xfff/w)
+    fx32 sow;  // s texture coordinate (s over w)
+    fx32 tow;  // t texture coordinate (t over w)
+    fx32 oow;  // 1/w (used mipmapping - really 0xfff/w)
 } GrTmuVertex;
 
 typedef struct {
-    float x, y, z;  // x, y and z in screen space, z is ignored
-    float r, g, b;  // red, green, blue [0..255.0]
-    float ooz;      // 65535/Z (used for Z-buffering)
-    float a;        // alpha [0..255.0]
-    float oow;      // 1/W (used for texturing)
+    fx32 x, y, z;  // x, y and z in screen space, z is ignored
+    fx32 r, g, b;  // red, green, blue [0..255.0]
+    fx32 ooz;      // 65535/Z (used for Z-buffering)
+    fx32 a;        // alpha [0..255.0]
+    fx32 oow;      // 1/W (used for texturing)
     GrTmuVertex tmuvtx[GLIDE_NUM_TMU];
 } GrVertex;
 

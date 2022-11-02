@@ -21,20 +21,20 @@ static GrVertex vectorSub(const GrVertex* v1, const GrVertex* v2) {
 }
 
 static GrVertex vectorMul(const GrVertex* v1, float k) {
-    GrVertex r = {v1->x * k, v1->y * k, v1->z * k};
+    GrVertex r = {MUL(v1->x, k), MUL(v1->y, k), MUL(v1->z, k)};
     return r;
 }
 
-static float vectorDotProduct(const GrVertex* v1, const GrVertex* v2) {
-    return v1->x * v2->x + v1->y * v2->y + v1->z * v2->z;
+static fx32 vectorDotProduct(const GrVertex* v1, const GrVertex* v2) {
+    return MUL(v1->x, v2->x) + MUL(v1->y, v2->y) + MUL(v1->z, v2->z);
 }
 
-static float vectorLength(const GrVertex* v) { return sqrtf(vectorDotProduct(v, v)); }
+static fx32 vectorLength(const GrVertex* v) { return SQRT(vectorDotProduct(v, v)); }
 
 static GrVertex vectorNormalize(const GrVertex* v) {
-    float l = vectorLength(v);
+    fx32 l = vectorLength(v);
     if (l > 0.0f) {
-        GrVertex r = {v->x / l, v->y / l, v->z / l};
+        GrVertex r = {DIV(v->x, l), DIV(v->y, l), DIV(v->z, l)};
         return r;
     } else {
         GrVertex r = {0.0f, 0.0f, 0.0f};
@@ -61,10 +61,10 @@ void draw_pixel(int x, int y, int color) {
     SDL_RenderDrawPoint(renderer, x, y);
 }
 
-void xd_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1, fx32 y1,
-                      fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2, fx32 z2, fx32 u2,
-                      fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, bool texture, bool clamp_s, bool clamp_t,
-                      bool depth_test) {
+void xd_draw_triangle(rfx32 x0, rfx32 y0, rfx32 z0, rfx32 u0, rfx32 v0, rfx32 r0, rfx32 g0, rfx32 b0, rfx32 a0,
+                      rfx32 x1, rfx32 y1, rfx32 z1, rfx32 u1, rfx32 v1, rfx32 r1, rfx32 g1, rfx32 b1, rfx32 a1,
+                      rfx32 x2, rfx32 y2, rfx32 z2, rfx32 u2, rfx32 v2, rfx32 r2, rfx32 g2, rfx32 b2, rfx32 a2,
+                      bool texture, bool clamp_s, bool clamp_t, bool depth_test) {
     sw_draw_triangle(x0, y0, z0, u0, v0, r0, g0, b0, a0, x1, y1, z1, u1, v1, r1, g1, b1, a1, x2, y2, z2, u2, v2, r2, g2,
                      b2, a2, texture, clamp_s, clamp_t, depth_test);
 }
@@ -79,9 +79,10 @@ void grDrawPoint(const GrVertex* pt) {
     fx32 r = FX((float)((constant_color >> 16) & 0xFF) / 255.0f);
     fx32 g = FX((float)((constant_color >> 8) & 0xFF) / 255.0f);
     fx32 b = FX((float)(constant_color & 0xFF) / 255.0f);
-    xd_draw_triangle(FX(pt->x + 1.0f), FX(pt->y), FX(1.0f), FX(0.0f), FX(0.0f), r, g, b, a, FX(pt->x), FX(pt->y),
-                     FX(1.0f), FX(0.0f), FX(0.0f), r, g, b, a, FX(pt->x), FX(pt->y + 1.0f), FX(1.0f), FX(0.0f),
-                     FX(0.0f), r, g, b, a, NULL, false, false, false);
+    xd_draw_triangle(RFXP(pt->x + FX(1.0f)), RFXP(pt->y), RFX(1.0f), RFX(0.0f), RFX(0.0f), RFXP(r), RFXP(g), RFXP(b),
+                     RFXP(a), RFXP(pt->x), RFXP(pt->y), RFX(1.0f), RFX(0.0f), RFX(0.0f), RFXP(r), RFXP(g), RFXP(b),
+                     RFXP(a), RFXP(pt->x), RFXP(pt->y + FX(1.0f)), RFX(1.0f), RFX(0.0f), RFX(0.0f), RFXP(r), RFXP(g),
+                     RFXP(b), RFXP(a), NULL, false, false, false);
 }
 
 void grDrawLine(const GrVertex* a, const GrVertex* b) {
@@ -108,26 +109,28 @@ void grDrawLine(const GrVertex* a, const GrVertex* b) {
     GrVertex c0, c1;
 
     if (combine_local == GR_COMBINE_LOCAL_CONSTANT) {
-        c0.r = (float)((constant_color >> 16) & 0xFF);
-        c0.g = (float)((constant_color >> 8) & 0xFF);
-        c0.b = (float)(constant_color & 0xFF);
-        c0.a = 255.0f;
+        c0.r = FXI((constant_color >> 16) & 0xFF);
+        c0.g = FXI((constant_color >> 8) & 0xFF);
+        c0.b = FXI(constant_color & 0xFF);
+        c0.a = FX(255.0f);
         c1 = c0;
     } else {
-        c0.r = a->r, c0.g = a->g, c0.b = a->b, c0.a = 255.0f;
-        c1.r = b->r, c1.g = b->g, c1.b = b->b, c1.a = 255.0f;
+        c0.r = a->r, c0.g = a->g, c0.b = a->b, c0.a = FX(255.0f);
+        c1.r = b->r, c1.g = b->g, c1.b = b->b, c1.a = FX(255.0f);
     }
 
-    xd_draw_triangle(FX(vv0.x), FX(vv0.y), FX(1.0f), FX(uv0.x), FX(uv0.y), FX(c0.r / 255.0f), FX(c0.g / 255.0f),
-                     FX(c0.b / 255.0f), FX(c0.a / 255.0f), FX(vv2.x), FX(vv2.y), FX(1.0f), FX(uv1.x), FX(uv1.y),
-                     FX(c1.r / 255.0f), FX(c1.g / 255.0f), FX(c1.b / 255.0f), FX(c1.a / 255.0f), FX(vv3.x), FX(vv3.y),
-                     FX(1.0f), FX(uv1.x), FX(uv1.y), FX(c1.r / 255.0f), FX(c1.g / 255.0f), FX(c1.b / 255.0f),
-                     FX(c1.a / 255.0f), false, true, true, false);
-    xd_draw_triangle(FX(vv1.x), FX(vv1.y), FX(1.0f), FX(uv0.x), FX(uv0.y), FX(c0.r / 255.0f), FX(c0.g / 255.0f),
-                     FX(c0.b / 255.0f), FX(c0.a / 255.0f), FX(vv0.x), FX(vv0.y), FX(1.0f), FX(uv0.x), FX(uv0.y),
-                     FX(c0.r / 255.0f), FX(c0.g / 255.0f), FX(c0.b / 255.0f), FX(c0.a / 255.0f), FX(vv3.x), FX(vv3.y),
-                     FX(1.0f), FX(uv1.x), FX(uv1.y), FX(c1.r / 255.0f), FX(c1.g / 255.0f), FX(c1.b / 255.0f),
-                     FX(c1.a / 255.0f), false, true, true, false);
+    xd_draw_triangle(RFXP(vv0.x), RFXP(vv0.y), RFXP(1.0f), RFXP(uv0.x), RFXP(uv0.y), RFXP(c0.r / 255.0f),
+                     RFXP(c0.g / 255.0f), RFXP(c0.b / 255.0f), RFXP(c0.a / 255.0f), RFXP(vv2.x), RFXP(vv2.y),
+                     RFXP(1.0f), RFXP(uv1.x), RFXP(uv1.y), RFXP(c1.r / 255.0f), RFXP(c1.g / 255.0f),
+                     RFXP(c1.b / 255.0f), RFXP(c1.a / 255.0f), RFXP(vv3.x), RFXP(vv3.y), RFXP(1.0f), RFXP(uv1.x),
+                     RFXP(uv1.y), RFXP(c1.r / 255.0f), RFXP(c1.g / 255.0f), RFXP(c1.b / 255.0f), RFXP(c1.a / 255.0f),
+                     false, true, true, false);
+    xd_draw_triangle(RFXP(vv1.x), RFXP(vv1.y), RFXP(1.0f), RFXP(uv0.x), RFXP(uv0.y), RFXP(c0.r / 255.0f),
+                     RFXP(c0.g / 255.0f), RFXP(c0.b / 255.0f), RFXP(c0.a / 255.0f), RFXP(vv0.x), RFXP(vv0.y),
+                     RFXP(1.0f), RFXP(uv0.x), RFXP(uv0.y), RFXP(c0.r / 255.0f), RFXP(c0.g / 255.0f),
+                     RFXP(c0.b / 255.0f), RFXP(c0.a / 255.0f), RFXP(vv3.x), RFXP(vv3.y), RFXP(1.0f), RFXP(uv1.x),
+                     RFXP(uv1.y), RFXP(c1.r / 255.0f), RFXP(c1.g / 255.0f), RFXP(c1.b / 255.0f), RFXP(c1.a / 255.0f),
+                     false, true, true, false);
 }
 
 void grDrawTriangle(const GrVertex* a, const GrVertex* b, const GrVertex* c) {
@@ -147,11 +150,12 @@ void grDrawTriangle(const GrVertex* a, const GrVertex* b, const GrVertex* c) {
         c2.r = c->r, c2.g = c->g, c2.b = c->b, c2.a = 255.0f;
     }
 
-    xd_draw_triangle(FX(a->x), FX(a->y), FX(1.0f), FX(0.0f), FX(0.0f), FX(c0.r / 255.0f), FX(c0.g / 255.0f),
-                     FX(c0.b / 255.0f), FX(c0.a / 255.0f), FX(b->x), FX(b->y), FX(1.0f), FX(0.0f), FX(0.0f),
-                     FX(c1.r / 255.0f), FX(c1.g / 255.0f), FX(c1.b / 255.0f), FX(c1.a / 255.0f), FX(c->x), FX(c->y),
-                     FX(1.0f), FX(0.0f), FX(0.0f), FX(c2.r / 255.0f), FX(c2.g / 255.0f), FX(c2.b / 255.0f),
-                     FX(c2.a / 255.0f), false, true, true, false);
+    xd_draw_triangle(RFXP(a->x), RFXP(a->y), RFXP(1.0f), RFXP(0.0f), RFXP(0.0f), RFXP(c0.r / 255.0f),
+                     RFXP(c0.g / 255.0f), RFXP(c0.b / 255.0f), RFXP(c0.a / 255.0f), RFXP(b->x), RFXP(b->y), RFXP(1.0f),
+                     RFXP(0.0f), RFXP(0.0f), RFXP(c1.r / 255.0f), RFXP(c1.g / 255.0f), RFXP(c1.b / 255.0f),
+                     RFXP(c1.a / 255.0f), RFXP(c->x), RFXP(c->y), RFXP(1.0f), RFXP(0.0f), RFXP(0.0f),
+                     RFXP(c2.r / 255.0f), RFXP(c2.g / 255.0f), RFXP(c2.b / 255.0f), RFXP(c2.a / 255.0f), false, true,
+                     true, false);
 }
 
 void grBufferClear(GrColor_t color, GrAlpha_t alpha, FxU16 depth) {
