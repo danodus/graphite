@@ -145,10 +145,10 @@ void grDrawLine(const GrVertex* a, const GrVertex* b) {
         z[2] = b->oow;
         z[3] = b->oow;
     } else if (depth_buffer_mode == GR_DEPTHBUFFER_ZBUFFER) {
-        z[0] = DIV(a->ooz, FX(65535.0f));
-        z[1] = DIV(a->ooz, FX(65535.0f));
-        z[2] = DIV(b->ooz, FX(65535.0f));
-        z[3] = DIV(b->ooz, FX(65535.0f));
+        z[0] = DIV_UNSIGNED(a->ooz, FX_UNSIGNED(65535.0f));
+        z[1] = DIV_UNSIGNED(a->ooz, FX_UNSIGNED(65535.0f));
+        z[2] = DIV_UNSIGNED(b->ooz, FX_UNSIGNED(65535.0f));
+        z[3] = DIV_UNSIGNED(b->ooz, FX_UNSIGNED(65535.0f));
     }
 
     xd_draw_triangle(RFXP(vv0.x), RFXP(vv0.y), RFXP(z[0]), RFXP(DIV(a->tmuvtx->sow, FX(255.0f))),
@@ -204,9 +204,9 @@ void grDrawTriangle(const GrVertex* a, const GrVertex* b, const GrVertex* c) {
         z[1] = b->oow;
         z[2] = c->oow;
     } else if (depth_buffer_mode == GR_DEPTHBUFFER_ZBUFFER) {
-        z[0] = DIV(a->ooz, FX(65535.0f));
-        z[1] = DIV(b->ooz, FX(65535.0f));
-        z[2] = DIV(c->ooz, FX(65535.0f));
+        z[0] = DIV_UNSIGNED(a->ooz, FX_UNSIGNED(65535.0f));
+        z[1] = DIV_UNSIGNED(b->ooz, FX_UNSIGNED(65535.0f));
+        z[2] = DIV_UNSIGNED(c->ooz, FX_UNSIGNED(65535.0f));
     }
 
     xd_draw_triangle(RFXP(a->x), RFXP(a->y), RFXP(z[0]), RFXP(DIV(a->tmuvtx->sow, FX(255.0f))),

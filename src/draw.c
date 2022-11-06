@@ -774,7 +774,7 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 vp->r = MUL(t->c[i].x, FX(255.0f)), vp->g = MUL(t->c[i].y, FX(255.0f)),
                 vp->b = MUL(t->c[i].z, FX(255.0f)), vp->a = t->c[i].w;
                 vp->oow = t->t[i].w;
-                vp->ooz = MUL(FX(65535.0f), t->t[i].w);
+                vp->ooz = MUL_UNSIGNED(FX_UNSIGNED(65535.0f), t->t[i].w);
                 vp->tmuvtx[0].sow = MUL(t->t[i].u, FX(255.0f));
                 vp->tmuvtx[0].tow = MUL(t->t[i].v, FX(255.0f));
             }
