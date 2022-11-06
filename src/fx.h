@@ -5,10 +5,11 @@
 #ifndef FX_H
 #define FX_H
 
+#include <math.h>
 #include <stdint.h>
 
 #ifndef FIXED_POINT
-#define FIXED_POINT 1
+#define FIXED_POINT 0
 #endif
 
 #define _FRACTION_MASK(scale) (0xffffffff >> (32 - scale))

@@ -23,9 +23,9 @@ void draw_pixel(int x, int y, int color) {
 void xd_draw_triangle(rfx32 x0, rfx32 y0, rfx32 z0, rfx32 u0, rfx32 v0, rfx32 r0, rfx32 g0, rfx32 b0, rfx32 a0,
                       rfx32 x1, rfx32 y1, rfx32 z1, rfx32 u1, rfx32 v1, rfx32 r1, rfx32 g1, rfx32 b1, rfx32 a1,
                       rfx32 x2, rfx32 y2, rfx32 z2, rfx32 u2, rfx32 v2, rfx32 r2, rfx32 g2, rfx32 b2, rfx32 a2,
-                      bool texture, bool clamp_s, bool clamp_t, bool depth_test) {
+                      bool texture, bool clamp_s, bool clamp_t, bool depth_test, bool persp_correct) {
     sw_draw_triangle(x0, y0, z0, u0, v0, r0, g0, b0, a0, x1, y1, z1, u1, v1, r1, g1, b1, a1, x2, y2, z2, u2, v2, r2, g2,
-                     b2, a2, texture, clamp_s, clamp_t, depth_test);
+                     b2, a2, texture, clamp_s, clamp_t, depth_test, persp_correct);
 }
 
 int main() {
@@ -96,6 +96,19 @@ int main() {
         mat_world = matrix_make_identity();
         mat_world = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
         mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
+
+        /*
+                // Draw lines
+                vec3d v0, v1, c0, c1;
+                v0.x = FX(0.0f), v0.y = FX(0.0f), v0.z = FX(1.0f), v0.w = FX(1.0f);
+                c0.x = FX(1.0f), c0.y = FX(1.0f), c0.z = FX(1.0f), c0.w = FX(1.0f);
+
+                for (fx32 x = FX(0.0); x < FX(120.0f); x += FX(10.0f)) {
+                    v1.x = x, v1.y = FX(140.0f), v1.z = FX(1.0f), v1.w = FX(1.0f);
+                    draw_line(v0, v1, (vec2d){FX(0.0f), FX(0.0f), FX(0.0f)}, (vec2d){FX(0.0f), FX(0.0f), FX(0.0f)}, c0,
+           c0, FX(5.0f), NULL, true, true);
+                }
+        */
 
         // Draw model
         draw_model(screen_width, screen_height, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view,

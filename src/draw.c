@@ -1,23 +1,25 @@
-// graphite.c
+// draw.c
 // Copyright (c) 2021-2022 Daniel Cliche
 // SPDX-License-Identifier: MIT
 
 // Ref.: One Lone Coder's 3D Graphics Engine tutorial available on YouTube
 //       and https://www.scratchapixel.com/lessons/3d-basic-rendering/rasterization-practical-implementation
 
-#include "graphite.h"
+#include "draw.h"
 
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "glide.h"
+
 #define SORT_TRIANGLES 0
 
 void xd_draw_triangle(rfx32 x0, rfx32 y0, rfx32 z0, rfx32 u0, rfx32 v0, rfx32 r0, rfx32 g0, rfx32 b0, rfx32 a0,
                       rfx32 x1, rfx32 y1, rfx32 z1, rfx32 u1, rfx32 v1, rfx32 r1, rfx32 g1, rfx32 b1, rfx32 a1,
                       rfx32 x2, rfx32 y2, rfx32 z2, rfx32 u2, rfx32 v2, rfx32 r2, rfx32 g2, rfx32 b2, rfx32 a2,
-                      bool texture, bool clamp_s, bool clamp_t, bool depth_test);
+                      bool texture, bool clamp_s, bool clamp_t, bool depth_test, bool persp_correct);
 
 vec3d matrix_multiply_vector(mat4x4* m, vec3d* i) {
     vec3d r = {MUL(i->x, m->m[0][0]) + MUL(i->y, m->m[1][0]) + MUL(i->z, m->m[2][0]) + m->m[3][0],
@@ -455,19 +457,33 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
 
     vec3d miter = vector_mul(&normal, thickness);
 
-    vec3d vv0 = vector_add(&v0, &miter);
-    vec3d vv1 = vector_sub(&v0, &miter);
-    vec3d vv2 = vector_add(&v1, &miter);
-    vec3d vv3 = vector_sub(&v1, &miter);
+    vec3d vv[4];
+    vv[0] = vector_add(&v0, &miter);
+    vv[1] = vector_sub(&v0, &miter);
+    vv[2] = vector_add(&v1, &miter);
+    vv[3] = vector_sub(&v1, &miter);
 
-    xd_draw_triangle(RFXP(vv0.x), RFXP(vv0.y), RFXP(vv0.z), RFXP(uv0.u), RFXP(uv0.v), RFXP(c0.x), RFXP(c0.y),
-                     RFXP(c0.z), RFXP(c0.w), RFXP(vv2.x), RFXP(vv2.y), RFXP(vv2.z), RFXP(uv1.u), RFXP(uv1.v),
-                     RFXP(c1.x), RFXP(c1.y), RFXP(c1.z), RFXP(c1.w), RFXP(vv3.x), RFXP(vv3.y), RFXP(vv3.z), RFXP(uv1.u),
-                     RFXP(uv1.v), RFXP(c1.x), RFXP(c1.y), RFXP(c1.z), RFXP(c1.w), texture, clamp_s, clamp_t, false);
-    xd_draw_triangle(RFXP(vv1.x), RFXP(vv1.y), RFXP(vv1.z), RFXP(uv0.u), RFXP(uv0.v), RFXP(c0.x), RFXP(c0.y),
-                     RFXP(c0.z), RFXP(c0.w), RFXP(vv0.x), RFXP(vv0.y), RFXP(vv0.z), RFXP(uv0.u), RFXP(uv0.v),
-                     RFXP(c0.x), RFXP(c0.y), RFXP(c0.z), RFXP(c0.w), RFXP(vv3.x), RFXP(vv3.y), RFXP(vv3.z), RFXP(uv1.u),
-                     RFXP(uv1.v), RFXP(c1.x), RFXP(c1.y), RFXP(c1.z), RFXP(c1.w), texture, clamp_s, clamp_t, false);
+    GrVertex v[4];
+    for (int i = 0; i < 4; ++i) {
+        v[i].x = vv[i].x, v[i].y = vv[i].y, v[i].z = vv[i].z;
+        if (i < 2) {
+            v[i].r = c0.x, v[i].g = c0.y, v[0].b = c0.z, v[0].a = c0.w;
+            v[i].tmuvtx[i].sow = uv0.u, v[i].tmuvtx[0].tow = uv0.v;
+            v[i].oow = uv0.w;
+            v[i].ooz = MUL(FX(65535.0f), uv0.w);
+        } else {
+            v[i].r = c1.x, v[i].g = c1.y, v[0].b = c1.z, v[0].a = c1.w;
+            v[i].tmuvtx[i].sow = uv1.u, v[i].tmuvtx[0].tow = uv1.v;
+            v[i].oow = uv1.w;
+            v[i].ooz = MUL(FX(65535.0f), uv1.w);
+        }
+    }
+
+    GrTexInfo texInfo;
+    grTexSource(GR_TMU0, grTexMinAddress(GR_TMU0), GR_MIPMAPLEVELMASK_BOTH, texture ? &texInfo : NULL);
+    grDepthBufferMode(GR_DEPTHBUFFER_ZBUFFER);
+    grDrawTriangle(&v[0], &v[2], &v[3]);
+    grDrawTriangle(&v[1], &v[0], &v[3]);
 }
 
 void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
@@ -692,7 +708,12 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 }
 
                 // push back
-                for (int w = 0; w < nb_tris_to_add; ++w) triangles[nb_triangles++] = clipped[w];
+                for (int w = 0; w < nb_tris_to_add; ++w) {
+                    // clipped[w].oow[0] = FX(1.0f);
+                    // clipped[w].oow[1] = FX(1.0f);
+                    // clipped[w].oow[2] = FX(1.0f);
+                    triangles[nb_triangles++] = clipped[w];
+                }
             }
             nb_new_triangles = nb_triangles;
         }
@@ -746,26 +767,26 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
             t->c[2].w = clamp(t->c[2].w);
 
             // rasterize triangle
+            GrVertex v[3];
+            for (int i = 0; i < 3; ++i) {
+                GrVertex* vp = &v[i];
+                vp->x = t->p[i].x, vp->y = t->p[i].y;
+                vp->r = MUL(t->c[i].x, FX(255.0f)), vp->g = MUL(t->c[i].y, FX(255.0f)),
+                vp->b = MUL(t->c[i].z, FX(255.0f)), vp->a = t->c[i].w;
+                vp->oow = t->t[i].w;
+                vp->ooz = MUL(FX(65535.0f), t->t[i].w);
+                vp->tmuvtx[0].sow = MUL(t->t[i].u, FX(255.0f));
+                vp->tmuvtx[0].tow = MUL(t->t[i].v, FX(255.0f));
+            }
+            GrTexInfo texInfo;
+            grTexSource(GR_TMU0, grTexMinAddress(GR_TMU0), GR_MIPMAPLEVELMASK_BOTH, texture ? &texInfo : NULL);
+            grDepthBufferMode(GR_DEPTHBUFFER_ZBUFFER);
             if (is_wireframe) {
-                draw_line((vec3d){t->p[0].x, t->p[0].y, t->t[0].w, FX(0.0f)},
-                          (vec3d){t->p[1].x, t->p[1].y, t->t[1].w, FX(0.0f)}, (vec2d){t->t[0].u, t->t[0].v, FX(0.0f)},
-                          (vec2d){t->t[1].u, t->t[1].v, FX(0.0f)}, (vec3d){t->c[0].x, t->c[0].y, t->c[0].z, t->c[0].w},
-                          (vec3d){t->c[1].x, t->c[1].y, t->c[1].z, t->c[1].w}, FX(1.0f), texture, clamp_s, clamp_t);
-                draw_line((vec3d){t->p[1].x, t->p[1].y, t->t[1].w, FX(0.0f)},
-                          (vec3d){t->p[2].x, t->p[2].y, t->t[2].w, FX(0.0f)}, (vec2d){t->t[1].u, t->t[1].v, FX(0.0f)},
-                          (vec2d){t->t[2].u, t->t[2].v, FX(0.0f)}, (vec3d){t->c[1].x, t->c[1].y, t->c[1].z, t->c[1].w},
-                          (vec3d){t->c[2].x, t->c[2].y, t->c[2].z, t->c[2].w}, FX(1.0f), texture, clamp_s, clamp_t);
-                draw_line((vec3d){t->p[2].x, t->p[2].y, t->t[2].w, FX(0.0f)},
-                          (vec3d){t->p[0].x, t->p[0].y, t->t[0].w, FX(0.0f)}, (vec2d){t->t[2].u, t->t[2].v, FX(0.0f)},
-                          (vec2d){t->t[0].u, t->t[0].v, FX(0.0f)}, (vec3d){t->c[2].x, t->c[2].y, t->c[2].z, t->c[2].w},
-                          (vec3d){t->c[0].x, t->c[0].y, t->c[0].z, t->c[0].w}, FX(1.0f), texture, clamp_s, clamp_t);
+                grDrawLine(&v[0], &v[1]);
+                grDrawLine(&v[1], &v[2]);
+                grDrawLine(&v[2], &v[0]);
             } else {
-                xd_draw_triangle(RFXP(t->p[0].x), RFXP(t->p[0].y), RFXP(t->t[0].w), RFXP(t->t[0].u), RFXP(t->t[0].v),
-                                 RFXP(t->c[0].x), RFXP(t->c[0].y), RFXP(t->c[0].z), RFXP(t->c[0].w), RFXP(t->p[1].x),
-                                 RFXP(t->p[1].y), RFXP(t->t[1].w), RFXP(t->t[1].u), RFXP(t->t[1].v), RFXP(t->c[1].x),
-                                 RFXP(t->c[1].y), RFXP(t->c[1].z), RFXP(t->c[1].w), RFXP(t->p[2].x), RFXP(t->p[2].y),
-                                 RFXP(t->t[2].w), RFXP(t->t[2].u), RFXP(t->t[2].v), RFXP(t->c[2].x), RFXP(t->c[2].y),
-                                 RFXP(t->c[2].z), RFXP(t->c[2].w), texture, clamp_s, clamp_t, true);
+                grDrawTriangle(&v[0], &v[1], &v[2]);
             }
         }
     }

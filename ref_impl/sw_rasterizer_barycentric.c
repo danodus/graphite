@@ -57,7 +57,7 @@ color_t texture_sample_color(bool texture, rfx32 u, rfx32 v) {
 void sw_draw_triangle(rfx32 x0, rfx32 y0, rfx32 z0, rfx32 u0, rfx32 v0, rfx32 r0, rfx32 g0, rfx32 b0, rfx32 a0,
                       rfx32 x1, rfx32 y1, rfx32 z1, rfx32 u1, rfx32 v1, rfx32 r1, rfx32 g1, rfx32 b1, rfx32 a1,
                       rfx32 x2, rfx32 y2, rfx32 z2, rfx32 u2, rfx32 v2, rfx32 r2, rfx32 g2, rfx32 b2, rfx32 a2,
-                      bool texture, bool clamp_s, bool clamp_t, bool depth_test) {
+                      bool texture, bool clamp_s, bool clamp_t, bool depth_test, bool persp_correct) {
     rfx32 vv0[3] = {x0, y0, z0};
     rfx32 vv1[3] = {x1, y1, z1};
     rfx32 vv2[3] = {x2, y2, z2};
@@ -96,19 +96,21 @@ void sw_draw_triangle(rfx32 x0, rfx32 y0, rfx32 z0, rfx32 u0, rfx32 v0, rfx32 r0
                 rfx32 b = RMUL(w0, c0[2]) + RMUL(w1, c1[2]) + RMUL(w2, c2[2]);
                 rfx32 a = RMUL(w0, c0[3]) + RMUL(w1, c1[3]) + RMUL(w2, c2[3]);
 
-                // Perspective correction
                 rfx32 z = RMUL(w0, vv0[2]) + RMUL(w1, vv1[2]) + RMUL(w2, vv2[2]);
 
                 int depth_index = y * g_fb_width + x;
                 if (!depth_test || (z > g_depth_buffer[depth_index])) {
-                    rfx32 inv_z = reciprocal(z);
-                    inv_z = RDIV(inv_z, RFX(RECIPROCAL_NUMERATOR));
-                    u = RMUL(u, inv_z);
-                    v = RMUL(v, inv_z);
-                    r = RMUL(r, inv_z);
-                    g = RMUL(g, inv_z);
-                    b = RMUL(b, inv_z);
-                    a = RMUL(a, inv_z);
+                    if (persp_correct) {
+                        // Perspective correction
+                        rfx32 inv_z = reciprocal(z);
+                        inv_z = RDIV(inv_z, RFX(RECIPROCAL_NUMERATOR));
+                        u = RMUL(u, inv_z);
+                        v = RMUL(v, inv_z);
+                        r = RMUL(r, inv_z);
+                        g = RMUL(g, inv_z);
+                        b = RMUL(b, inv_z);
+                        a = RMUL(a, inv_z);
+                    }
 
                     color_t sample = texture_sample_color(texture, u, v);
                     r = RMUL(r, sample.r);

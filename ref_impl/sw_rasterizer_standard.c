@@ -31,6 +31,7 @@ typedef struct {
     rfx32 dr2_step, dg2_step, db2_step, da2_step;
     rfx32 sy, ey, sx, su, sv, sw, sr, sg, sb, sa;
     bool tex;
+    bool persp_correct;
 } rasterize_triangle_half_params_t;
 
 void sw_init_rasterizer(int fb_width, int fb_height, draw_pixel_fn_t draw_pixel_fn) {
@@ -123,19 +124,23 @@ void rasterize_triangle_half(rasterize_triangle_half_params_t* p) {
             col_b = RMUL(RFX(1.0f) - t, col_sb) + RMUL(t, col_eb);
             col_a = RMUL(RFX(1.0f) - t, col_sa) + RMUL(t, col_ea);
 
-            // Perspective correction
-            tex_u = RDIV(tex_u, tex_w);
-            tex_v = RDIV(tex_v, tex_w);
+            if (p->persp_correct) {
+                // Perspective correction
+                tex_u = RDIV(tex_u, tex_w);
+                tex_v = RDIV(tex_v, tex_w);
+            }
 
             int depth_index = i * g_fb_width + j;
             if (tex_w > g_depth_buffer[depth_index]) {
                 color_t sample = texture_sample_color(p->tex, tex_u, tex_v);
 
-                // Perspective correction
-                col_r = RDIV(col_r, tex_w);
-                col_g = RDIV(col_g, tex_w);
-                col_b = RDIV(col_b, tex_w);
-                col_a = RDIV(col_a, tex_w);
+                if (p->persp_correct) {
+                    // Perspective correction
+                    col_r = RDIV(col_r, tex_w);
+                    col_g = RDIV(col_g, tex_w);
+                    col_b = RDIV(col_b, tex_w);
+                    col_a = RDIV(col_a, tex_w);
+                }
 
                 col_r = RMUL(col_r, sample.r);
                 col_g = RMUL(col_g, sample.g);
@@ -158,7 +163,7 @@ void rasterize_triangle_half(rasterize_triangle_half_params_t* p) {
 void sw_draw_triangle(rfx32 x1a, rfx32 y1a, rfx32 w1, rfx32 u1, rfx32 v1, rfx32 r1, rfx32 g1, rfx32 b1, rfx32 a1,
                       rfx32 x2a, rfx32 y2a, rfx32 w2, rfx32 u2, rfx32 v2, rfx32 r2, rfx32 g2, rfx32 b2, rfx32 a2,
                       rfx32 x3a, rfx32 y3a, rfx32 w3, rfx32 u3, rfx32 v3, rfx32 r3, rfx32 g3, rfx32 b3, rfx32 a3,
-                      bool texture, bool clamp_s, bool clamp_t, bool depth_test) {
+                      bool texture, bool clamp_s, bool clamp_t, bool depth_test, bool persp_correct) {
     int x1 = RINT(x1a);
     int y1 = RINT(y1a);
     int x2 = RINT(x2a);
@@ -225,6 +230,7 @@ void sw_draw_triangle(rfx32 x1a, rfx32 y1a, rfx32 w1, rfx32 u1, rfx32 v1, rfx32 
     p.a2 = a2;
 
     p.tex = texture;
+    p.persp_correct = persp_correct;
 
     // rasterize top half
 

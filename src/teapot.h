@@ -1,7 +1,7 @@
 #ifndef TEAPOT_H
 #define TEAPOT_H
 
-#include "graphite.h"
+#include "draw.h"
 
 model_t* load_teapot();
 

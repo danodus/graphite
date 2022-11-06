@@ -1,14 +1,15 @@
-// graphite.h
+// draw.h
 // Copyright (c) 2021-2022 Daniel Cliche
 // SPDX-License-Identifier: MIT
 
-#ifndef GRAPHITE_H
-#define GRAPHITE_H
+#ifndef DRAW_H
+#define DRAW_H
 
 #include <stdbool.h>
 #include <stddef.h>
 
 #include "fx.h"
+#include "glide.h"
 
 typedef struct {
     fx32 u, v, w;
@@ -79,4 +80,4 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 mat4x4* mat_projection, mat4x4* mat_view, bool is_lighting_ena, bool is_wireframe, bool texture,
                 bool clamp_s, bool clamp_t);
 
-#endif
+#endif  // DRAW_H
