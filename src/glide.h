@@ -116,6 +116,7 @@ typedef FxI32 GrCombineLocal_t;
 #define GR_COMBINE_LOCAL_ITERATED 0x0
 #define GR_COMBINE_LOCAL_CONSTANT 0x1
 #define GR_COMBINE_LOCAL_NONE GR_COMBINE_LOCAL_CONSTANT
+#define GR_COMBINE_LOCAL_ITERATED_PERSP_CORRECT 0x4  // extension for Graphite
 
 typedef FxI32 GrCombineOther_t;
 #define GR_COMBINE_OTHER_TEXTURE 0x1

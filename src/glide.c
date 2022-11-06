@@ -132,12 +132,22 @@ void grDrawLine(const GrVertex* a, const GrVertex* b) {
         c0.b = FXI(constant_color & 0xFF);
         c0.a = FX(255.0f);
         c1 = c0;
-    } else {
+    } else if (combine_local == GR_COMBINE_LOCAL_ITERATED || combine_local == GR_COMBINE_LOCAL_ITERATED_PERSP_CORRECT) {
         c0.r = a->r, c0.g = a->g, c0.b = a->b, c0.a = FX(255.0f);
         c1.r = b->r, c1.g = b->g, c1.b = b->b, c1.a = FX(255.0f);
     }
 
     fx32 z[4] = {FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
+
+    bool persp_correct_color = false;
+
+    if (combine_local == GR_COMBINE_LOCAL_ITERATED_PERSP_CORRECT) {
+        z[0] = a->oow;
+        z[1] = a->oow;
+        z[2] = b->oow;
+        z[3] = b->oow;
+        persp_correct_color = true;
+    }
 
     if (tex_info != NULL) {
         z[0] = a->oow;
@@ -159,7 +169,7 @@ void grDrawLine(const GrVertex* a, const GrVertex* b) {
                      RFXP(DIV(c1.a, FX(255.0f))), RFXP(vv3.x), RFXP(vv3.y), RFXP(z[3]),
                      RFXP(DIV(b->tmuvtx->sow, FX(255.0f))), RFXP(DIV(b->tmuvtx->tow, FX(255.0f))),
                      RFXP(DIV(c1.r, FX(255.0f))), RFXP(DIV(c1.g, FX(255.0f))), RFXP(DIV(c1.b, FX(255.0f))),
-                     RFXP(DIV(c1.a, FX(255.0f))), tex_info != NULL, true, true, false, true);
+                     RFXP(DIV(c1.a, FX(255.0f))), tex_info != NULL, true, true, false, persp_correct_color);
     xd_draw_triangle(RFXP(vv1.x), RFXP(vv1.y), RFXP(z[1]), RFXP(DIV(a->tmuvtx->sow, FX(255.0f))),
                      RFXP(DIV(a->tmuvtx->tow, FX(255.0f))), RFXP(DIV(c0.r, FX(255.0f))), RFXP(DIV(c0.g, FX(255.0f))),
                      RFXP(DIV(c0.b, FX(255.0f))), RFXP(DIV(c0.a, FX(255.0f))), RFXP(vv0.x), RFXP(vv0.y), RFXP(z[0]),
@@ -168,21 +178,12 @@ void grDrawLine(const GrVertex* a, const GrVertex* b) {
                      RFXP(DIV(c0.a, FX(255.0f))), RFXP(vv3.x), RFXP(vv3.y), RFXP(z[3]),
                      RFXP(DIV(b->tmuvtx->sow, FX(255.0f))), RFXP(DIV(b->tmuvtx->tow, FX(255.0f))),
                      RFXP(DIV(c1.r, FX(255.0f))), RFXP(DIV(c1.g, FX(255.0f))), RFXP(DIV(c1.b, FX(255.0f))),
-                     RFXP(DIV(c1.a, FX(255.0f))), tex_info != NULL, true, true, false, true);
+                     RFXP(DIV(c1.a, FX(255.0f))), tex_info != NULL, true, true, false, persp_correct_color);
 }
 
 void grDrawTriangle(const GrVertex* a, const GrVertex* b, const GrVertex* c) {
     GrVertex c0, c1, c2;
 
-    /*
-    if (tex_info != NULL) {
-        fx32 cc0 = MUL(FX(255.0f), a->oow);
-        fx32 cc1 = MUL(FX(255.0f), b->oow);
-        fx32 cc2 = MUL(FX(255.0f), c->oow);
-        c0.r = cc0, c0.g = cc0, c0.b = cc0, c0.a = cc0;
-        c1.r = cc1, c1.g = cc1, c1.b = cc1, c1.a = cc1;
-        c2.r = cc2, c2.g = cc2, c2.b = cc2, c2.a = cc2;
-    } else*/
     if (combine_local == GR_COMBINE_LOCAL_CONSTANT) {
         c0.r = FXI((constant_color >> 16) & 0xFF);
         c0.g = FXI((constant_color >> 8) & 0xFF);
@@ -190,14 +191,22 @@ void grDrawTriangle(const GrVertex* a, const GrVertex* b, const GrVertex* c) {
         c0.a = FX(255.0f);
         c1 = c0;
         c2 = c0;
-    } else {
-        // GR_COMBINE_LOCAL_ITERATED
+    } else if (combine_local == GR_COMBINE_LOCAL_ITERATED || combine_local == GR_COMBINE_LOCAL_ITERATED_PERSP_CORRECT) {
         c0.r = a->r, c0.g = a->g, c0.b = a->b, c0.a = FX(255.0f);
         c1.r = b->r, c1.g = b->g, c1.b = b->b, c1.a = FX(255.0f);
         c2.r = c->r, c2.g = c->g, c2.b = c->b, c2.a = FX(255.0f);
     }
 
     fx32 z[3] = {FX(1.0f), FX(1.0f), FX(1.0f)};
+
+    bool persp_correct_color = false;
+
+    if (combine_local == GR_COMBINE_LOCAL_ITERATED_PERSP_CORRECT) {
+        z[0] = a->oow;
+        z[1] = b->oow;
+        z[2] = c->oow;
+        persp_correct_color = true;
+    }
 
     if (tex_info != NULL) {
         z[0] = a->oow;
@@ -217,7 +226,7 @@ void grDrawTriangle(const GrVertex* a, const GrVertex* b, const GrVertex* c) {
                      RFXP(DIV(c1.a, FX(255.0f))), RFXP(c->x), RFXP(c->y), RFXP(z[2]),
                      RFXP(DIV(c->tmuvtx->sow, FX(255.0f))), RFXP(DIV(c->tmuvtx->tow, FX(255.0f))),
                      RFXP(DIV(c2.r, FX(255.0f))), RFXP(DIV(c2.g, FX(255.0f))), RFXP(DIV(c2.b, FX(255.0f))),
-                     RFXP(DIV(c2.a, FX(255.0f))), tex_info != NULL, true, true, true, true);
+                     RFXP(DIV(c2.a, FX(255.0f))), tex_info != NULL, true, true, true, persp_correct_color);
 }
 
 void grBufferClear(GrColor_t color, GrAlpha_t alpha, FxU16 depth) {

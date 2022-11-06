@@ -100,12 +100,13 @@ void sw_draw_triangle(rfx32 x0, rfx32 y0, rfx32 z0, rfx32 u0, rfx32 v0, rfx32 r0
 
                 int depth_index = y * g_fb_width + x;
                 if (!depth_test || (z > g_depth_buffer[depth_index])) {
+                    // Perspective correction
+                    rfx32 inv_z = reciprocal(z);
+                    inv_z = RDIV(inv_z, RFX(RECIPROCAL_NUMERATOR));
+                    u = RMUL(u, inv_z);
+                    v = RMUL(v, inv_z);
+
                     if (persp_correct) {
-                        // Perspective correction
-                        rfx32 inv_z = reciprocal(z);
-                        inv_z = RDIV(inv_z, RFX(RECIPROCAL_NUMERATOR));
-                        u = RMUL(u, inv_z);
-                        v = RMUL(v, inv_z);
                         r = RMUL(r, inv_z);
                         g = RMUL(g, inv_z);
                         b = RMUL(b, inv_z);

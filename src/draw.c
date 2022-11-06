@@ -479,6 +479,8 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
         }
     }
 
+    grColorCombine(GR_COMBINE_FUNCTION_LOCAL, GR_COMBINE_FACTOR_NONE, GR_COMBINE_LOCAL_ITERATED_PERSP_CORRECT,
+                   GR_COMBINE_OTHER_NONE, FXFALSE);
     GrTexInfo texInfo;
     grTexSource(GR_TMU0, grTexMinAddress(GR_TMU0), GR_MIPMAPLEVELMASK_BOTH, texture ? &texInfo : NULL);
     grDepthBufferMode(GR_DEPTHBUFFER_ZBUFFER);
@@ -778,6 +780,8 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 vp->tmuvtx[0].sow = MUL(t->t[i].u, FX(255.0f));
                 vp->tmuvtx[0].tow = MUL(t->t[i].v, FX(255.0f));
             }
+            grColorCombine(GR_COMBINE_FUNCTION_LOCAL, GR_COMBINE_FACTOR_NONE, GR_COMBINE_LOCAL_ITERATED_PERSP_CORRECT,
+                           GR_COMBINE_OTHER_NONE, FXFALSE);
             GrTexInfo texInfo;
             grTexSource(GR_TMU0, grTexMinAddress(GR_TMU0), GR_MIPMAPLEVELMASK_BOTH, texture ? &texInfo : NULL);
             grDepthBufferMode(GR_DEPTHBUFFER_ZBUFFER);

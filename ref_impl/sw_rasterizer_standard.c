@@ -124,11 +124,9 @@ void rasterize_triangle_half(rasterize_triangle_half_params_t* p) {
             col_b = RMUL(RFX(1.0f) - t, col_sb) + RMUL(t, col_eb);
             col_a = RMUL(RFX(1.0f) - t, col_sa) + RMUL(t, col_ea);
 
-            if (p->persp_correct) {
-                // Perspective correction
-                tex_u = RDIV(tex_u, tex_w);
-                tex_v = RDIV(tex_v, tex_w);
-            }
+            // Perspective correction
+            tex_u = RDIV(tex_u, tex_w);
+            tex_v = RDIV(tex_v, tex_w);
 
             int depth_index = i * g_fb_width + j;
             if (tex_w > g_depth_buffer[depth_index]) {
