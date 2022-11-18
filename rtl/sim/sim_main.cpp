@@ -36,23 +36,42 @@
 #define OP_SET_R0 9
 #define OP_SET_G0 10
 #define OP_SET_B0 11
-#define OP_SET_R1 12
-#define OP_SET_G1 13
-#define OP_SET_B1 14
-#define OP_SET_R2 15
-#define OP_SET_G2 16
-#define OP_SET_B2 17
-#define OP_SET_S0 18
-#define OP_SET_T0 19
-#define OP_SET_S1 20
-#define OP_SET_T1 21
-#define OP_SET_S2 22
-#define OP_SET_T2 23
-#define OP_CLEAR 24
-#define OP_DRAW 25
-#define OP_SWAP 26
-#define OP_SET_TEX_ADDR 27
-#define OP_WRITE_TEX 28
+#define OP_SET_A0 12
+#define OP_SET_R1 13
+#define OP_SET_G1 14
+#define OP_SET_B1 15
+#define OP_SET_A1 16
+#define OP_SET_R2 17
+#define OP_SET_G2 18
+#define OP_SET_B2 19
+#define OP_SET_A2 20
+#define OP_SET_S0 21
+#define OP_SET_T0 22
+#define OP_SET_S1 23
+#define OP_SET_T1 24
+#define OP_SET_S2 25
+#define OP_SET_T2 26
+#define OP_SET_DAX_STEP 27  // standard rasterizer only
+#define OP_SET_DBX_STEP 28  // standard rasterizer only
+#define OP_SET_DS0_STEP 29  // standard rasterizer only
+#define OP_SET_DT0_STEP 30  // standard rasterizer only
+#define OP_SET_DW0_STEP 31  // standard rasterizer only
+#define OP_SET_DS1_STEP 32  // standard rasterizer only
+#define OP_SET_DT1_STEP 33  // standard rasterizer only
+#define OP_SET_DW1_STEP 34  // standard rasterizer only
+#define OP_SET_DR0_STEP 35  // standard rasterizer only
+#define OP_SET_DG0_STEP 36  // standard rasterizer only
+#define OP_SET_DB0_STEP 37  // standard rasterizer only
+#define OP_SET_DA0_STEP 38  // standard rasterizer only, not implemented yet
+#define OP_SET_DR1_STEP 39  // standard rasterizer only
+#define OP_SET_DG1_STEP 40  // standard rasterizer only
+#define OP_SET_DB1_STEP 41  // standard rasterizer only
+#define OP_SET_DA1_STEP 42  // standard rasterizer only, not implemented yet
+#define OP_SET_TEX_ADDR 43
+#define OP_CLEAR 44
+#define OP_DRAW 45
+#define OP_SWAP 46
+#define OP_WRITE_TEX 47
 
 #if RASTERIZER_FIXED_POINT
 #define PARAM(x) (x)

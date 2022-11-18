@@ -38,18 +38,23 @@ module graphite #(
     enum { WAIT_COMMAND, PROCESS_COMMAND, SWAP0, CLEAR_FB0, CLEAR_FB1, CLEAR_DEPTH0, CLEAR_DEPTH1, WRITE_TEX, DRAW, DRAW2
     } state;
 
-    logic signed [31:0] vv00, vv01, vv02, vv10, vv11, vv12, vv20, vv21, vv22;
-    logic signed [31:0] c00, c01, c02;
-    logic signed [31:0] c10, c11, c12;
-    logic signed [31:0] c20, c21, c22;
-    logic signed [31:0] st00, st01, st10, st11, st20, st21;
+    logic signed [31:0] x0, y0, z0, x1, y1, z1, x2, y2, z2;
+    logic signed [31:0] r0, g0, b0;
+    logic signed [31:0] r1, g1, b1;
+    logic signed [31:0] r2, g2, b2;
+    logic signed [31:0] s0, t0, s1, t1, s2, t2;
 
-    logic signed [11:0] x, y;
-    
+    // standard rasterizer
+    logic bottom_half;
+    logic signed [31:0] dax_step, dbx_step;
+    logic signed [31:0] ds0_step, dt0_step, dw0_step;
+    logic signed [31:0] ds1_step, dt1_step, dw1_step;
+    logic signed [31:0] dr0_step, dg0_step, db0_step;
+    logic signed [31:0] dr1_step, dg1_step, db1_step;
+
     logic [31:0] front_address, back_address, depth_address, texture_address;
 
     logic [31:0] texture_write_address;
-    logic [31:0] raster_rel_address;
 
     assign front_addr_o = front_address;
 
@@ -79,47 +84,90 @@ module graphite #(
         end
     end
 
-    rasterizer_barycentric #(
+`ifdef RASTERIZER_BARYCENTRIC
+    rasterizer_barycentric
+`else
+    rasterizer_standard
+`endif
+    #(
         .FB_WIDTH(FB_WIDTH),
         .FB_HEIGHT(FB_HEIGHT),
         .TEXTURE_WIDTH(TEXTURE_WIDTH),
         .TEXTURE_HEIGHT(TEXTURE_HEIGHT),
         .SUBPIXEL_PRECISION_MASK(SUBPIXEL_PRECISION_MASK)
-    ) rasterizer_barycentric(
+    ) rasterizer(
         .clk(clk),
         .reset_i(reset_i),
 
         .start_i(rasterizer_start),
         .busy_o(rasterizer_busy),
 
-        .vv00_i(vv00), 
-        .vv01_i(vv01),
-        .vv02_i(vv02),
-        .vv10_i(vv10),
-        .vv11_i(vv11),
-        .vv12_i(vv12),
-        .vv20_i(vv20),
-        .vv21_i(vv21),
-        .vv22_i(vv22),
+`ifdef RASTERIZER_BARYCENTRIC
+        .vv00_i(x0), 
+        .vv01_i(y0),
+        .vv02_i(z0),
+        .vv10_i(x1),
+        .vv11_i(y1),
+        .vv12_i(z1),
+        .vv20_i(x2),
+        .vv21_i(y2),
+        .vv22_i(z2),
         
-        .c00_i(c00),
-        .c01_i(c01),
-        .c02_i(c02),
+        .c00_i(r0),
+        .c01_i(g0),
+        .c02_i(b0),
 
-        .c10_i(c10),
-        .c11_i(c11),
-        .c12_i(c12),
+        .c10_i(r1),
+        .c11_i(g1),
+        .c12_i(b1),
 
-        .c20_i(c20),
-        .c21_i(c21),
-        .c22_i(c22),
+        .c20_i(r2),
+        .c21_i(g2),
+        .c22_i(b2),
         
-        .st00_i(st00),
-        .st01_i(st01),
-        .st10_i(st10),
-        .st11_i(st11),
-        .st20_i(st20),
-        .st21_i(st21),   
+        .st00_i(s0),
+        .st01_i(t0),
+        .st10_i(s1),
+        .st11_i(t1),
+        .st20_i(s2),
+        .st21_i(t2),
+
+`else // RASTERIZER_BARYCENTRIC
+
+        .bottom_half_i(bottom_half),
+
+        .y0_i(y0 >>> 16), 
+        .y1_i(y1 >>> 16),
+        .y2_i(y2 >>> 16),
+        .x0_i(x0 >>> 16),
+        .x1_i(x1 >>> 16),
+        .s0_i(s0),
+        .t0_i(t0),
+        .w0_i(z0),
+        .s1_i(s1),
+        .t1_i(t1),
+        .w1_i(z1),
+        .r0_i(r0),
+        .g0_i(g0),
+        .b0_i(b0),
+        .r1_i(r1),
+        .g1_i(g1),
+        .b1_i(b1),
+        .dax_step_i(dax_step),
+        .dbx_step_i(dbx_step),
+        .ds0_step_i(ds0_step),
+        .dt0_step_i(dt0_step),
+        .dw0_step_i(dw0_step),
+        .ds1_step_i(ds1_step),
+        .dt1_step_i(dt1_step),
+        .dw1_step_i(dw1_step),
+        .dr0_step_i(dr0_step),
+        .dg0_step_i(dg0_step),
+        .db0_step_i(db0_step),
+        .dr1_step_i(dr1_step),
+        .dg1_step_i(dg1_step),
+        .db1_step_i(db1_step),
+`endif
 
         .is_textured_i(is_textured),
         .is_clamp_s_i(is_clamp_s),
@@ -154,193 +202,305 @@ module graphite #(
                 case (cmd_axis_tdata_i[OP_POS+:OP_SIZE])
                     OP_SET_X0: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            vv00[31:16] <= cmd_axis_tdata_i[15:0];
+                            x0[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            vv00[15:0] <= cmd_axis_tdata_i[15:0] & SUBPIXEL_PRECISION_MASK;
+                            x0[15:0] <= cmd_axis_tdata_i[15:0] & SUBPIXEL_PRECISION_MASK;
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_Y0: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            vv01[31:16] <= cmd_axis_tdata_i[15:0];
+                            y0[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            vv01[15:0] <= cmd_axis_tdata_i[15:0] & SUBPIXEL_PRECISION_MASK;
+                            y0[15:0] <= cmd_axis_tdata_i[15:0] & SUBPIXEL_PRECISION_MASK;
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_Z0: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            vv02[31:16] <= cmd_axis_tdata_i[15:0];
+                            z0[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            vv02[15:0] <= cmd_axis_tdata_i[15:0];
+                            z0[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_X1: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            vv10[31:16] <= cmd_axis_tdata_i[15:0];
+                            x1[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            vv10[15:0] <= cmd_axis_tdata_i[15:0] & SUBPIXEL_PRECISION_MASK;
+                            x1[15:0] <= cmd_axis_tdata_i[15:0] & SUBPIXEL_PRECISION_MASK;
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_Y1: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            vv11[31:16] <= cmd_axis_tdata_i[15:0];
+                            y1[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            vv11[15:0] <= cmd_axis_tdata_i[15:0] & SUBPIXEL_PRECISION_MASK;
+                            y1[15:0] <= cmd_axis_tdata_i[15:0] & SUBPIXEL_PRECISION_MASK;
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_Z1: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            vv12[31:16] <= cmd_axis_tdata_i[15:0];
+                            z1[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            vv12[15:0] <= cmd_axis_tdata_i[15:0];
+                            z1[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_X2: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            vv20[31:16] <= cmd_axis_tdata_i[15:0];
+                            x2[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            vv20[15:0] <= cmd_axis_tdata_i[15:0] & SUBPIXEL_PRECISION_MASK;
+                            x2[15:0] <= cmd_axis_tdata_i[15:0] & SUBPIXEL_PRECISION_MASK;
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_Y2: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            vv21[31:16] <= cmd_axis_tdata_i[15:0];
+                            y2[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            vv21[15:0] <= cmd_axis_tdata_i[15:0] & SUBPIXEL_PRECISION_MASK;
+                            y2[15:0] <= cmd_axis_tdata_i[15:0] & SUBPIXEL_PRECISION_MASK;
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_Z2: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            vv22[31:16] <= cmd_axis_tdata_i[15:0];
+                            z2[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            vv22[15:0] <= cmd_axis_tdata_i[15:0];
+                            z2[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_R0: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            c00[31:16] <= cmd_axis_tdata_i[15:0];
+                            r0[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            c00[15:0] <= cmd_axis_tdata_i[15:0];
+                            r0[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_G0: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            c01[31:16] <= cmd_axis_tdata_i[15:0];
+                            g0[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            c01[15:0] <= cmd_axis_tdata_i[15:0];
+                            g0[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_B0: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            c02[31:16] <= cmd_axis_tdata_i[15:0];
+                            b0[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            c02[15:0] <= cmd_axis_tdata_i[15:0];
+                            b0[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_R1: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            c10[31:16] <= cmd_axis_tdata_i[15:0];
+                            r1[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            c10[15:0] <= cmd_axis_tdata_i[15:0];
+                            r1[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_G1: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            c11[31:16] <= cmd_axis_tdata_i[15:0];
+                            g1[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            c11[15:0] <= cmd_axis_tdata_i[15:0];
+                            g1[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_B1: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            c12[31:16] <= cmd_axis_tdata_i[15:0];
+                            b1[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            c12[15:0] <= cmd_axis_tdata_i[15:0];
+                            b1[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_R2: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            c20[31:16] <= cmd_axis_tdata_i[15:0];
+                            r2[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            c20[15:0] <= cmd_axis_tdata_i[15:0];
+                            r2[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_G2: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            c21[31:16] <= cmd_axis_tdata_i[15:0];
+                            g2[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            c21[15:0] <= cmd_axis_tdata_i[15:0];
+                            g2[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_B2: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            c22[31:16] <= cmd_axis_tdata_i[15:0];
+                            b2[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            c22[15:0] <= cmd_axis_tdata_i[15:0];
+                            b2[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_S0: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            st00[31:16] <= cmd_axis_tdata_i[15:0];
+                            s0[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            st00[15:0] <= cmd_axis_tdata_i[15:0];
+                            s0[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_T0: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            st01[31:16] <= cmd_axis_tdata_i[15:0];
+                            t0[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            st01[15:0] <= cmd_axis_tdata_i[15:0];
+                            t0[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_S1: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            st10[31:16] <= cmd_axis_tdata_i[15:0];
+                            s1[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            st10[15:0] <= cmd_axis_tdata_i[15:0];
+                            s1[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_T1: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            st11[31:16] <= cmd_axis_tdata_i[15:0];
+                            t1[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            st11[15:0] <= cmd_axis_tdata_i[15:0];
+                            t1[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_S2: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            st20[31:16] <= cmd_axis_tdata_i[15:0];
+                            s2[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            st20[15:0] <= cmd_axis_tdata_i[15:0];
+                            s2[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_T2: begin
                         if (cmd_axis_tdata_i[16]) begin
-                            st21[31:16] <= cmd_axis_tdata_i[15:0];
+                            t2[31:16] <= cmd_axis_tdata_i[15:0];
                         end else begin
-                            st21[15:0] <= cmd_axis_tdata_i[15:0];
+                            t2[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_DAX_STEP: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            dax_step[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            dax_step[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_DBX_STEP: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            dbx_step[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            dbx_step[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_DS0_STEP: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            ds0_step[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            ds0_step[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_DT0_STEP: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            dt0_step[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            dt0_step[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_DW0_STEP: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            dw0_step[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            dw0_step[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_DS1_STEP: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            ds1_step[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            ds1_step[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_DT1_STEP: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            dt1_step[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            dt1_step[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_DW1_STEP: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            dw1_step[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            dw1_step[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_DR0_STEP: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            dr0_step[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            dr0_step[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_DG0_STEP: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            dg0_step[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            dg0_step[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_DB0_STEP: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            db0_step[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            db0_step[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_DR1_STEP: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            dr1_step[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            dr1_step[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_DG1_STEP: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            dg1_step[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            dg1_step[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_DB1_STEP: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            db1_step[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            db1_step[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         state <= WAIT_COMMAND;
                     end
@@ -357,6 +517,7 @@ module graphite #(
                         is_clamp_t      <= cmd_axis_tdata_i[1];
                         is_clamp_s      <= cmd_axis_tdata_i[2];
                         is_depth_test   <= cmd_axis_tdata_i[3];
+                        bottom_half     <= cmd_axis_tdata_i[4];
                         rasterizer_start <= 1'b1;
                         state <= DRAW;
                     end
