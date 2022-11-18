@@ -74,7 +74,7 @@ vec3d vector_intersect_plane(vec3d* plane_p, vec3d* plane_n, vec3d* line_start, 
     fx32 plane_d = -vector_dot_product(plane_n, plane_p);
     fx32 ad = vector_dot_product(line_start, plane_n);
     fx32 bd = vector_dot_product(line_end, plane_n);
-    *t = DIV(-plane_d - ad, bd - ad);
+    *t = DIV2(-plane_d - ad, bd - ad);
     vec3d line_start_to_end = vector_sub(line_end, line_start);
     vec3d line_to_intersect = vector_mul(&line_start_to_end, *t);
     return vector_add(line_start, &line_to_intersect);
