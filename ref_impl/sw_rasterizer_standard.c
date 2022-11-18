@@ -18,18 +18,18 @@ static draw_pixel_fn_t g_draw_pixel_fn;
 rfx32* g_depth_buffer;
 
 typedef struct {
-    rfx32 y1, y2, y3;
-    rfx32 x1, x2;
-    rfx32 u1, v1, w1;
-    rfx32 u2, v2, w2;
+    int y0, y1, y2;
+    int x0, x1;
+    rfx32 s0, t0, w0;
+    rfx32 s1, t1, w1;
+    rfx32 r0, g0, b0, a0;
     rfx32 r1, g1, b1, a1;
-    rfx32 r2, g2, b2, a2;
     rfx32 dax_step, dbx_step;
-    rfx32 du1_step, dv1_step, dw1_step;
-    rfx32 du2_step, dv2_step, dw2_step;
+    rfx32 ds0_step, dt0_step, dw0_step;
+    rfx32 ds1_step, dt1_step, dw1_step;
+    rfx32 dr0_step, dg0_step, db0_step, da0_step;
     rfx32 dr1_step, dg1_step, db1_step, da1_step;
-    rfx32 dr2_step, dg2_step, db2_step, da2_step;
-    rfx32 sy, ey, sx, su, sv, sw, sr, sg, sb, sa;
+    bool bottom_half;
     bool tex;
     bool persp_correct;
 } rasterize_triangle_half_params_t;
@@ -45,11 +45,11 @@ void sw_dispose_rasterizer() { free(g_depth_buffer); }
 
 void sw_clear_depth_buffer() { memset(g_depth_buffer, RFX(0.0f), g_fb_width * g_fb_height * sizeof(rfx32)); }
 
-color_t texture_sample_color(bool texture, rfx32 u, rfx32 v) {
+color_t texture_sample_color(bool texture, rfx32 s, rfx32 t) {
     if (texture) {
-        if (u < RFX(0.5f) && v < RFX(0.5f)) return (color_t){RFX(1.0f), RFX(1.0f), RFX(1.0f), RFX(1.0f)};
-        if (u >= RFX(0.5f) && v < RFX(0.5f)) return (color_t){RFX(1.0f), RFX(0.0f), RFX(0.0f), RFX(1.0f)};
-        if (u < RFX(0.5f) && v >= RFX(0.5f)) return (color_t){RFX(0.0f), RFX(1.0f), RFX(0.0f), RFX(1.0f)};
+        if (s < RFX(0.5f) && t < RFX(0.5f)) return (color_t){RFX(1.0f), RFX(1.0f), RFX(1.0f), RFX(1.0f)};
+        if (s >= RFX(0.5f) && t < RFX(0.5f)) return (color_t){RFX(1.0f), RFX(0.0f), RFX(0.0f), RFX(1.0f)};
+        if (s < RFX(0.5f) && t >= RFX(0.5f)) return (color_t){RFX(0.0f), RFX(1.0f), RFX(0.0f), RFX(1.0f)};
         return (color_t){RFX(0.0f), RFX(0.0f), RFX(1.0f), RFX(1.0f)};
     }
     return (color_t){RFX(1.0f), RFX(1.0f), RFX(1.0f), RFX(1.0f)};
@@ -67,33 +67,61 @@ void swapf(rfx32* a, rfx32* b) {
     *b = t;
 }
 
-void rasterize_triangle_half(rasterize_triangle_half_params_t* p) {
-    for (int i = p->sy; i <= p->ey; i++) {
-        int ax = RINT(RFXI(p->sx) + RMUL(RFXI(i - p->sy), p->dax_step));
-        int bx = RINT(RFXI(p->x1) + RMUL(RFXI(i - p->y1), p->dbx_step));
+void rasterize_triangle_half(bool bottom_half, rasterize_triangle_half_params_t* p) {
+    int sy, ey, sx;
+    fx32 ss, st, sw, sr, sg, sb, sa;
 
-        rfx32 tex_su = p->su + RMUL(RFXI(i - p->sy), p->du1_step);
-        rfx32 tex_sv = p->sv + RMUL(RFXI(i - p->sy), p->dv1_step);
-        rfx32 tex_sw = p->sw + RMUL(RFXI(i - p->sy), p->dw1_step);
+    if (bottom_half) {
+        sy = p->y1;
+        ey = p->y2;
+        sx = p->x1;
+        ss = p->s1;
+        st = p->t1;
+        sw = p->w1;
+        sr = p->r1;
+        sg = p->g1;
+        sb = p->b1;
+        sa = p->a1;
+    } else {
+        // top half
+        sy = p->y0;
+        ey = p->y1;
+        sx = p->x0;
+        ss = p->s0;
+        st = p->t0;
+        sw = p->w0;
+        sr = p->r0;
+        sg = p->g0;
+        sb = p->b0;
+        sa = p->a0;
+    }
 
-        rfx32 tex_eu = p->u1 + RMUL(RFXI(i - p->y1), p->du2_step);
-        rfx32 tex_ev = p->v1 + RMUL(RFXI(i - p->y1), p->dv2_step);
-        rfx32 tex_ew = p->w1 + RMUL(RFXI(i - p->y1), p->dw2_step);
+    for (int y = sy; y <= ey; y++) {
+        int ax = RINT(RFXI(sx) + RMUL(RFXI(y - sy), p->dax_step));
+        int bx = RINT(RFXI(p->x0) + RMUL(RFXI(y - p->y0), p->dbx_step));
 
-        rfx32 col_sr = p->sr + RMUL(RFXI(i - p->sy), p->dr1_step);
-        rfx32 col_sg = p->sg + RMUL(RFXI(i - p->sy), p->dg1_step);
-        rfx32 col_sb = p->sb + RMUL(RFXI(i - p->sy), p->db1_step);
-        rfx32 col_sa = p->sa + RMUL(RFXI(i - p->sy), p->da1_step);
+        rfx32 tex_ss = ss + RMUL(RFXI(y - sy), p->ds0_step);
+        rfx32 tex_st = st + RMUL(RFXI(y - sy), p->dt0_step);
+        rfx32 tex_sw = sw + RMUL(RFXI(y - sy), p->dw0_step);
 
-        rfx32 col_er = p->r1 + RMUL(RFXI(i - p->y1), p->dr2_step);
-        rfx32 col_eg = p->g1 + RMUL(RFXI(i - p->y1), p->dg2_step);
-        rfx32 col_eb = p->b1 + RMUL(RFXI(i - p->y1), p->db2_step);
-        rfx32 col_ea = p->a1 + RMUL(RFXI(i - p->y1), p->da2_step);
+        rfx32 tex_es = p->s0 + RMUL(RFXI(y - p->y0), p->ds1_step);
+        rfx32 tex_et = p->t0 + RMUL(RFXI(y - p->y0), p->dt1_step);
+        rfx32 tex_ew = p->w0 + RMUL(RFXI(y - p->y0), p->dw1_step);
+
+        rfx32 col_sr = sr + RMUL(RFXI(y - sy), p->dr0_step);
+        rfx32 col_sg = sg + RMUL(RFXI(y - sy), p->dg0_step);
+        rfx32 col_sb = sb + RMUL(RFXI(y - sy), p->db0_step);
+        rfx32 col_sa = sa + RMUL(RFXI(y - sy), p->da0_step);
+
+        rfx32 col_er = p->r0 + RMUL(RFXI(y - p->y0), p->dr1_step);
+        rfx32 col_eg = p->g0 + RMUL(RFXI(y - p->y0), p->dg1_step);
+        rfx32 col_eb = p->b0 + RMUL(RFXI(y - p->y0), p->db1_step);
+        rfx32 col_ea = p->a0 + RMUL(RFXI(y - p->y0), p->da1_step);
 
         if (ax > bx) {
             swapi(&ax, &bx);
-            swapf(&tex_su, &tex_eu);
-            swapf(&tex_sv, &tex_ev);
+            swapf(&tex_ss, &tex_es);
+            swapf(&tex_st, &tex_et);
             swapf(&tex_sw, &tex_ew);
 
             swapf(&col_sr, &col_er);
@@ -102,8 +130,8 @@ void rasterize_triangle_half(rasterize_triangle_half_params_t* p) {
             swapf(&col_sa, &col_ea);
         }
 
-        rfx32 tex_u = tex_su;
-        rfx32 tex_v = tex_sv;
+        rfx32 tex_s = tex_ss;
+        rfx32 tex_t = tex_st;
         rfx32 tex_w = tex_sw;
 
         rfx32 col_r = col_sr;
@@ -114,9 +142,9 @@ void rasterize_triangle_half(rasterize_triangle_half_params_t* p) {
         rfx32 tstep = RFXI(bx - ax) > 0 ? RDIV(RFX(1.0f), RFXI(bx - ax)) : 0;
         rfx32 t = RFX(0.0f);
 
-        for (int j = ax; j < bx; j++) {
-            tex_u = RMUL(RFX(1.0f) - t, tex_su) + RMUL(t, tex_eu);
-            tex_v = RMUL(RFX(1.0f) - t, tex_sv) + RMUL(t, tex_ev);
+        for (int x = ax; x < bx; x++) {
+            tex_s = RMUL(RFX(1.0f) - t, tex_ss) + RMUL(t, tex_es);
+            tex_t = RMUL(RFX(1.0f) - t, tex_st) + RMUL(t, tex_et);
             tex_w = RMUL(RFX(1.0f) - t, tex_sw) + RMUL(t, tex_ew);
 
             col_r = RMUL(RFX(1.0f) - t, col_sr) + RMUL(t, col_er);
@@ -125,12 +153,12 @@ void rasterize_triangle_half(rasterize_triangle_half_params_t* p) {
             col_a = RMUL(RFX(1.0f) - t, col_sa) + RMUL(t, col_ea);
 
             // Perspective correction
-            tex_u = RDIV(tex_u, tex_w);
-            tex_v = RDIV(tex_v, tex_w);
+            tex_s = RDIV(tex_s, tex_w);
+            tex_t = RDIV(tex_t, tex_w);
 
-            int depth_index = i * g_fb_width + j;
+            int depth_index = y * g_fb_width + x;
             if (tex_w > g_depth_buffer[depth_index]) {
-                color_t sample = texture_sample_color(p->tex, tex_u, tex_v);
+                color_t sample = texture_sample_color(p->tex, tex_s, tex_t);
 
                 if (p->persp_correct) {
                     // Perspective correction
@@ -150,7 +178,7 @@ void rasterize_triangle_half(rasterize_triangle_half_params_t* p) {
                 int bb = RINT(RMUL(col_b, RFX(15.0f)));
                 int aa = RINT(RMUL(col_a, RFX(15.0f)));
 
-                (*g_draw_pixel_fn)(j, i, aa << 12 | rr << 8 | gg << 4 | bb);
+                (*g_draw_pixel_fn)(x, y, aa << 12 | rr << 8 | gg << 4 | bb);
                 g_depth_buffer[depth_index] = tex_w;
             }
             t += tstep;
@@ -158,22 +186,46 @@ void rasterize_triangle_half(rasterize_triangle_half_params_t* p) {
     }
 }
 
-void sw_draw_triangle(rfx32 x1a, rfx32 y1a, rfx32 w1, rfx32 u1, rfx32 v1, rfx32 r1, rfx32 g1, rfx32 b1, rfx32 a1,
-                      rfx32 x2a, rfx32 y2a, rfx32 w2, rfx32 u2, rfx32 v2, rfx32 r2, rfx32 g2, rfx32 b2, rfx32 a2,
-                      rfx32 x3a, rfx32 y3a, rfx32 w3, rfx32 u3, rfx32 v3, rfx32 r3, rfx32 g3, rfx32 b3, rfx32 a3,
+void sw_draw_triangle(rfx32 x0, rfx32 y0, rfx32 w0, rfx32 s0, rfx32 t0, rfx32 r0, rfx32 g0, rfx32 b0, rfx32 a0,
+                      rfx32 x1, rfx32 y1, rfx32 w1, rfx32 s1, rfx32 t1, rfx32 r1, rfx32 g1, rfx32 b1, rfx32 a1,
+                      rfx32 x2, rfx32 y2, rfx32 w2, rfx32 u2, rfx32 v2, rfx32 r2, rfx32 g2, rfx32 b2, rfx32 a2,
                       bool texture, bool clamp_s, bool clamp_t, bool depth_test, bool persp_correct) {
-    int x1 = RINT(x1a);
-    int y1 = RINT(y1a);
-    int x2 = RINT(x2a);
-    int y2 = RINT(y2a);
-    int x3 = RINT(x3a);
-    int y3 = RINT(y3a);
+    int xx0 = RINT(x0);
+    int yy0 = RINT(y0);
+    int xx1 = RINT(x1);
+    int yy1 = RINT(y1);
+    int xx2 = RINT(x2);
+    int yy2 = RINT(y2);
 
-    if (y2 < y1) {
-        swapi(&y1, &y2);
-        swapi(&x1, &x2);
-        swapf(&u1, &u2);
-        swapf(&v1, &v2);
+    if (yy1 < yy0) {
+        swapi(&yy0, &yy1);
+        swapi(&xx0, &xx1);
+        swapf(&s0, &s1);
+        swapf(&t0, &t1);
+        swapf(&w0, &w1);
+        swapf(&r0, &r1);
+        swapf(&g0, &g1);
+        swapf(&b0, &b1);
+        swapf(&a0, &a1);
+    }
+
+    if (yy2 < yy0) {
+        swapi(&yy0, &yy2);
+        swapi(&xx0, &xx2);
+        swapf(&s0, &u2);
+        swapf(&t0, &v2);
+        swapf(&w0, &w2);
+        swapf(&r0, &r2);
+        swapf(&g0, &g2);
+        swapf(&b0, &b2);
+        swapf(&a0, &a2);
+    }
+
+    if (yy2 < yy1) {
+        swapi(&yy1, &yy2);
+        swapi(&xx1, &xx2);
+        swapf(&s1, &u2);
+        swapf(&t1, &v2);
         swapf(&w1, &w2);
         swapf(&r1, &r2);
         swapf(&g1, &g2);
@@ -181,150 +233,104 @@ void sw_draw_triangle(rfx32 x1a, rfx32 y1a, rfx32 w1, rfx32 u1, rfx32 v1, rfx32 
         swapf(&a1, &a2);
     }
 
-    if (y3 < y1) {
-        swapi(&y1, &y3);
-        swapi(&x1, &x3);
-        swapf(&u1, &u3);
-        swapf(&v1, &v3);
-        swapf(&w1, &w3);
-        swapf(&r1, &r3);
-        swapf(&g1, &g3);
-        swapf(&b1, &b3);
-        swapf(&a1, &a3);
-    }
-
-    if (y3 < y2) {
-        swapi(&y2, &y3);
-        swapi(&x2, &x3);
-        swapf(&u2, &u3);
-        swapf(&v2, &v3);
-        swapf(&w2, &w3);
-        swapf(&r2, &r3);
-        swapf(&g2, &g3);
-        swapf(&b2, &b3);
-        swapf(&a2, &a3);
-    }
-
     rasterize_triangle_half_params_t p;
 
-    p.y1 = y1;
-    p.y2 = y2;
-    p.y3 = y3;
-    p.x1 = x1;
-    p.x2 = x2;
-    p.u1 = u1;
-    p.v1 = v1;
+    p.y0 = yy0;
+    p.y1 = yy1;
+    p.y2 = yy2;
+    p.x0 = xx0;
+    p.x1 = xx1;
+    p.s0 = s0;
+    p.t0 = t0;
+    p.w0 = w0;
+    p.s1 = s1;
+    p.t1 = t1;
     p.w1 = w1;
-    p.u2 = u2;
-    p.v2 = v2;
-    p.w2 = w2;
+    p.r0 = r0;
+    p.g0 = g0;
+    p.b0 = b0;
+    p.a0 = a0;
     p.r1 = r1;
     p.g1 = g1;
     p.b1 = b1;
     p.a1 = a1;
-    p.r2 = r2;
-    p.g2 = g2;
-    p.b2 = b2;
-    p.a2 = a2;
 
     p.tex = texture;
     p.persp_correct = persp_correct;
 
     // rasterize top half
 
-    int dy1 = y2 - y1;
-    int dx1 = x2 - x1;
-    rfx32 dv1 = v2 - v1;
-    rfx32 du1 = u2 - u1;
-    rfx32 dw1 = w2 - w1;
+    int dy0 = yy1 - yy0;
+    int dx0 = xx1 - xx0;
+    rfx32 dt0 = t1 - t0;
+    rfx32 ds0 = s1 - s0;
+    rfx32 dw0 = w1 - w0;
 
-    rfx32 dr1 = r2 - r1;
-    rfx32 dg1 = g2 - g1;
-    rfx32 db1 = b2 - b1;
-    rfx32 da1 = a2 - a1;
+    rfx32 dr0 = r1 - r0;
+    rfx32 dg0 = g1 - g0;
+    rfx32 db0 = b1 - b0;
+    rfx32 da0 = a1 - a0;
 
-    int dy2 = y3 - y1;
-    int dx2 = x3 - x1;
-    rfx32 dv2 = v3 - v1;
-    rfx32 du2 = u3 - u1;
-    rfx32 dw2 = w3 - w1;
+    int dy1 = yy2 - yy0;
+    int dx1 = xx2 - xx0;
+    rfx32 dt1 = v2 - t0;
+    rfx32 ds1 = u2 - s0;
+    rfx32 dw1 = w2 - w0;
 
-    rfx32 dr2 = r3 - r1;
-    rfx32 dg2 = g3 - g1;
-    rfx32 db2 = b3 - b1;
-    rfx32 da2 = a3 - a1;
+    rfx32 dr1 = r2 - r0;
+    rfx32 dg1 = g2 - g0;
+    rfx32 db1 = b2 - b0;
+    rfx32 da1 = a2 - a0;
 
-    if (dy1) p.dax_step = RDIV(RFXI(dx1), RFXI(abs(dy1)));
-    if (dy2) p.dbx_step = RDIV(RFXI(dx2), RFXI(abs(dy2)));
+    if (dy0) p.dax_step = RDIV(RFXI(dx0), RFXI(abs(dy0)));
+    if (dy1) p.dbx_step = RDIV(RFXI(dx1), RFXI(abs(dy1)));
 
-    if (dy1) p.du1_step = RDIV(du1, RFXI(abs(dy1)));
-    if (dy1) p.dv1_step = RDIV(dv1, RFXI(abs(dy1)));
+    if (dy0) p.ds0_step = RDIV(ds0, RFXI(abs(dy0)));
+    if (dy0) p.dt0_step = RDIV(dt0, RFXI(abs(dy0)));
+    if (dy0) p.dw0_step = RDIV(dw0, RFXI(abs(dy0)));
+
+    if (dy1) p.ds1_step = RDIV(ds1, RFXI(abs(dy1)));
+    if (dy1) p.dt1_step = RDIV(dt1, RFXI(abs(dy1)));
     if (dy1) p.dw1_step = RDIV(dw1, RFXI(abs(dy1)));
 
-    if (dy2) p.du2_step = RDIV(du2, RFXI(abs(dy2)));
-    if (dy2) p.dv2_step = RDIV(dv2, RFXI(abs(dy2)));
-    if (dy2) p.dw2_step = RDIV(dw2, RFXI(abs(dy2)));
+    if (dy0) p.dr0_step = RDIV(dr0, RFXI(abs(dy0)));
+    if (dy0) p.dg0_step = RDIV(dg0, RFXI(abs(dy0)));
+    if (dy0) p.db0_step = RDIV(db0, RFXI(abs(dy0)));
+    if (dy0) p.da0_step = RDIV(da0, RFXI(abs(dy0)));
 
     if (dy1) p.dr1_step = RDIV(dr1, RFXI(abs(dy1)));
     if (dy1) p.dg1_step = RDIV(dg1, RFXI(abs(dy1)));
     if (dy1) p.db1_step = RDIV(db1, RFXI(abs(dy1)));
     if (dy1) p.da1_step = RDIV(da1, RFXI(abs(dy1)));
 
-    if (dy2) p.dr2_step = RDIV(dr2, RFXI(abs(dy2)));
-    if (dy2) p.dg2_step = RDIV(dg2, RFXI(abs(dy2)));
-    if (dy2) p.db2_step = RDIV(db2, RFXI(abs(dy2)));
-    if (dy2) p.da2_step = RDIV(da2, RFXI(abs(dy2)));
-
-    p.sy = y1;
-    p.ey = y2;
-    p.sx = x1;
-    p.su = u1;
-    p.sv = v1;
-    p.sw = w1;
-    p.sr = r1;
-    p.sg = g1;
-    p.sb = b1;
-    p.sa = a1;
-
-    if (dy1) rasterize_triangle_half(&p);
+    if (dy0) rasterize_triangle_half(false, &p);
 
     // rasterize bottom half
 
-    dy1 = y3 - y2;
-    dx1 = x3 - x2;
-    dv1 = v3 - v2;
-    du1 = u3 - u2;
-    dw1 = w3 - w2;
+    dy0 = yy2 - yy1;
+    dx0 = xx2 - xx1;
+    dt0 = v2 - t1;
+    ds0 = u2 - s1;
+    dw0 = w2 - w1;
 
-    dr1 = r3 - r2;
-    dg1 = g3 - g2;
-    db1 = b3 - b2;
-    da1 = a3 - a2;
+    dr0 = r2 - r1;
+    dg0 = g2 - g1;
+    db0 = b2 - b1;
+    da0 = a2 - a1;
 
-    if (dy1) p.dax_step = RDIV(RFXI(dx1), RFXI(abs(dy1)));
-    if (dy2) p.dbx_step = RDIV(RFXI(dx2), RFXI(abs(dy2)));
+    if (dy0) p.dax_step = RDIV(RFXI(dx0), RFXI(abs(dy0)));
+    if (dy1) p.dbx_step = RDIV(RFXI(dx1), RFXI(abs(dy1)));
 
-    p.du1_step = RFX(0.0f), p.dv1_step = RFX(0.0f);
-    if (dy1) p.du1_step = RDIV(du1, RFXI(abs(dy1)));
-    if (dy1) p.dv1_step = RDIV(dv1, RFXI(abs(dy1)));
-    if (dy1) p.dw1_step = RDIV(dw1, RFXI(abs(dy1)));
+    p.ds0_step = RFX(0.0f), p.dt0_step = RFX(0.0f);
+    if (dy0) p.ds0_step = RDIV(ds0, RFXI(abs(dy0)));
+    if (dy0) p.dt0_step = RDIV(dt0, RFXI(abs(dy0)));
+    if (dy0) p.dw0_step = RDIV(dw0, RFXI(abs(dy0)));
 
-    p.dr1_step = RFX(0.0f), p.dg1_step = RFX(0.0f), p.db1_step = RFX(0.0f), p.da1_step = RFX(0.0f);
-    if (dy1) p.dr1_step = RDIV(dr1, RFXI(abs(dy1)));
-    if (dy1) p.dg1_step = RDIV(dg1, RFXI(abs(dy1)));
-    if (dy1) p.db1_step = RDIV(db1, RFXI(abs(dy1)));
-    if (dy1) p.da1_step = RDIV(da1, RFXI(abs(dy1)));
+    p.dr0_step = RFX(0.0f), p.dg0_step = RFX(0.0f), p.db0_step = RFX(0.0f), p.da0_step = RFX(0.0f);
+    if (dy0) p.dr0_step = RDIV(dr0, RFXI(abs(dy0)));
+    if (dy0) p.dg0_step = RDIV(dg0, RFXI(abs(dy0)));
+    if (dy0) p.db0_step = RDIV(db0, RFXI(abs(dy0)));
+    if (dy0) p.da0_step = RDIV(da0, RFXI(abs(dy0)));
 
-    p.sy = y2;
-    p.ey = y3;
-    p.sx = x2;
-    p.su = u2;
-    p.sv = v2;
-    p.sw = w2;
-    p.sr = r2;
-    p.sg = g2;
-    p.sb = b2;
-    p.sa = a2;
-
-    if (dy1) rasterize_triangle_half(&p);
+    if (dy0) rasterize_triangle_half(true, &p);
 }
