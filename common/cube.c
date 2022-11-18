@@ -22,10 +22,10 @@ static vec2d texcoords[] = {
 };
 
 static vec3d colors[] = {
-    {FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)},  // 0
-    {FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)},  // 1
-    {FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)},  // 2
-    {FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)}   // 3
+    {FX(1.0f), FX(0.0f), FX(0.0f), FX(1.0f)},  // 0
+    {FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)},  // 1
+    {FX(0.0f), FX(0.0f), FX(1.0f), FX(1.0f)},  // 2
+    {FX(1.0f), FX(1.0f), FX(0.0f), FX(1.0f)}   // 3
 };
 
 face_t faces[] = {

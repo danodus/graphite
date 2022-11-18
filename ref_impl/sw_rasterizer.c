@@ -23,11 +23,11 @@ void sw_dispose_rasterizer() { free(g_depth_buffer); }
 void sw_clear_depth_buffer() { memset(g_depth_buffer, FX(0.0f), g_fb_width * g_fb_height * sizeof(fx32)); }
 
 fx32 reciprocal(fx32 x) {
-    return x > 0 ? DIV(FX(RECIPROCAL_NUMERATOR), x) : FX(RECIPROCAL_NUMERATOR);
+    return x > 0 ? DIV2(FX(RECIPROCAL_NUMERATOR), x) : FX(RECIPROCAL_NUMERATOR);
 }
 
 fx32 edge_function(fx32 a[2], fx32 b[2], fx32 c[2]) {
-    return MUL(c[0] - a[0], b[1] - a[1]) - MUL(c[1] - a[1], b[0] - a[0]);
+    return MUL2(c[0] - a[0], b[1] - a[1]) - MUL2(c[1] - a[1], b[0] - a[0]);
 }
 
 int min(int a, int b) { return (a <= b) ? a : b; }
@@ -80,40 +80,40 @@ void sw_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32
             fx32 w2 = edge_function(vv0, vv1, pixel_sample);
             if (w0 >= FX(0.0f) && w1 >= FX(0.0f) && w2 >= FX(0.0f)) {
                 fx32 inv_area = reciprocal(area);
-                inv_area = DIV(inv_area, FX(RECIPROCAL_NUMERATOR));
-                w0 = MUL(w0, inv_area);
-                w1 = MUL(w1, inv_area);
-                w2 = MUL(w2, inv_area);
-                fx32 u = MUL(w0, t0[0]) + MUL(w1, t1[0]) + MUL(w2, t2[0]);
-                fx32 v = MUL(w0, t0[1]) + MUL(w1, t1[1]) + MUL(w2, t2[1]);
-                fx32 r = MUL(w0, c0[0]) + MUL(w1, c1[0]) + MUL(w2, c2[0]);
-                fx32 g = MUL(w0, c0[1]) + MUL(w1, c1[1]) + MUL(w2, c2[1]);
-                fx32 b = MUL(w0, c0[2]) + MUL(w1, c1[2]) + MUL(w2, c2[2]);
-                fx32 a = MUL(w0, c0[3]) + MUL(w1, c1[3]) + MUL(w2, c2[3]);
+                inv_area = DIV2(inv_area, FX(RECIPROCAL_NUMERATOR));
+                w0 = MUL2(w0, inv_area);
+                w1 = MUL2(w1, inv_area);
+                w2 = MUL2(w2, inv_area);
+                fx32 u = MUL2(w0, t0[0]) + MUL2(w1, t1[0]) + MUL2(w2, t2[0]);
+                fx32 v = MUL2(w0, t0[1]) + MUL2(w1, t1[1]) + MUL2(w2, t2[1]);
+                fx32 r = MUL2(w0, c0[0]) + MUL2(w1, c1[0]) + MUL2(w2, c2[0]);
+                fx32 g = MUL2(w0, c0[1]) + MUL2(w1, c1[1]) + MUL2(w2, c2[1]);
+                fx32 b = MUL2(w0, c0[2]) + MUL2(w1, c1[2]) + MUL2(w2, c2[2]);
+                fx32 a = MUL2(w0, c0[3]) + MUL2(w1, c1[3]) + MUL2(w2, c2[3]);
 
                 // Perspective correction
-                fx32 z = MUL(w0, vv0[2]) + MUL(w1, vv1[2]) + MUL(w2, vv2[2]);
+                fx32 z = MUL2(w0, vv0[2]) + MUL2(w1, vv1[2]) + MUL2(w2, vv2[2]);
 
                 int depth_index = y * g_fb_width + x;
                 if (!depth_test || (z > g_depth_buffer[depth_index])) {
                     fx32 inv_z = reciprocal(z);
-                    inv_z = DIV(inv_z, FX(RECIPROCAL_NUMERATOR));
-                    u = MUL(u, inv_z);
-                    v = MUL(v, inv_z);
-                    r = MUL(r, inv_z);
-                    g = MUL(g, inv_z);
-                    b = MUL(b, inv_z);
-                    a = MUL(a, inv_z);
+                    inv_z = DIV2(inv_z, FX(RECIPROCAL_NUMERATOR));
+                    u = MUL2(u, inv_z);
+                    v = MUL2(v, inv_z);
+                    r = MUL2(r, inv_z);
+                    g = MUL2(g, inv_z);
+                    b = MUL2(b, inv_z);
+                    a = MUL2(a, inv_z);
 
                     vec3d sample = texture_sample_color(tex, u, v);
-                    r = MUL(r, sample.x);
-                    g = MUL(g, sample.y);
-                    b = MUL(b, sample.z);
+                    r = MUL2(r, sample.x);
+                    g = MUL2(g, sample.y);
+                    b = MUL2(b, sample.z);
 
-                    int rr = INT(MUL(r, FX(15.0f)));
-                    int gg = INT(MUL(g, FX(15.0f)));
-                    int bb = INT(MUL(b, FX(15.0f)));
-                    int aa = INT(MUL(a, FX(15.0f)));
+                    int rr = INT(MUL2(r, FX(15.0f)));
+                    int gg = INT(MUL2(g, FX(15.0f)));
+                    int bb = INT(MUL2(b, FX(15.0f)));
+                    int aa = INT(MUL2(a, FX(15.0f)));
 
                     (*g_draw_pixel_fn)(x, y, aa << 12 | rr << 8 | gg << 4 | bb);
 
