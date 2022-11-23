@@ -564,7 +564,7 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
             // clip viewed triangle against near plane, this could form two additional triangles
             int nb_clipped_triangles = 0;
             triangle_t clipped[2];
-            const fx32 z_near = FX(1.0f);
+            const fx32 z_near = FX(0.1f);
             vec3d plane_p = {FX(0.0f), FX(0.0f), z_near, FX(1.0f)};
             vec3d plane_n = {FX(0.0f), FX(0.0f), FX(1.0f), FX(1.0f)};
             nb_clipped_triangles = triangle_clip_against_plane(plane_p, plane_n, &tri_viewed, &clipped[0], &clipped[1]);
@@ -722,26 +722,6 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 t->t[1] = tt;
                 t->c[1] = tc;
             }
-
-            // clamp the texture coordinates and colors
-            t->t[0].u = clamp(t->t[0].u);
-            t->t[0].v = clamp(t->t[0].v);
-            t->t[1].u = clamp(t->t[1].u);
-            t->t[1].v = clamp(t->t[1].v);
-            t->t[2].u = clamp(t->t[2].u);
-            t->t[2].v = clamp(t->t[2].v);
-            t->c[0].x = clamp(t->c[0].x);
-            t->c[0].y = clamp(t->c[0].y);
-            t->c[0].z = clamp(t->c[0].z);
-            t->c[0].w = clamp(t->c[0].w);
-            t->c[1].x = clamp(t->c[1].x);
-            t->c[1].y = clamp(t->c[1].y);
-            t->c[1].z = clamp(t->c[1].z);
-            t->c[1].w = clamp(t->c[1].w);
-            t->c[2].x = clamp(t->c[2].x);
-            t->c[2].y = clamp(t->c[2].y);
-            t->c[2].z = clamp(t->c[2].z);
-            t->c[2].w = clamp(t->c[2].w);
 
             // rasterize triangle
             if (is_wireframe) {
