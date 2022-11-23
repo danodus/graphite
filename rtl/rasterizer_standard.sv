@@ -194,6 +194,12 @@ module rasterizer_standard #(
 
     logic signed [31:0] x, y, ax, bx, tex_ss, tex_st, tex_sw;
 
+    logic signed [31:0] s, t, w, r, g, b;
+    logic signed [31:0] tstep, tt;
+
+    logic        [15:0] depth;
+    logic        [15:0] sample; 
+
     always_comb begin
         if (bottom_half_i) begin
             sy = y1_i;
@@ -333,15 +339,15 @@ module rasterizer_standard #(
             end
 
             DRAW_TRIANGLE08: begin
-                tex_s <= tex_ss;
-                tex_t <= tex_st;
-                tex_w <= tex_sw;
-                col_r <= col_sr;
-                col_g <= col_sg;
-                col_b <= col_sb;
+                s <= tex_ss;
+                t <= tex_st;
+                z <= tex_sw;
+                r <= col_sr;
+                g <= col_sg;
+                b <= col_sb;
 
                 reciprocal_x <= (bx - ax) << 16;
-                t <= 32'd0;
+                tt <= 32'd0;
                 state <= DRAW_TRIANGLE09;
             end
 
@@ -357,23 +363,40 @@ module rasterizer_standard #(
                 end else begin
                     dsp_lerp_a[0] <= tex_ss;
                     dsp_lerp_b[0] <= tex_es;
-                    dsp_lerp_t[0] <= t;
+                    dsp_lerp_t[0] <= tt;
                     dsp_lerp_a[1] <= tex_st;
                     dsp_lerp_b[1] <= tex_et;
-                    dsp_lerp_t[1] <= t;
+                    dsp_lerp_t[1] <= tt;
                     dsp_lerp_a[2] <= tex_sw;
                     dsp_lerp_b[2] <= tex_ew;
-                    dsp_lerp_t[2] <= t;
+                    dsp_lerp_t[2] <= tt;
                     state <= DRAW_TRIANGLE11;
                 end
             end
 
             DRAW_TRIANGLE11: begin
-                tex_s <= dsp_lerp_z[0];
-                tex_t <= dsp_lerp_z[1];
-                tex_w <= dsp_lerp_z[2];
-                
+                s <= dsp_lerp_z[0];
+                t <= dsp_lerp_z[1];
+                z <= dsp_lerp_z[2];
+                dsp_lerp_a[0] <= col_sr;
+                dsp_lerp_b[0] <= col_er;
+                dsp_lerp_t[0] <= tt;
+                dsp_lerp_a[1] <= col_sg;
+                dsp_lerp_b[1] <= col_eg;
+                dsp_lerp_t[1] <= tt;
+                dsp_lerp_a[2] <= col_sb;
+                dsp_lerp_b[2] <= col_eb;
+                dsp_lerp_t[2] <= tt;
+                state <= DRAW_TRIANGLE12;
             end
+
+            DRAW_TRIANGLE12: begin
+                r <= dsp_lerp_z[0];
+                g <= dsp_lerp_z[1];
+                b <= dsp_lerp_z[2];
+                state <= DRAW_TRIANGLE35;
+            end
+
 
 
         endcase

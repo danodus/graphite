@@ -83,7 +83,7 @@ void xd_draw_triangle(rfx32 x0, rfx32 y0, rfx32 z0, rfx32 u0, rfx32 v0, rfx32 r0
                       rfx32 x1, rfx32 y1, rfx32 z1, rfx32 u1, rfx32 v1, rfx32 r1, rfx32 g1, rfx32 b1, rfx32 a1,
                       rfx32 x2, rfx32 y2, rfx32 z2, rfx32 u2, rfx32 v2, rfx32 r2, rfx32 g2, rfx32 b2, rfx32 a2,
                       bool texture, bool clamp_s, bool clamp_t, bool depth_test, bool persp_correct) {
-    sw_draw_triangle(x0, y0, z0, u0, v0, r0, g0, b0, a0, x1, y1, z1, u1, v1, r1, g1, b1, a1, x2, y2, z2, u2, v2, r2, g2,
+    sw_draw_triangle_standard(x0, y0, z0, u0, v0, r0, g0, b0, a0, x1, y1, z1, u1, v1, r1, g1, b1, a1, x2, y2, z2, u2, v2, r2, g2,
                      b2, a2, texture, clamp_s, clamp_t, depth_test, persp_correct);
 }
 #endif  // GLIDE_SDL
@@ -231,7 +231,7 @@ void grDrawTriangle(const GrVertex* a, const GrVertex* b, const GrVertex* c) {
 
 void grBufferClear(GrColor_t color, GrAlpha_t alpha, FxU16 depth) {
 #if GLIDE_SDL
-    sw_clear_depth_buffer();
+    sw_clear_depth_buffer_standard();
     SDL_SetRenderDrawColor(renderer, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, alpha);
     SDL_RenderClear(renderer);
 #endif  // GLIDE_SDL
@@ -264,7 +264,7 @@ void grSstWinClose() {
     if (window) {
         SDL_DestroyWindow(window);
         SDL_Quit();
-        sw_dispose_rasterizer();
+        sw_dispose_rasterizer_standard();
     }
 #endif  // GLIDE_SDL
 }
@@ -286,7 +286,7 @@ void grSstSelect(int which_sst) {}
 
 void grGlideInit(void) {
 #if GLIDE_SDL
-    sw_init_rasterizer(screen_width, screen_height, draw_pixel);
+    sw_init_rasterizer_standard(screen_width, screen_height, draw_pixel);
 #endif  // GLIDE_SDL
 }
 

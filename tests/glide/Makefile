@@ -6,7 +6,7 @@ SDL_CFLAGS	:= $(shell pkg-config sdl2 --cflags)
 
 CFLAGS		:= -g -std=c99 $(SDL_CFLAGS) -I.. -I../../src -I../../ref_impl -DGLIDE_SDL=1
 
-COMMON_SRC := ../../ref_impl/sw_rasterizer_standard.c ../../src/glide.c tlib.c
+COMMON_SRC := ../../ref_impl/sw_rasterizer_standard.c ../../ref_impl/sw_fragment_shader.c ../../src/glide.c tlib.c
 
 all: test0 test1 test2 test3 test4 test5 test20
 

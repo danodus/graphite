@@ -10,27 +10,23 @@
 
 #define RECIPROCAL_NUMERATOR 256.0f
 
-typedef struct {
-    rfx32 r, g, b, a;
-} color_t;
-
 int g_fb_width, g_fb_height;
 static draw_pixel_fn_t g_draw_pixel_fn;
 
-rfx32* g_depth_buffer;
+static rfx32* g_depth_buffer;
 
-void sw_init_rasterizer(int fb_width, int fb_height, draw_pixel_fn_t draw_pixel_fn) {
+void sw_init_rasterizer_barycentric(int fb_width, int fb_height, draw_pixel_fn_t draw_pixel_fn) {
     g_fb_width = fb_width;
     g_fb_height = fb_height;
     g_depth_buffer = (rfx32*)malloc(fb_width * fb_height * sizeof(rfx32));
     g_draw_pixel_fn = draw_pixel_fn;
 }
 
-void sw_dispose_rasterizer() { free(g_depth_buffer); }
+void sw_dispose_rasterizer_barycentric() { free(g_depth_buffer); }
 
-void sw_clear_depth_buffer() { memset(g_depth_buffer, RFX(0.0f), g_fb_width * g_fb_height * sizeof(rfx32)); }
+void sw_clear_depth_buffer_barycentric() { memset(g_depth_buffer, RFX(0.0f), g_fb_width * g_fb_height * sizeof(rfx32)); }
 
-rfx32 reciprocal(rfx32 x) { return x > 0 ? RDIV(RFX(RECIPROCAL_NUMERATOR), x) : RFX(RECIPROCAL_NUMERATOR); }
+static rfx32 reciprocal(rfx32 x) { return x > 0 ? RDIV(RFX(RECIPROCAL_NUMERATOR), x) : RFX(RECIPROCAL_NUMERATOR); }
 
 rfx32 edge_function(rfx32 a[2], rfx32 b[2], rfx32 c[2]) {
     return RMUL(c[0] - a[0], b[1] - a[1]) - RMUL(c[1] - a[1], b[0] - a[0]);
@@ -44,17 +40,7 @@ int min3(int a, int b, int c) { return min(a, min(b, c)); }
 
 int max3(int a, int b, int c) { return max(a, max(b, c)); }
 
-color_t texture_sample_color(bool texture, rfx32 u, rfx32 v) {
-    if (texture) {
-        if (u < RFX(0.5f) && v < RFX(0.5f)) return (color_t){RFX(1.0f), RFX(1.0f), RFX(1.0f), RFX(1.0f)};
-        if (u >= RFX(0.5f) && v < RFX(0.5f)) return (color_t){RFX(1.0f), RFX(0.0f), RFX(0.0f), RFX(1.0f)};
-        if (u < RFX(0.5f) && v >= RFX(0.5f)) return (color_t){RFX(0.0f), RFX(1.0f), RFX(0.0f), RFX(1.0f)};
-        return (color_t){RFX(0.0f), RFX(0.0f), RFX(1.0f), RFX(1.0f)};
-    }
-    return (color_t){RFX(1.0f), RFX(1.0f), RFX(1.0f), RFX(1.0f)};
-}
-
-void sw_draw_triangle(rfx32 x0, rfx32 y0, rfx32 z0, rfx32 u0, rfx32 v0, rfx32 r0, rfx32 g0, rfx32 b0, rfx32 a0,
+void sw_draw_triangle_barycentric(rfx32 x0, rfx32 y0, rfx32 z0, rfx32 u0, rfx32 v0, rfx32 r0, rfx32 g0, rfx32 b0, rfx32 a0,
                       rfx32 x1, rfx32 y1, rfx32 z1, rfx32 u1, rfx32 v1, rfx32 r1, rfx32 g1, rfx32 b1, rfx32 a1,
                       rfx32 x2, rfx32 y2, rfx32 z2, rfx32 u2, rfx32 v2, rfx32 r2, rfx32 g2, rfx32 b2, rfx32 a2,
                       bool texture, bool clamp_s, bool clamp_t, bool depth_test, bool persp_correct) {
@@ -98,36 +84,7 @@ void sw_draw_triangle(rfx32 x0, rfx32 y0, rfx32 z0, rfx32 u0, rfx32 v0, rfx32 r0
 
                 rfx32 z = RMUL(w0, vv0[2]) + RMUL(w1, vv1[2]) + RMUL(w2, vv2[2]);
 
-                int depth_index = y * g_fb_width + x;
-                if (!depth_test || (z > g_depth_buffer[depth_index])) {
-                    // Perspective correction
-                    rfx32 inv_z = reciprocal(z);
-                    inv_z = RDIV(inv_z, RFX(RECIPROCAL_NUMERATOR));
-                    u = RMUL(u, inv_z);
-                    v = RMUL(v, inv_z);
-
-                    if (persp_correct) {
-                        r = RMUL(r, inv_z);
-                        g = RMUL(g, inv_z);
-                        b = RMUL(b, inv_z);
-                        a = RMUL(a, inv_z);
-                    }
-
-                    color_t sample = texture_sample_color(texture, u, v);
-                    r = RMUL(r, sample.r);
-                    g = RMUL(g, sample.g);
-                    b = RMUL(b, sample.b);
-
-                    int rr = RINT(RMUL(r, RFX(15.0f)));
-                    int gg = RINT(RMUL(g, RFX(15.0f)));
-                    int bb = RINT(RMUL(b, RFX(15.0f)));
-                    int aa = RINT(RMUL(a, RFX(15.0f)));
-
-                    (*g_draw_pixel_fn)(x, y, aa << 12 | rr << 8 | gg << 4 | bb);
-
-                    // write to depth buffer
-                    g_depth_buffer[depth_index] = z;
-                }
+                sw_fragment_shader(g_fb_width, x, y, z, u, v, r, g, b, a, depth_test, texture, g_depth_buffer, persp_correct, g_draw_pixel_fn);
             }
         }
 }

@@ -12,8 +12,8 @@ SRC :=
 
 all: graphite_ref_impl
 
-graphite_ref_impl: Makefile graphite_ref_impl.c sw_rasterizer_barycentric.c ../src/fx.h ../src/glide.h ../src/draw.h ../src/cube.h ../src/teapot.h ../src/glide.c ../src/draw.c ../src/cube.c ../src/teapot.c
-	$(CC) $(CFLAGS) graphite_ref_impl.c sw_rasterizer_barycentric.c ../src/glide.c ../src/draw.c ../src/cube.c ../src/teapot.c -o graphite_ref_impl $(LDFLAGS) 
+graphite_ref_impl: Makefile graphite_ref_impl.c sw_rasterizer_standard.c sw_rasterizer_barycentric.c sw_fragment_shader.c ../src/fx.h ../src/glide.h ../src/draw.h ../src/cube.h ../src/teapot.h ../src/glide.c ../src/draw.c ../src/cube.c ../src/teapot.c
+	$(CC) $(CFLAGS) graphite_ref_impl.c sw_rasterizer_standard.c sw_rasterizer_barycentric.c sw_fragment_shader.c ../src/glide.c ../src/draw.c ../src/cube.c ../src/teapot.c -o graphite_ref_impl $(LDFLAGS) 
 
 clean:
 	rm -f graphite_ref_impl

@@ -6,6 +6,8 @@
 
 `include "graphite.svh"
 
+`define RASTERIZER_BARYCENTRIC
+
 module graphite #(
     parameter FB_WIDTH = 128,
     parameter FB_HEIGHT = 128,

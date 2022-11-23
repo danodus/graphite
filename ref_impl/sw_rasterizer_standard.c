@@ -8,14 +8,10 @@
 
 #include "sw_rasterizer.h"
 
-typedef struct {
-    rfx32 r, g, b, a;
-} color_t;
-
 int g_fb_width, g_fb_height;
 static draw_pixel_fn_t g_draw_pixel_fn;
 
-rfx32* g_depth_buffer;
+static rfx32* g_depth_buffer;
 
 typedef struct {
     int y0, y1, y2;
@@ -34,26 +30,16 @@ typedef struct {
     bool persp_correct;
 } rasterize_triangle_half_params_t;
 
-void sw_init_rasterizer(int fb_width, int fb_height, draw_pixel_fn_t draw_pixel_fn) {
+void sw_init_rasterizer_standard(int fb_width, int fb_height, draw_pixel_fn_t draw_pixel_fn) {
     g_fb_width = fb_width;
     g_fb_height = fb_height;
     g_depth_buffer = (rfx32*)malloc(fb_width * fb_height * sizeof(rfx32));
     g_draw_pixel_fn = draw_pixel_fn;
 }
 
-void sw_dispose_rasterizer() { free(g_depth_buffer); }
+void sw_dispose_rasterizer_standard() { free(g_depth_buffer); }
 
-void sw_clear_depth_buffer() { memset(g_depth_buffer, RFX(0.0f), g_fb_width * g_fb_height * sizeof(rfx32)); }
-
-color_t texture_sample_color(bool texture, rfx32 s, rfx32 t) {
-    if (texture) {
-        if (s < RFX(0.5f) && t < RFX(0.5f)) return (color_t){RFX(1.0f), RFX(1.0f), RFX(1.0f), RFX(1.0f)};
-        if (s >= RFX(0.5f) && t < RFX(0.5f)) return (color_t){RFX(1.0f), RFX(0.0f), RFX(0.0f), RFX(1.0f)};
-        if (s < RFX(0.5f) && t >= RFX(0.5f)) return (color_t){RFX(0.0f), RFX(1.0f), RFX(0.0f), RFX(1.0f)};
-        return (color_t){RFX(0.0f), RFX(0.0f), RFX(1.0f), RFX(1.0f)};
-    }
-    return (color_t){RFX(1.0f), RFX(1.0f), RFX(1.0f), RFX(1.0f)};
-}
+void sw_clear_depth_buffer_standard() { memset(g_depth_buffer, RFX(0.0f), g_fb_width * g_fb_height * sizeof(rfx32)); }
 
 void swapi(int* a, int* b) {
     int t = *a;
@@ -130,63 +116,36 @@ void rasterize_triangle_half(bool bottom_half, rasterize_triangle_half_params_t*
             swapf(&col_sa, &col_ea);
         }
 
-        rfx32 tex_s = tex_ss;
-        rfx32 tex_t = tex_st;
-        rfx32 tex_w = tex_sw;
+        rfx32 s = tex_ss;
+        rfx32 t = tex_st;
+        rfx32 z = tex_sw;
 
-        rfx32 col_r = col_sr;
-        rfx32 col_g = col_sg;
-        rfx32 col_b = col_sb;
-        rfx32 col_a = col_sa;
+        rfx32 r = col_sr;
+        rfx32 g = col_sg;
+        rfx32 b = col_sb;
+        rfx32 a = col_sa;
 
         rfx32 tstep = RFXI(bx - ax) > 0 ? RDIV(RFX(1.0f), RFXI(bx - ax)) : 0;
-        rfx32 t = RFX(0.0f);
+        rfx32 tt = RFX(0.0f);
 
         for (int x = ax; x < bx; x++) {
-            tex_s = RMUL(RFX(1.0f) - t, tex_ss) + RMUL(t, tex_es);
-            tex_t = RMUL(RFX(1.0f) - t, tex_st) + RMUL(t, tex_et);
-            tex_w = RMUL(RFX(1.0f) - t, tex_sw) + RMUL(t, tex_ew);
+            s = RMUL(RFX(1.0f) - tt, tex_ss) + RMUL(tt, tex_es);
+            t = RMUL(RFX(1.0f) - tt, tex_st) + RMUL(tt, tex_et);
+            z = RMUL(RFX(1.0f) - tt, tex_sw) + RMUL(tt, tex_ew);
 
-            col_r = RMUL(RFX(1.0f) - t, col_sr) + RMUL(t, col_er);
-            col_g = RMUL(RFX(1.0f) - t, col_sg) + RMUL(t, col_eg);
-            col_b = RMUL(RFX(1.0f) - t, col_sb) + RMUL(t, col_eb);
-            col_a = RMUL(RFX(1.0f) - t, col_sa) + RMUL(t, col_ea);
+            r = RMUL(RFX(1.0f) - tt, col_sr) + RMUL(tt, col_er);
+            g = RMUL(RFX(1.0f) - tt, col_sg) + RMUL(tt, col_eg);
+            b = RMUL(RFX(1.0f) - tt, col_sb) + RMUL(tt, col_eb);
+            a = RMUL(RFX(1.0f) - tt, col_sa) + RMUL(tt, col_ea);
 
-            // Perspective correction
-            tex_s = RDIV(tex_s, tex_w);
-            tex_t = RDIV(tex_t, tex_w);
+            sw_fragment_shader(g_fb_width, x, y, z, s, t, r, g, b, a, true, p->tex, g_depth_buffer, p->persp_correct, g_draw_pixel_fn);
 
-            int depth_index = y * g_fb_width + x;
-            if (tex_w > g_depth_buffer[depth_index]) {
-                color_t sample = texture_sample_color(p->tex, tex_s, tex_t);
-
-                if (p->persp_correct) {
-                    // Perspective correction
-                    col_r = RDIV(col_r, tex_w);
-                    col_g = RDIV(col_g, tex_w);
-                    col_b = RDIV(col_b, tex_w);
-                    col_a = RDIV(col_a, tex_w);
-                }
-
-                col_r = RMUL(col_r, sample.r);
-                col_g = RMUL(col_g, sample.g);
-                col_b = RMUL(col_b, sample.b);
-                col_a = RMUL(col_a, sample.a);
-
-                int rr = RINT(RMUL(col_r, RFX(15.0f)));
-                int gg = RINT(RMUL(col_g, RFX(15.0f)));
-                int bb = RINT(RMUL(col_b, RFX(15.0f)));
-                int aa = RINT(RMUL(col_a, RFX(15.0f)));
-
-                (*g_draw_pixel_fn)(x, y, aa << 12 | rr << 8 | gg << 4 | bb);
-                g_depth_buffer[depth_index] = tex_w;
-            }
-            t += tstep;
+            tt += tstep;
         }
     }
 }
 
-void sw_draw_triangle(rfx32 x0, rfx32 y0, rfx32 w0, rfx32 s0, rfx32 t0, rfx32 r0, rfx32 g0, rfx32 b0, rfx32 a0,
+void sw_draw_triangle_standard(rfx32 x0, rfx32 y0, rfx32 w0, rfx32 s0, rfx32 t0, rfx32 r0, rfx32 g0, rfx32 b0, rfx32 a0,
                       rfx32 x1, rfx32 y1, rfx32 w1, rfx32 s1, rfx32 t1, rfx32 r1, rfx32 g1, rfx32 b1, rfx32 a1,
                       rfx32 x2, rfx32 y2, rfx32 w2, rfx32 u2, rfx32 v2, rfx32 r2, rfx32 g2, rfx32 b2, rfx32 a2,
                       bool texture, bool clamp_s, bool clamp_t, bool depth_test, bool persp_correct) {
