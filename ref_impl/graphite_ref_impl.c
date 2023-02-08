@@ -49,6 +49,7 @@ int main(int argc, char* argv[]) {
     mat4x4 mat_proj = matrix_make_projection(screen_width, screen_height, 60.0f);
 
     float theta = 0.5f;
+    float scale = 1.0f;
 
     model_t* cube_model = load_cube();
     model_t* teapot_model = load_teapot();
@@ -90,11 +91,13 @@ int main(int argc, char* argv[]) {
 
         mat4x4 mat_rot_z = matrix_make_rotation_z(theta);
         mat4x4 mat_rot_x = matrix_make_rotation_x(theta);
-
+        mat4x4 mat_scale = matrix_make_scale(FX(scale), FX(scale), FX(scale));
         mat4x4 mat_trans = matrix_make_translation(FX(0.0f), FX(0.0f), FX(2.0f));
         mat4x4 mat_world;
         mat_world = matrix_make_identity();
-        mat_world = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
+        mat_world = matrix_multiply_matrix(&mat_world, &mat_scale);
+        mat_world = matrix_multiply_matrix(&mat_world, &mat_rot_z);
+        mat_world = matrix_multiply_matrix(&mat_world, &mat_rot_x);
         mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
 
         // Draw lines
@@ -169,6 +172,13 @@ int main(int argc, char* argv[]) {
                         break;                                                
                     case SDL_SCANCODE_SPACE:
                         is_anim = !is_anim;
+                        break;
+                    case SDL_SCANCODE_KP_PLUS:
+                        scale += 1.0f;
+                        break;
+                    case SDL_SCANCODE_KP_MINUS:
+                        if (scale > 1.0f)
+                            scale -= 1.0f;
                         break;
                     default:
                         // do nothing

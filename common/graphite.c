@@ -321,6 +321,18 @@ mat4x4 matrix_make_translation(fx32 x, fx32 y, fx32 z) {
     return mat;
 }
 
+mat4x4 matrix_make_scale(fx32 x, fx32 y, fx32 z) {
+    mat4x4 mat;
+    memset(&mat, 0, sizeof(mat4x4));
+
+    mat.m[0][0] = x;
+    mat.m[1][1] = y;
+    mat.m[2][2] = z;
+    mat.m[3][3] = FX(1.0f);
+
+    return mat;
+}
+
 mat4x4 matrix_multiply_matrix(mat4x4* m1, mat4x4* m2) {
     mat4x4 mat;
     for (int c = 0; c < 4; ++c)
