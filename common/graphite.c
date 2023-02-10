@@ -548,7 +548,8 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 light_direction = vector_normalize(&light_direction);
 
                 // how "aligned" are light direction and triangle surface normal?
-                vec3d n = vector_normalize(&normal);
+                vec3d n = vector_mul(&normal, FXI(16)); // to fix precision issue with small triangles in fixed point
+                n = vector_normalize(&n);
                 dp = vector_dot_product(&light_direction, &n);
 
                 if (dp < FX(0.0f)) dp = FX(0.0f);
