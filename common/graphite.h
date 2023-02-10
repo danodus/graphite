@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifndef FIXED_POINT
 #define FIXED_POINT 1
@@ -15,23 +16,19 @@
 #define _FRACTION_MASK(scale) (0xffffffff >> (32 - scale))
 #define _WHOLE_MASK(scale) (0xffffffff ^ FRACTION_MASK(scale))
 
-#define _FLOAT_TO_FIXED(x, scale) ((int)((x) * (float)(1 << scale)))
+#define _FLOAT_TO_FIXED(x, scale) ((int32_t)((x) * (float)(1 << scale)))
 #define _FIXED_TO_FLOAT(x, scale) ((float)(x) / (double)(1 << scale))
 #define _INT_TO_FIXED(x, scale) ((x) << scale)
 #define _FIXED_TO_INT(x, scale) ((x) >> scale)
 #define _FRACTION_PART(x, scale) ((x)&FRACTION_MASK(scale))
 #define _WHOLE_PART(x, scale) ((x)&WHOLE_MASK(scale))
 
-#define _MUL(x, y, scale) ((int)((x) >> (scale / 2)) * (int)((y) >> (scale / 2)))
-#define _MUL2(x, y, scale) (int)(((long long)(x) * (long long)(y)) >> scale)
-
-#define _DIV(x, y, scale) (((int)(x) << (scale / 2)) / (int)((y) >> (scale / 2)))
-#define _DIV2(x, y, scale) (int)(((long long)(x) << scale) / (y))
-//#define _DIV2(x, y, scale, adj) (((int)(x) << (scale / 2 - (adj))) / (int)((y) >> (scale / 2 + (adj))))
+#define _MUL(x, y, scale) (int32_t)(((int64_t)(x) * (int64_t)(y)) >> scale)
+#define _DIV(x, y, scale) (int32_t)(((int64_t)(x) << scale) / (y))
 
 #if FIXED_POINT
 
-typedef int fx32;
+typedef int32_t fx32;
 
 #define SCALE 14
 
@@ -39,10 +36,8 @@ typedef int fx32;
 #define FXI(x) ((fx32)_INT_TO_FIXED(x, SCALE))
 #define INT(x) ((int)_FIXED_TO_INT(x, SCALE))
 #define FLT(x) ((float)_FIXED_TO_FLOAT(x, SCALE))
-#define MUL(x, y) _MUL2(x, y, SCALE)
-#define MUL2(x, y) _MUL2(x, y, SCALE)
-#define DIV(x, y) _DIV2(x, y, SCALE)
-#define DIV2(x, y) _DIV2(x, y, SCALE)
+#define MUL(x, y) _MUL(x, y, SCALE)
+#define DIV(x, y) _DIV(x, y, SCALE)
 
 #define SIN(x) FX(sinf(_FIXED_TO_FLOAT(x, SCALE)))
 #define COS(x) FX(cosf(_FIXED_TO_FLOAT(x, SCALE)))
@@ -58,9 +53,7 @@ typedef float fx32;
 #define INT(x) ((int)(x))
 #define FLT(x) (x)
 #define MUL(x, y) ((x) * (y))
-#define MUL2(x, y) ((x) * (y))
 #define DIV(x, y) ((x) / (y))
-#define DIV2(x, y) DIV(x, y)
 
 #define SIN(x) (sinf(x))
 #define COS(x) (cosf(x))
