@@ -4,7 +4,7 @@ module gen_reciprocal(
 );
 
     localparam NUMERATOR = 32'h100;
-    localparam END_INTERPOLATION_REGION = 65536;     // values beyond this will return 0
+    localparam END_INTERPOLATION_REGION = 131072;     // values beyond this will return 0
     localparam NB_SUBDIVISIONS = 16384;
 
     localparam SUBDIVISION_SIZE = END_INTERPOLATION_REGION / NB_SUBDIVISIONS;

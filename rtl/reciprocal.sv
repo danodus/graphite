@@ -3,7 +3,7 @@
 // f(x) = NUMERATOR/x
 module reciprocal #(
     parameter NUMERATOR = 32'h100,
-    parameter END_INTERPOLATION_REGION = 65536,     // values beyond this will return 0
+    parameter END_INTERPOLATION_REGION = 131072,     // values beyond this will return 0
     parameter NB_SUBDIVISIONS = 16384
 )(
     input wire logic clk,
