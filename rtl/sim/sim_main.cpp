@@ -57,7 +57,7 @@
 #if FIXED_POINT
 #define PARAM(x) (x)
 #else
-#define PARAM(x) (_FLOAT_TO_FIXED(x, 16))
+#define PARAM(x) (_FLOAT_TO_FIXED(x, 14))
 #endif
 
 // Serial

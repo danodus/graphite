@@ -33,15 +33,15 @@
 
 typedef int fx32;
 
-#define SCALE 16
+#define SCALE 14
 
 #define FX(x) ((fx32)_FLOAT_TO_FIXED(x, SCALE))
 #define FXI(x) ((fx32)_INT_TO_FIXED(x, SCALE))
 #define INT(x) ((int)_FIXED_TO_INT(x, SCALE))
 #define FLT(x) ((float)_FIXED_TO_FLOAT(x, SCALE))
-#define MUL(x, y) _MUL(x, y, SCALE)
+#define MUL(x, y) _MUL2(x, y, SCALE)
 #define MUL2(x, y) _MUL2(x, y, SCALE)
-#define DIV(x, y) _DIV(x, y, SCALE)
+#define DIV(x, y) _DIV2(x, y, SCALE)
 #define DIV2(x, y) _DIV2(x, y, SCALE)
 
 #define SIN(x) FX(sinf(_FIXED_TO_FLOAT(x, SCALE)))

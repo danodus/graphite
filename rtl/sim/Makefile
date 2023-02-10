@@ -1,7 +1,7 @@
 VERILATOR = verilator
 
 LDFLAGS := -LDFLAGS "$(shell sdl2-config --libs)"
-CFLAGS := -CFLAGS "$(shell sdl2-config --cflags) -g -I ../../../common"
+CFLAGS := -CFLAGS "$(shell sdl2-config --cflags) -g -I ../../../common -DFIXED_POINT=1"
 
 all: sim
 

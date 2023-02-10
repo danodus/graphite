@@ -4,8 +4,8 @@ module gen_reciprocal(
 );
 
     localparam NUMERATOR = 32'h100;
-    localparam END_INTERPOLATION_REGION = 32768;     // values beyond this will return 0
-    localparam NB_SUBDIVISIONS = 8192;
+    localparam END_INTERPOLATION_REGION = 65536;     // values beyond this will return 0
+    localparam NB_SUBDIVISIONS = 16384;
 
     localparam SUBDIVISION_SIZE = END_INTERPOLATION_REGION / NB_SUBDIVISIONS;
     localparam NB_BITS_PER_SUBDIVISION = $clog2(SUBDIVISION_SIZE);
@@ -16,14 +16,14 @@ module gen_reciprocal(
     logic [31:0] m;
 
     initial begin
-        m = $signed(rdiv(NUMERATOR << 16, 32'((1) * SUBDIVISION_SIZE) << 16) - (NUMERATOR << 16)) >>> NB_BITS_PER_SUBDIVISION;
+        m = $signed(div(NUMERATOR << 14, 32'((1) * SUBDIVISION_SIZE) << 14) - (NUMERATOR << 14)) >>> NB_BITS_PER_SUBDIVISION;
         m_lut[0] = m[31:0];
-        b_lut[0] = NUMERATOR << 16;
+        b_lut[0] = NUMERATOR << 14;
 
         for (int i = 1; i < NB_SUBDIVISIONS; i++) begin
-            m = $signed(rdiv(NUMERATOR << 16, 32'((i + 1) * SUBDIVISION_SIZE) << 16) - rdiv(NUMERATOR << 16, 32'(i * SUBDIVISION_SIZE) << 16)) >>> NB_BITS_PER_SUBDIVISION;
+            m = $signed(div(NUMERATOR << 14, 32'((i + 1) * SUBDIVISION_SIZE) << 14) - div(NUMERATOR << 14, 32'(i * SUBDIVISION_SIZE) << 14)) >>> NB_BITS_PER_SUBDIVISION;
             m_lut[i] = m[31:0];
-            b_lut[i] = rdiv(NUMERATOR << 16, 32'(i * SUBDIVISION_SIZE) << 16);
+            b_lut[i] = div(NUMERATOR << 14, 32'(i * SUBDIVISION_SIZE) << 14);
         end
     end
 

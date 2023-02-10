@@ -536,10 +536,6 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
         // take the cross product of lines to get normal to triangle surface
         normal = vector_cross_product(&line1, &line2);
 
-        if (is_lighting_ena) {
-            normal = vector_normalize(&normal);
-        }
-
         // get ray from triangle to camera
         vec3d vec_camera_ray = vector_sub(&tri_transformed.p[0], vec_camera);
 
@@ -552,7 +548,8 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 light_direction = vector_normalize(&light_direction);
 
                 // how "aligned" are light direction and triangle surface normal?
-                dp = vector_dot_product(&light_direction, &normal);
+                vec3d n = vector_normalize(&normal);
+                dp = vector_dot_product(&light_direction, &n);
 
                 if (dp < FX(0.0f)) dp = FX(0.0f);
 

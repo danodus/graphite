@@ -43,7 +43,7 @@ function logic signed [31:0] mul(logic signed [31:0] x, logic signed [31:0] y);
     begin
         x2 = {{32{x[31]}}, x};
         y2 = {{32{y[31]}}, y};
-        mul2 = (x2 * y2) >>> 16;
+        mul2 = (x2 * y2) >>> 14;
         mul = mul2[31:0];
     end
 endfunction
@@ -53,20 +53,16 @@ function logic signed [31:0] div(logic signed [31:0] x, logic signed [31:0] y);
     begin
         x2 = {{32{x[31]}}, x};
         y2 = {{32{y[31]}}, y};
-        div2 = (x2 << 16) / y2;
+        div2 = (x2 << 14) / y2;
         div = div2[31:0];
     end
-endfunction
-
-function logic signed [31:0] rdiv(logic signed [31:0] x, logic signed [31:0] y);
-    rdiv = x / (y >>> 16);
 endfunction
 
 function logic signed [31:0] clamp(logic signed [31:0] x);
     if (x[31])
         clamp = 32'd0;
     else if (x[31:16] != 16'd0)
-        clamp = 32'd1 << 16;
+        clamp = 32'd1 << 14;
     else
         clamp = x;
 endfunction
@@ -75,7 +71,7 @@ function logic signed [31:0] wrap(logic signed [31:0] x);
     if (x[31])
         wrap = 32'd0;
     else
-        wrap = {16'd0, x[15:0]};
+        wrap = {18'd0, x[13:0]};
 endfunction
 
 function logic signed [11:0] min(logic signed [11:0] a, logic signed [11:0] b);

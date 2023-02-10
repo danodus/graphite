@@ -103,8 +103,8 @@ module graphite #(
     logic [31:0] reciprocal_x, reciprocal_z;
     reciprocal reciprocal(.clk(clk), .x_i(reciprocal_x), .z_o(reciprocal_z));
     
-    assign p0 = {4'd0, x, 16'd0};
-    assign p1 = {4'd0, y, 16'd0};
+    assign p0 = {6'd0, x, 14'd0};
+    assign p1 = {6'd0, y, 14'd0};
 
     assign cmd_axis_tready_o = state == WAIT_COMMAND;
 
@@ -325,10 +325,10 @@ module graphite #(
                         is_clamp_s      <= cmd_axis_tdata_i[2];
                         is_depth_test   <= cmd_axis_tdata_i[3];
                         vram_mask_o     <= 4'hF;
-                        min_x <= min3(12'(vv00 >> 16), 12'(vv10 >> 16), 12'(vv20 >> 16));
-                        min_y <= min3(12'(vv01 >> 16), 12'(vv11 >> 16), 12'(vv21 >> 16));
-                        max_x <= max3(12'(vv00 >> 16), 12'(vv10 >> 16), 12'(vv20 >> 16));
-                        max_y <= max3(12'(vv01 >> 16), 12'(vv11 >> 16), 12'(vv21 >> 16));
+                        min_x <= min3(12'(vv00 >> 14), 12'(vv10 >> 14), 12'(vv20 >> 14));
+                        min_y <= min3(12'(vv01 >> 14), 12'(vv11 >> 14), 12'(vv21 >> 14));
+                        max_x <= max3(12'(vv00 >> 14), 12'(vv10 >> 14), 12'(vv20 >> 14));
+                        max_y <= max3(12'(vv01 >> 14), 12'(vv11 >> 14), 12'(vv21 >> 14));
                         state <= DRAW_TRIANGLE00;
                     end
                     OP_SWAP: begin
@@ -803,16 +803,16 @@ module graphite #(
             end
 
             DRAW_TRIANGLE49: begin
-                // t0 = rmul(mul((TEXTURE_HEIGHT - 1) << 16, clamp(t)), TEXTURE_WIDTH << 16)
-                dsp_mul_p0 <= ((TEXTURE_HEIGHT - 1) << 16);
+                // t0 = rmul(mul((TEXTURE_HEIGHT - 1) << 14, clamp(t)), TEXTURE_WIDTH << 14)
+                dsp_mul_p0 <= ((TEXTURE_HEIGHT - 1) << 14);
                 dsp_mul_p1 <= (is_clamp_t ? clamp(t) : wrap(t));
                 state <= DRAW_TRIANGLE50;
             end
 
             DRAW_TRIANGLE50: begin
-                t0 <= mul(dsp_mul_z & 32'hFFFF0000, TEXTURE_WIDTH << 16);
-                // t1 = mul((TEXTURE_WIDTH - 1) << 16, clamp(s))
-                dsp_mul_p0 <= ((TEXTURE_WIDTH - 1) << 16);
+                t0 <= mul(dsp_mul_z & 32'hFFFF0000, TEXTURE_WIDTH << 14);
+                // t1 = mul((TEXTURE_WIDTH - 1) << 14, clamp(s))
+                dsp_mul_p0 <= ((TEXTURE_WIDTH - 1) << 14);
                 dsp_mul_p1 <= (is_clamp_s ? clamp(s) : wrap(s));
                 state <= DRAW_TRIANGLE51;
             end
@@ -820,7 +820,7 @@ module graphite #(
             DRAW_TRIANGLE51: begin
                 vram_sel_o <= 1'b1;
                 vram_wr_o  <= 1'b0;
-                vram_addr_o <= texture_address + 32'((t0 + dsp_mul_z) >> 16);
+                vram_addr_o <= texture_address + 32'((t0 + dsp_mul_z) >> 14);
                 state <= DRAW_TRIANGLE52;
             end
 
@@ -839,30 +839,30 @@ module graphite #(
 
             DRAW_TRIANGLE54: begin
                 vram_data_out_o[15:12] <= 4'hF;
-                // vram_data_out_o[11:8] = 4'(mul({12'd0, sample[11:8], 16'd0}, r) >> 16)
-                // vram_data_out_o[7:4] = 4'(mul({12'd0, sample[7:4], 16'd0}, g) >> 16)
-                // vram_data_out_o[3:0] = 4'(mul({12'd0, sample[3:0], 16'd0}, b) >> 16)
-                dsp_mul_p0 <= {12'd0, sample[11:8], 16'd0};
+                // vram_data_out_o[11:8] = 4'(mul({14'd0, sample[11:8], 14'd0}, r) >> 14)
+                // vram_data_out_o[7:4] = 4'(mul({14'd0, sample[7:4], 14'd0}, g) >> 14)
+                // vram_data_out_o[3:0] = 4'(mul({14'd0, sample[3:0], 14'd0}, b) >> 14)
+                dsp_mul_p0 <= {14'd0, sample[11:8], 14'd0};
                 dsp_mul_p1 <= r;
                 state <= DRAW_TRIANGLE55;
             end
 
             DRAW_TRIANGLE55: begin
-                vram_data_out_o[11:8] <= 4'(dsp_mul_z >> 16);
-                dsp_mul_p0 <= {12'd0, sample[7:4], 16'd0};
+                vram_data_out_o[11:8] <= 4'(dsp_mul_z >> 14);
+                dsp_mul_p0 <= {14'd0, sample[7:4], 14'd0};
                 dsp_mul_p1 <= g;
                 state <= DRAW_TRIANGLE56;
             end
 
             DRAW_TRIANGLE56: begin
-                vram_data_out_o[7:4] <= 4'(dsp_mul_z >> 16);
-                dsp_mul_p0 <= {12'd0, sample[3:0], 16'd0};
+                vram_data_out_o[7:4] <= 4'(dsp_mul_z >> 14);
+                dsp_mul_p0 <= {14'd0, sample[3:0], 14'd0};
                 dsp_mul_p1 <= b;
                 state <= DRAW_TRIANGLE57;
             end
 
             DRAW_TRIANGLE57: begin
-                vram_data_out_o[3:0] <= 4'(dsp_mul_z >> 16);
+                vram_data_out_o[3:0] <= 4'(dsp_mul_z >> 14);
                 vram_sel_o <= 1'b1;
                 vram_wr_o  <= 1'b1;
                 vram_addr_o <= back_address + raster_rel_address;
