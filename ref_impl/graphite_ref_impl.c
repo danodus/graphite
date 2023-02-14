@@ -59,6 +59,8 @@ int main(int argc, char* argv[]) {
     bool is_wireframe = false;
     bool is_lighting = false;
     bool is_textured = true;
+    bool clamp_s = false;
+    bool clamp_t = false;
 
     unsigned int time = SDL_GetTicks();
 
@@ -113,7 +115,7 @@ int main(int argc, char* argv[]) {
         // Draw model
         texture_t dummy_texture;
         draw_model(screen_width, screen_height, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, is_lighting,
-                   is_wireframe, is_textured ? &dummy_texture : NULL, true, true);
+                   is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t);
 
         SDL_RenderPresent(renderer);
 
@@ -169,7 +171,13 @@ int main(int argc, char* argv[]) {
                         break;
                     case SDL_SCANCODE_T:
                         is_textured = !is_textured;
-                        break;                                                
+                        break;
+                    case SDL_SCANCODE_U:
+                        clamp_s = !clamp_s;
+                        break;
+                    case SDL_SCANCODE_V:
+                        clamp_t = !clamp_t;
+                        break;                                                                      
                     case SDL_SCANCODE_SPACE:
                         is_anim = !is_anim;
                         break;

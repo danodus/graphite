@@ -61,7 +61,7 @@ endfunction
 function logic signed [31:0] clamp(logic signed [31:0] x);
     if (x[31])
         clamp = 32'd0;
-    else if (x[31:16] != 16'd0)
+    else if (x[31:14] != 18'd0)
         clamp = 32'd1 << 14;
     else
         clamp = x;

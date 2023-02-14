@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 
 #define RECIPROCAL_NUMERATOR    256
 
@@ -27,23 +28,41 @@ void sw_dispose_rasterizer() { free(g_depth_buffer); }
 
 void sw_clear_depth_buffer() { memset(g_depth_buffer, FX(0.0f), g_fb_width * g_fb_height * sizeof(fx32)); }
 
-fx32 reciprocal(fx32 x) {
+static fx32 reciprocal(fx32 x) {
     return x > 0 ? DIV(FX(RECIPROCAL_NUMERATOR), x) : FX(RECIPROCAL_NUMERATOR);
 }
 
-fx32 edge_function(fx32 a[2], fx32 b[2], fx32 c[2]) {
+static fx32 edge_function(fx32 a[2], fx32 b[2], fx32 c[2]) {
     return MUL(c[0] - a[0], b[1] - a[1]) - MUL(c[1] - a[1], b[0] - a[0]);
 }
 
-int min(int a, int b) { return (a <= b) ? a : b; }
+static int min(int a, int b) { return (a <= b) ? a : b; }
 
-int max(int a, int b) { return (a >= b) ? a : b; }
+static int max(int a, int b) { return (a >= b) ? a : b; }
 
-int min3(int a, int b, int c) { return min(a, min(b, c)); }
+static int min3(int a, int b, int c) { return min(a, min(b, c)); }
 
-int max3(int a, int b, int c) { return max(a, max(b, c)); }
+static int max3(int a, int b, int c) { return max(a, max(b, c)); }
 
-sample_t texture_sample_color(texture_t* tex, fx32 u, fx32 v) {
+static fx32 clamp(fx32 v) {
+    if (v < FX(0.0f)) {
+        v = FX(0.0f);
+    } else if (v > FX(1.0f)) {
+        v = FX(1.0f);
+    }
+    return v;
+}
+
+static fx32 wrap(fx32 v) {
+    if (v < FX(0.0f)) {
+        v = FX(0.0f);
+    } else if (v >= FX(1.0f)) {
+        v = FX(fmod(FLT(v), 1.0f));
+    }
+    return v;
+}
+
+static sample_t texture_sample_color(texture_t* tex, fx32 u, fx32 v) {
     if (tex != NULL) {
         if (u < FX(0.5) && v < FX(0.5)) return (sample_t){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
         if (u >= FX(0.5) && v < FX(0.5)) return (sample_t){FX(1.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
@@ -121,6 +140,18 @@ void sw_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32
                     b = DIV(b, FX(RECIPROCAL_NUMERATOR));
                     a = MUL(a, inv_z);
                     a = DIV(a, FX(RECIPROCAL_NUMERATOR));
+
+                    if (clamp_s) {
+                        u = clamp(u);
+                    } else {
+                        u = wrap(u);
+                    }
+                    
+                    if (clamp_t) {
+                        v = clamp(v);
+                    } else {
+                        v = wrap(v);
+                    }
 
                     sample_t sample = texture_sample_color(tex, u, v);
                     r = MUL(r, sample.x);

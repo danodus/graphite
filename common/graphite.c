@@ -445,7 +445,7 @@ void sort_triangles(triangle_t triangles[], size_t nb_triangles) {
 }
 #endif // SORT_TRIANGLES
 
-fx32 clamp(fx32 x) {
+static fx32 clamp(fx32 x) {
     if (x < FX(0.0f)) return FX(0.0f);
     if (x > FX(1.0f)) return FX(1.0f);
     return x;
