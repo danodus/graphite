@@ -656,7 +656,7 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
 
         // clip triangles against all four screen edges, this could yield a bunch of triangles
         triangle_t clipped[2];
-        triangle_t triangles[8];
+        triangle_t triangles[9];
         int nb_triangles = 0;
         triangles[nb_triangles++] = tri_to_raster;
 
