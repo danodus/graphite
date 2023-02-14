@@ -75,6 +75,11 @@ void sw_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32
     int max_x = max3(INT(x0), INT(x1), INT(x2));
     int max_y = max3(INT(y0), INT(y1), INT(y2));
 
+    min_x = max(min_x, 0);
+    min_y = max(min_y, 0);
+    max_x = min(max_x, g_fb_width - 1);
+    max_y = min(max_y, g_fb_height - 1);
+
     fx32 area = edge_function(vv0, vv1, vv2);
 
     for (int y = min_y; y <= max_y; ++y)
