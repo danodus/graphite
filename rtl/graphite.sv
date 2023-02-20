@@ -44,18 +44,20 @@ module graphite #(
     );
 
     enum { WAIT_COMMAND, PROCESS_COMMAND, SWAP0, CLEAR_FB0, CLEAR_FB1, CLEAR_DEPTH0, CLEAR_DEPTH1, WRITE_TEX,
-           DRAW_TRIANGLE00, DRAW_TRIANGLE01, DRAW_TRIANGLE02, DRAW_TRIANGLE03, DRAW_TRIANGLE04, DRAW_TRIANGLE05,
-           DRAW_TRIANGLE06, DRAW_TRIANGLE07, DRAW_TRIANGLE08, DRAW_TRIANGLE09, DRAW_TRIANGLE10, DRAW_TRIANGLE11,
-           DRAW_TRIANGLE12, DRAW_TRIANGLE13, DRAW_TRIANGLE14, DRAW_TRIANGLE15, DRAW_TRIANGLE16, DRAW_TRIANGLE17,
-           DRAW_TRIANGLE18, DRAW_TRIANGLE19, DRAW_TRIANGLE20, DRAW_TRIANGLE21, DRAW_TRIANGLE22, DRAW_TRIANGLE23,
-           DRAW_TRIANGLE24, DRAW_TRIANGLE25, DRAW_TRIANGLE26, DRAW_TRIANGLE27, DRAW_TRIANGLE28, DRAW_TRIANGLE29,
-           DRAW_TRIANGLE30, DRAW_TRIANGLE31, DRAW_TRIANGLE32, DRAW_TRIANGLE33, DRAW_TRIANGLE34, DRAW_TRIANGLE35,
+           DRAW_TRIANGLE00, DRAW_TRIANGLE01, DRAW_TRIANGLE02, DRAW_TRIANGLE04, DRAW_TRIANGLE05,
+           DRAW_TRIANGLE07,
+           DRAW_TRIANGLE12, DRAW_TRIANGLE13, DRAW_TRIANGLE15,
+           DRAW_TRIANGLE18, DRAW_TRIANGLE21,
+           DRAW_TRIANGLE24, DRAW_TRIANGLE25, DRAW_TRIANGLE28, 
+           DRAW_TRIANGLE31, DRAW_TRIANGLE32, DRAW_TRIANGLE35,
            DRAW_TRIANGLE36, DRAW_TRIANGLE37, DRAW_TRIANGLE38, DRAW_TRIANGLE39, DRAW_TRIANGLE40, DRAW_TRIANGLE41,
-           DRAW_TRIANGLE42, DRAW_TRIANGLE43, DRAW_TRIANGLE44, DRAW_TRIANGLE45, DRAW_TRIANGLE46, DRAW_TRIANGLE47,
+           DRAW_TRIANGLE42, DRAW_TRIANGLE43,
            DRAW_TRIANGLE48, DRAW_TRIANGLE49, DRAW_TRIANGLE50, DRAW_TRIANGLE51, DRAW_TRIANGLE52, DRAW_TRIANGLE53,
            DRAW_TRIANGLE54, DRAW_TRIANGLE55, DRAW_TRIANGLE56, DRAW_TRIANGLE57, DRAW_TRIANGLE58, DRAW_TRIANGLE59,
            DRAW_TRIANGLE60
     } state;
+
+    localparam NB_DSP_MULS = 6;
 
     logic signed [31:0] vv00, vv01, vv02, vv10, vv11, vv12, vv20, vv21, vv22;
     logic signed [31:0] c00, c01, c02;
@@ -84,7 +86,7 @@ module graphite #(
     logic signed [31:0] s, t;
     logic signed [31:0] r, g, b;
 
-    logic signed [31:0] dsp_mul_p0, dsp_mul_p1, dsp_mul_z;
+    logic signed [31:0] dsp_mul_p0[NB_DSP_MULS], dsp_mul_p1[NB_DSP_MULS], dsp_mul_z[NB_DSP_MULS];
 
     logic signed [31:0] t0, t1;
     logic        [31:0] z;
@@ -92,11 +94,16 @@ module graphite #(
     logic        [15:0] depth;
     logic        [15:0] sample;
 
-    dsp_mul dsp_mul(
-        .p0(dsp_mul_p0),
-        .p1(dsp_mul_p1),
-        .z(dsp_mul_z)
-    );
+    genvar dsp_mul_index;
+    generate
+        for (dsp_mul_index = 0; dsp_mul_index < NB_DSP_MULS; dsp_mul_index = dsp_mul_index + 1) begin
+            dsp_mul dsp_mul(
+                .p0(dsp_mul_p0[dsp_mul_index]),
+                .p1(dsp_mul_p1[dsp_mul_index]),
+                .z(dsp_mul_z[dsp_mul_index])
+            );
+        end
+    endgenerate
 
     logic signed [11:0] min_x, min_y, max_x, max_y;
 
@@ -428,21 +435,16 @@ module graphite #(
 
                 // area = mul(c0 - a0, b1 - a1) - mul(c1 - a1, b0 - a0)
                 // t0 = mul(c0 - a0, b1 - a1)
-                dsp_mul_p0 <= (vv20 - vv00);
-                dsp_mul_p1 <= (vv11 - vv01);
+                dsp_mul_p0[0] <= (vv20 - vv00);
+                dsp_mul_p1[0] <= (vv11 - vv01);
+                // t1 = mul(c1 - a1, b0 - a0)
+                dsp_mul_p0[1] <= (vv21 - vv01);
+                dsp_mul_p1[1] <= (vv10 - vv00);
                 state <= DRAW_TRIANGLE02;
             end
 
             DRAW_TRIANGLE02: begin
-                t0 <= dsp_mul_z;
-                // t1 = mul(c1 - a1, b0 - a0)
-                dsp_mul_p0 <= (vv21 - vv01);
-                dsp_mul_p1 <= (vv10 - vv00);
-                state <= DRAW_TRIANGLE03;
-            end
-
-            DRAW_TRIANGLE03: begin
-                reciprocal_x <= t0 - dsp_mul_z;
+                reciprocal_x <= dsp_mul_z[0] - dsp_mul_z[1];
                 state <= DRAW_TRIANGLE04;
             end
 
@@ -458,59 +460,37 @@ module graphite #(
                 // w0 = edge_function(vv1, vv2, p);
                 // w0 = mul(c0 - a0, b1 - a1) - mul(c1 - a1, b0 - a0)
                 // t0 = mul(c0 - a0, b1 - a1)
-                dsp_mul_p0 <= (p0 - vv10);
-                dsp_mul_p1 <= (vv21 - vv11);
-                state <= DRAW_TRIANGLE06;
-            end
-
-            DRAW_TRIANGLE06: begin
-                t0 <= dsp_mul_z;
+                dsp_mul_p0[0] <= (p0 - vv10);
+                dsp_mul_p1[0] <= (vv21 - vv11);
                 // t1 = mul(c1 - a1, b0 - a0)
-                dsp_mul_p0 <= (p1 - vv11);
-                dsp_mul_p1 <= (vv20 - vv10);
-                state <= DRAW_TRIANGLE07;
-            end
-
-            DRAW_TRIANGLE07: begin
-                w0 <= t0 - dsp_mul_z;
+                dsp_mul_p0[1] <= (p1 - vv11);
+                dsp_mul_p1[1] <= (vv20 - vv10);
 
                 // w1 = edge_function(vv2, vv0, p);
                 // w1 = mul(c0 - a0, b1 - a1) - mul(c1 - a1, b0 - a0)
                 // t0 = mul(c0 - a0, b1 - a1)
-                dsp_mul_p0 <= (p0 - vv20);
-                dsp_mul_p1 <= (vv01 - vv21);
-                state <= DRAW_TRIANGLE08;
-            end
-
-            DRAW_TRIANGLE08: begin
-                t0 <= dsp_mul_z;
+                dsp_mul_p0[2] <= (p0 - vv20);
+                dsp_mul_p1[2] <= (vv01 - vv21);
                 // t1 = mul(c1 - a1, b0 - a0)
-                dsp_mul_p0 <= (p1 - vv21);
-                dsp_mul_p1 <= (vv00 - vv20);
-                state <= DRAW_TRIANGLE09;
-            end
-
-            DRAW_TRIANGLE09: begin
-                w1 <= t0 - dsp_mul_z;
+                dsp_mul_p0[3] <= (p1 - vv21);
+                dsp_mul_p1[3] <= (vv00 - vv20);
 
                 // w2 = edge_function(vv0, vv1, p);
                 // w2 = mul(c0 - a0, b1 - a1) - mul(c1 - a1, b0 - a0)
                 // t0 = mul(c0 - a0, b1 - a1)
-                dsp_mul_p0 <= (p0 - vv00);
-                dsp_mul_p1 <= (vv11 - vv01);
-                state <= DRAW_TRIANGLE10;
-            end
-
-            DRAW_TRIANGLE10: begin
-                t0 <= dsp_mul_z;
+                dsp_mul_p0[4] <= (p0 - vv00);
+                dsp_mul_p1[4] <= (vv11 - vv01);
                 // t1 = mul(c1 - a1, b0 - a0)
-                dsp_mul_p0 <= (p1 - vv01);
-                dsp_mul_p1 <= (vv10 - vv00);
-                state <= DRAW_TRIANGLE11;
+                dsp_mul_p0[5] <= (p1 - vv01);
+                dsp_mul_p1[5] <= (vv10 - vv00);
+
+                state <= DRAW_TRIANGLE07;
             end
 
-            DRAW_TRIANGLE11: begin
-                w2 <= t0 - dsp_mul_z;
+            DRAW_TRIANGLE07: begin
+                w0 <= dsp_mul_z[0] - dsp_mul_z[1];
+                w1 <= dsp_mul_z[2] - dsp_mul_z[3];
+                w2 <= dsp_mul_z[4] - dsp_mul_z[5];
                 state <= DRAW_TRIANGLE12;
             end
 
@@ -520,103 +500,71 @@ module graphite #(
                     state <= DRAW_TRIANGLE59;
                 end else begin
                     // w0 = mul(w0, inv_area)
-                    dsp_mul_p0 <= w0;
-                    dsp_mul_p1 <= inv_area;
+                    dsp_mul_p0[0] <= w0;
+                    dsp_mul_p1[0] <= inv_area;
+                    // w1 = mul(w1, inv_area)
+                    dsp_mul_p0[1] <= w1;
+                    dsp_mul_p1[1] <= inv_area;
+                    // w2 = mul(w2, inv_area)
+                    dsp_mul_p0[2] <= w2;
+                    dsp_mul_p1[2] <= inv_area;
                     state <= DRAW_TRIANGLE13;
                 end
             end
 
             DRAW_TRIANGLE13: begin
-                w0 <= dsp_mul_z >> 8;
-                // w1 = mul(w1, inv_area)
-                dsp_mul_p0 <= w1;
-                state <= DRAW_TRIANGLE14;
-            end
-
-            DRAW_TRIANGLE14: begin
-                w1 <= dsp_mul_z >> 8;
-                // w2 = mul(w2, inv_area)
-                dsp_mul_p0 <= w2;
+                w0 <= dsp_mul_z[0] >> 8;
+                w1 <= dsp_mul_z[1] >> 8;
+                w2 <= dsp_mul_z[2] >> 8;
                 state <= DRAW_TRIANGLE15;
             end
 
             DRAW_TRIANGLE15: begin
-                w2 <= dsp_mul_z >> 8;
                 // r = mul(w0, c00) + mul(w1, c10) + mul(w2, c20)
                 // t0 = mul(w0, c00)
-                dsp_mul_p0 <= w0;
-                dsp_mul_p1 <= c00;
-                state <= DRAW_TRIANGLE16;
-            end
-
-            DRAW_TRIANGLE16: begin
-                t0 <= dsp_mul_z;
+                dsp_mul_p0[0] <= w0;
+                dsp_mul_p1[0] <= c00;
                 // t1 = mul(w1, c10)
-                dsp_mul_p0 <= w1;
-                dsp_mul_p1 <= c10;
-                state <= DRAW_TRIANGLE17;
-            end
-
-            DRAW_TRIANGLE17: begin
-                t1 <= dsp_mul_z;
+                dsp_mul_p0[1] <= w1;
+                dsp_mul_p1[1] <= c10;
                 // t2 = mul(w2, c20)
-                dsp_mul_p0 <= w2;
-                dsp_mul_p1 <= c20;
+                dsp_mul_p0[2] <= w2;
+                dsp_mul_p1[2] <= c20;
                 state <= DRAW_TRIANGLE18;
             end
 
             DRAW_TRIANGLE18: begin
-                r <= t0 + t1 + dsp_mul_z;
+                r <= dsp_mul_z[0] + dsp_mul_z[1] + dsp_mul_z[2];
                 // g = mul(w0, c01) + mul(w1, c11) + mul(w2, c21)
                 // t0 = mul(w0, c01)
-                dsp_mul_p0 <= w0;
-                dsp_mul_p1 <= c01;
-                state <= DRAW_TRIANGLE19;
-            end
-
-            DRAW_TRIANGLE19: begin
-                t0 <= dsp_mul_z;
+                dsp_mul_p0[0] <= w0;
+                dsp_mul_p1[0] <= c01;
                 // t1 = mul(w1, c11)
-                dsp_mul_p0 <= w1;
-                dsp_mul_p1 <= c11;
-                state <= DRAW_TRIANGLE20;
-            end
-
-            DRAW_TRIANGLE20: begin
-                t1 <= dsp_mul_z;
+                dsp_mul_p0[1] <= w1;
+                dsp_mul_p1[1] <= c11;
                 // t2 = mul(w2, c21)
-                dsp_mul_p0 <= w2;
-                dsp_mul_p1 <= c21;
+                dsp_mul_p0[2] <= w2;
+                dsp_mul_p1[2] <= c21;
                 state <= DRAW_TRIANGLE21;
             end
 
             DRAW_TRIANGLE21: begin
-                g <= t0 + t1 + dsp_mul_z;
+                g <= dsp_mul_z[0] + dsp_mul_z[1] + dsp_mul_z[2];
                 // b = mul(w0, c02) + mul(w1, c12) + mul(w2, c22)
                 // t0 = mul(w0, c02)
-                dsp_mul_p0 <= w0;
-                dsp_mul_p1 <= c02;
-                state <= DRAW_TRIANGLE22;
-            end
-
-            DRAW_TRIANGLE22: begin
-                t0 <= dsp_mul_z;
+                dsp_mul_p0[0] <= w0;
+                dsp_mul_p1[0] <= c02;
                 // t1 = mul(w1, c12)
-                dsp_mul_p0 <= w1;
-                dsp_mul_p1 <= c12;
-                state <= DRAW_TRIANGLE23;
-            end
-
-            DRAW_TRIANGLE23: begin
-                t1 <= dsp_mul_z;
+                dsp_mul_p0[1] <= w1;
+                dsp_mul_p1[1] <= c12;
                 // t2 = mul(w2, c22)
-                dsp_mul_p0 <= w2;
-                dsp_mul_p1 <= c22;
+                dsp_mul_p0[2] <= w2;
+                dsp_mul_p1[2] <= c22;
                 state <= DRAW_TRIANGLE24;
             end
 
             DRAW_TRIANGLE24: begin
-                b <= t0 + t1 + dsp_mul_z;
+                b <= dsp_mul_z[0] + dsp_mul_z[1] + dsp_mul_z[2];
                 if (is_textured) begin
                     state <= DRAW_TRIANGLE25;
                 end else begin
@@ -628,54 +576,34 @@ module graphite #(
             DRAW_TRIANGLE25: begin
                 // s = mul(w0, st00) + mul(w1, st10) + mul(w2, st20)
                 // t0 = mul(w0, st00)
-                dsp_mul_p0 <= w0;
-                dsp_mul_p1 <= st00;
-                state <= DRAW_TRIANGLE26;
-            end
-
-            DRAW_TRIANGLE26: begin
-                t0 <= dsp_mul_z;
+                dsp_mul_p0[0] <= w0;
+                dsp_mul_p1[0] <= st00;
                 // t1 = mul(w1, st10)
-                dsp_mul_p0 <= w1;
-                dsp_mul_p1 <= st10;
-                state <= DRAW_TRIANGLE27;
-            end
-
-            DRAW_TRIANGLE27: begin
-                t1 <= dsp_mul_z;
+                dsp_mul_p0[1] <= w1;
+                dsp_mul_p1[1] <= st10;
                 // t2 = mul(w2, st20)
-                dsp_mul_p0 <= w2;
-                dsp_mul_p1 <= st20;
+                dsp_mul_p0[2] <= w2;
+                dsp_mul_p1[2] <= st20;
                 state <= DRAW_TRIANGLE28;
             end
 
             DRAW_TRIANGLE28: begin
-                s <= t0 + t1 + dsp_mul_z;
+                s <= dsp_mul_z[0] + dsp_mul_z[1] + dsp_mul_z[2];
                 // t = mul(w0, st01) + mul(w1, st11) + mul(w2, st21)
                 // t0 = mul(w0, st01)
-                dsp_mul_p0 <= w0;
-                dsp_mul_p1 <= st01;
-                state <= DRAW_TRIANGLE29;
-            end
-
-            DRAW_TRIANGLE29: begin
-                t0 <= dsp_mul_z;
+                dsp_mul_p0[0] <= w0;
+                dsp_mul_p1[0] <= st01;
                 // t1 = mul(w1, st11)
-                dsp_mul_p0 <= w1;
-                dsp_mul_p1 <= st11;
-                state <= DRAW_TRIANGLE30;
-            end
-
-            DRAW_TRIANGLE30: begin
-                t1 <= dsp_mul_z;
+                dsp_mul_p0[1] <= w1;
+                dsp_mul_p1[1] <= st11;
                 // t2 = mul(w2, st21)
-                dsp_mul_p0 <= w2;
-                dsp_mul_p1 <= st21;
+                dsp_mul_p0[2] <= w2;
+                dsp_mul_p1[2] <= st21;
                 state <= DRAW_TRIANGLE31;
             end
 
             DRAW_TRIANGLE31: begin
-                t <= t0 + t1 + dsp_mul_z;
+                t <= dsp_mul_z[0] + dsp_mul_z[1] + dsp_mul_z[2];
                 state <= DRAW_TRIANGLE32;
             end
 
@@ -687,27 +615,17 @@ module graphite #(
                 // b = b * 1/z
                 // s = s * 1/z
                 // t = t * 1/z
-                dsp_mul_p0 <= w0;
-                dsp_mul_p1 <= vv02;
-                state <= DRAW_TRIANGLE33;
-            end
-
-            DRAW_TRIANGLE33: begin
-                t0 <= dsp_mul_z;
-                dsp_mul_p0 <= w1;
-                dsp_mul_p1 <= vv12;
-                state <= DRAW_TRIANGLE34;
-            end
-
-            DRAW_TRIANGLE34: begin
-                t1 <= dsp_mul_z;
-                dsp_mul_p0 <= w2;
-                dsp_mul_p1 <= vv22;
+                dsp_mul_p0[0] <= w0;
+                dsp_mul_p1[0] <= vv02;
+                dsp_mul_p0[1] <= w1;
+                dsp_mul_p1[1] <= vv12;
+                dsp_mul_p0[2] <= w2;
+                dsp_mul_p1[2] <= vv22;
                 state <= DRAW_TRIANGLE35;
             end
 
             DRAW_TRIANGLE35: begin
-                z <= t0 + t1 + dsp_mul_z;
+                z <= dsp_mul_z[0] + dsp_mul_z[1] + dsp_mul_z[2];
                 vram_addr_o <= depth_address + 32'(y) * FB_WIDTH + 32'(x);
                 if (is_depth_test) begin
                     vram_wr_o <= 1'b0;
@@ -760,37 +678,25 @@ module graphite #(
             end
 
             DRAW_TRIANGLE42: begin
-                dsp_mul_p0 <= r;
-                dsp_mul_p1 <= (reciprocal_z << 12);
+                dsp_mul_p0[0] <= r;
+                dsp_mul_p1[0] <= (reciprocal_z << 12);
+                dsp_mul_p0[1] <= g;
+                dsp_mul_p1[1] <= (reciprocal_z << 12);
+                dsp_mul_p0[2] <= b;
+                dsp_mul_p1[2] <= (reciprocal_z << 12);
+                dsp_mul_p0[3] <= s;
+                dsp_mul_p1[3] <= (reciprocal_z << 12);
+                dsp_mul_p0[4] <= t;
+                dsp_mul_p1[4] <= (reciprocal_z << 12);
                 state <= DRAW_TRIANGLE43;
             end
 
             DRAW_TRIANGLE43: begin
-                r <= dsp_mul_z >> 8;
-                dsp_mul_p0 <= g;
-                state <= DRAW_TRIANGLE44;
-            end
-
-            DRAW_TRIANGLE44: begin
-                g <= dsp_mul_z >> 8;
-                dsp_mul_p0 <= b;
-                state <= DRAW_TRIANGLE45;
-            end
-
-            DRAW_TRIANGLE45: begin
-                b <= dsp_mul_z >> 8;
-                dsp_mul_p0 <= s;
-                state <= DRAW_TRIANGLE46;
-            end
-
-            DRAW_TRIANGLE46: begin
-                s <= dsp_mul_z >> 8;
-                dsp_mul_p0 <= t;
-                state <= DRAW_TRIANGLE47;
-            end
-
-            DRAW_TRIANGLE47: begin
-                t <= dsp_mul_z >> 8;
+                r <= dsp_mul_z[0] >> 8;
+                g <= dsp_mul_z[1] >> 8;
+                b <= dsp_mul_z[2] >> 8;
+                s <= dsp_mul_z[3] >> 8;
+                t <= dsp_mul_z[4] >> 8;
                 state <= DRAW_TRIANGLE48;
             end
 
@@ -804,23 +710,23 @@ module graphite #(
 
             DRAW_TRIANGLE49: begin
                 // t0 = rmul(mul((TEXTURE_HEIGHT - 1) << 14, clamp(t)), TEXTURE_WIDTH << 14)
-                dsp_mul_p0 <= ((TEXTURE_HEIGHT - 1) << 14);
-                dsp_mul_p1 <= (is_clamp_t ? clamp(t) : wrap(t));
+                dsp_mul_p0[0] <= ((TEXTURE_HEIGHT - 1) << 14);
+                dsp_mul_p1[0] <= (is_clamp_t ? clamp(t) : wrap(t));
                 state <= DRAW_TRIANGLE50;
             end
 
             DRAW_TRIANGLE50: begin
-                t0 <= mul(dsp_mul_z & 32'hFFFF0000, TEXTURE_WIDTH << 14);
+                t0 <= mul(dsp_mul_z[0] & 32'hFFFF0000, TEXTURE_WIDTH << 14);
                 // t1 = mul((TEXTURE_WIDTH - 1) << 14, clamp(s))
-                dsp_mul_p0 <= ((TEXTURE_WIDTH - 1) << 14);
-                dsp_mul_p1 <= (is_clamp_s ? clamp(s) : wrap(s));
+                dsp_mul_p0[0] <= ((TEXTURE_WIDTH - 1) << 14);
+                dsp_mul_p1[0] <= (is_clamp_s ? clamp(s) : wrap(s));
                 state <= DRAW_TRIANGLE51;
             end
 
             DRAW_TRIANGLE51: begin
                 vram_sel_o <= 1'b1;
                 vram_wr_o  <= 1'b0;
-                vram_addr_o <= texture_address + 32'((t0 + dsp_mul_z) >> 14);
+                vram_addr_o <= texture_address + 32'((t0 + dsp_mul_z[0]) >> 14);
                 state <= DRAW_TRIANGLE52;
             end
 
@@ -842,27 +748,27 @@ module graphite #(
                 // vram_data_out_o[11:8] = 4'(mul({14'd0, sample[11:8], 14'd0}, r) >> 14)
                 // vram_data_out_o[7:4] = 4'(mul({14'd0, sample[7:4], 14'd0}, g) >> 14)
                 // vram_data_out_o[3:0] = 4'(mul({14'd0, sample[3:0], 14'd0}, b) >> 14)
-                dsp_mul_p0 <= {14'd0, sample[11:8], 14'd0};
-                dsp_mul_p1 <= r;
+                dsp_mul_p0[0] <= {14'd0, sample[11:8], 14'd0};
+                dsp_mul_p1[0] <= r;
                 state <= DRAW_TRIANGLE55;
             end
 
             DRAW_TRIANGLE55: begin
-                vram_data_out_o[11:8] <= 4'(dsp_mul_z >> 14);
-                dsp_mul_p0 <= {14'd0, sample[7:4], 14'd0};
-                dsp_mul_p1 <= g;
+                vram_data_out_o[11:8] <= 4'(dsp_mul_z[0] >> 14);
+                dsp_mul_p0[0] <= {14'd0, sample[7:4], 14'd0};
+                dsp_mul_p1[0] <= g;
                 state <= DRAW_TRIANGLE56;
             end
 
             DRAW_TRIANGLE56: begin
-                vram_data_out_o[7:4] <= 4'(dsp_mul_z >> 14);
-                dsp_mul_p0 <= {14'd0, sample[3:0], 14'd0};
-                dsp_mul_p1 <= b;
+                vram_data_out_o[7:4] <= 4'(dsp_mul_z[0] >> 14);
+                dsp_mul_p0[0] <= {14'd0, sample[3:0], 14'd0};
+                dsp_mul_p1[0] <= b;
                 state <= DRAW_TRIANGLE57;
             end
 
             DRAW_TRIANGLE57: begin
-                vram_data_out_o[3:0] <= 4'(dsp_mul_z >> 14);
+                vram_data_out_o[3:0] <= 4'(dsp_mul_z[0] >> 14);
                 vram_sel_o <= 1'b1;
                 vram_wr_o  <= 1'b1;
                 vram_addr_o <= back_address + raster_rel_address;
