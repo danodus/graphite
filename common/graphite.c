@@ -14,6 +14,8 @@
 
 #define SORT_TRIANGLES 0
 
+#define MAX_NB_TRIANGLES    16      // maximum number of triangles produced by the clipping
+
 void xd_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1, fx32 y1,
                       fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2, fx32 z2, fx32 u2,
                       fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex, bool clamp_s, bool clamp_t,
@@ -656,7 +658,7 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
 
         // clip triangles against all four screen edges, this could yield a bunch of triangles
         triangle_t clipped[2];
-        triangle_t triangles[9];
+        triangle_t triangles[MAX_NB_TRIANGLES];
         int nb_triangles = 0;
         triangles[nb_triangles++] = tri_to_raster;
 
@@ -700,6 +702,7 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 }
 
                 // push back
+                if (nb_triangles + nb_tris_to_add > MAX_NB_TRIANGLES) break;    // safety net
                 for (int w = 0; w < nb_tris_to_add; ++w) triangles[nb_triangles++] = clipped[w];
             }
             nb_new_triangles = nb_triangles;
