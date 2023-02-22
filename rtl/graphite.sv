@@ -108,7 +108,8 @@ module graphite #(
     logic signed [11:0] min_x, min_y, max_x, max_y;
 
     logic [31:0] reciprocal_x, reciprocal_z;
-    reciprocal reciprocal(.clk(clk), .x_i(reciprocal_x), .z_o(reciprocal_z));
+    logic reciprocal_start, reciprocal_done;
+    reciprocal reciprocal(.clk(clk), .reset_i(reset_i), .start_i(reciprocal_start), .x_i(reciprocal_x), .z_o(reciprocal_z), .done_o(reciprocal_done));
     
     assign p0 = {6'd0, x, 14'd0};
     assign p1 = {6'd0, y, 14'd0};
@@ -445,15 +446,19 @@ module graphite #(
 
             DRAW_TRIANGLE02: begin
                 reciprocal_x <= dsp_mul_z[0] - dsp_mul_z[1];
+                reciprocal_start <= 1'b1;
                 state <= DRAW_TRIANGLE04;
             end
 
             DRAW_TRIANGLE04: begin
-                inv_area <= reciprocal_z;
-                x <= min_x;
-                y <= min_y;
-                raster_rel_address <= {20'd0, min_y} * FB_WIDTH + {20'd0, min_x};
-                state <= DRAW_TRIANGLE05;
+                reciprocal_start <= 1'b0;
+                if (reciprocal_done) begin
+                    inv_area <= reciprocal_z;
+                    x <= min_x;
+                    y <= min_y;
+                    raster_rel_address <= {20'd0, min_y} * FB_WIDTH + {20'd0, min_x};
+                    state <= DRAW_TRIANGLE05;
+                end
             end
 
             DRAW_TRIANGLE05: begin
@@ -674,21 +679,25 @@ module graphite #(
 
             DRAW_TRIANGLE41: begin
                 reciprocal_x <= z << 12;
+                reciprocal_start <= 1'b1;
                 state <= DRAW_TRIANGLE42;
             end
 
             DRAW_TRIANGLE42: begin
-                dsp_mul_p0[0] <= r;
-                dsp_mul_p1[0] <= (reciprocal_z << 12);
-                dsp_mul_p0[1] <= g;
-                dsp_mul_p1[1] <= (reciprocal_z << 12);
-                dsp_mul_p0[2] <= b;
-                dsp_mul_p1[2] <= (reciprocal_z << 12);
-                dsp_mul_p0[3] <= s;
-                dsp_mul_p1[3] <= (reciprocal_z << 12);
-                dsp_mul_p0[4] <= t;
-                dsp_mul_p1[4] <= (reciprocal_z << 12);
-                state <= DRAW_TRIANGLE43;
+                reciprocal_start <= 1'b0;
+                if (reciprocal_done) begin
+                    dsp_mul_p0[0] <= r;
+                    dsp_mul_p1[0] <= (reciprocal_z << 12);
+                    dsp_mul_p0[1] <= g;
+                    dsp_mul_p1[1] <= (reciprocal_z << 12);
+                    dsp_mul_p0[2] <= b;
+                    dsp_mul_p1[2] <= (reciprocal_z << 12);
+                    dsp_mul_p0[3] <= s;
+                    dsp_mul_p1[3] <= (reciprocal_z << 12);
+                    dsp_mul_p0[4] <= t;
+                    dsp_mul_p1[4] <= (reciprocal_z << 12);
+                    state <= DRAW_TRIANGLE43;
+                end
             end
 
             DRAW_TRIANGLE43: begin
@@ -815,6 +824,7 @@ module graphite #(
             depth_address       <= 2 * FB_WIDTH * FB_HEIGHT;
             texture_address     <= 3 * FB_WIDTH * FB_HEIGHT;
             state               <= WAIT_COMMAND;
+            reciprocal_start    <= 1'b0;
         end
     end
 
