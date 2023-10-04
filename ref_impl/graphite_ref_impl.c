@@ -1,4 +1,4 @@
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <cube.h>
 #include <stdbool.h>
 #include <teapot.h>
