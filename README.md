@@ -26,3 +26,29 @@ make run
 - Press TAB to enable/disable the wireframe mode;
 - Press T to enable/disable texture mapping;
 - Press L to enable/disable lighting.
+
+## System on Chip
+
+A SoC for the ULX3S is also available with the following features:
+- RISC-V (RV32IM)
+- UART (115200-N-8-1)
+- RAM (32MiB shared between CPU and video)
+- Associative cache (2-way with LRU replacement policy)
+- 640x480 HDMI video output with framebuffer (ARGB444)
+- PS/2 keyboard
+- PS/2 mouse
+- SD Card with hardware SPI
+
+```bash
+cd soc/src/bios
+make
+cd ../../rtl/ulx3s
+make prog
+cd ../../src/examples/test_video
+make run
+```
+
+## References
+
+The SoC is based on the Oberon project for the ULX3S available here: https://github.com/emard/oberon.
+
