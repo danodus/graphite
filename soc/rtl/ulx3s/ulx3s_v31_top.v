@@ -1,7 +1,5 @@
 `default_nettype none
 
-`define FAST_CPU
-
 module ulx3s_v31(
 //      -- System clock and reset
 	input clk_25mhz, // main clock input from external clock source

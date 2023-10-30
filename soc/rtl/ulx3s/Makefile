@@ -35,6 +35,8 @@ VERILOG_FILES = \
   ../lattice/ecp5pll.sv \
   ../dvi/hdmi_interface.v \
 
+VERILOG_DEFINES = -DFAST_CPU
+
 # synthesis options
 YOSYS_OPTIONS = -abc9
 NEXTPNR_OPTIONS = --timing-allow-fail --randomize-seed
