@@ -130,9 +130,12 @@ void update(void) {
         // Get the vector substraction of B-A and C-A
         vec3_t vector_ab = vec3_sub(vector_b, vector_a);
         vec3_t vector_ac = vec3_sub(vector_c, vector_a);
+        vec3_normalize(&vector_ab);
+        vec3_normalize(&vector_ac);
 
         // Compute the face normal (using the cross product to find perpendicular)
         vec3_t normal = vec3_cross(vector_ab, vector_ac);
+        vec3_normalize(&normal);
 
         // Find the vector between a point in the triangle and the camera origin
         vec3_t camera_ray = vec3_sub(camera_position, vector_a);
