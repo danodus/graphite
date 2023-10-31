@@ -69,7 +69,7 @@ void draw_line(int x0, int y0, int x1, int y1, uint16_t color) {
 
     float x = x0;
     float y = y0;
-    for (int i = 0; i < longest_side_length; i++) {
+    for (int i = 0; i <= longest_side_length; i++) {
         draw_pixel(round(x), round(y), color);
         x += x_inc;
         y += y_inc;        
