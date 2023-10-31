@@ -20,7 +20,13 @@ typedef uint8_t Uint8;
 
 enum {
     SDLK_UNKNOWN = 0,
-    SDLK_ESCAPE = '\033'
+    SDLK_ESCAPE = '\033',
+    SDLK_1 = '1',
+    SDLK_2 = '2',
+    SDLK_3 = '3',
+    SDLK_4 = '4',
+    SDLK_c = 'c',
+    SDLK_d = 'd'
 };
 
 typedef enum {

@@ -91,10 +91,23 @@ int SDL_RenderCopy(SDL_Renderer * renderer,
 }
 
 static SDL_Keycode get_keycode(int scancode) {
-    if (scancode == 0x76) {
-        return SDLK_ESCAPE;
-    } else {
-        return SDLK_UNKNOWN;
+    switch (scancode) {
+        case 0x76:
+            return SDLK_ESCAPE;
+        case 0x16:
+            return SDLK_1;
+        case 0x1E:
+            return SDLK_2;
+        case 0x26:
+            return SDLK_3;
+        case 0x25:
+            return SDLK_4;
+        case 0x21:
+            return SDLK_c;
+        case 0x23:
+            return SDLK_d;
+        default:
+            return SDLK_UNKNOWN;
     }
 }
 
