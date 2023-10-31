@@ -15,11 +15,11 @@ plane_t frustum_planes[NUM_PLANES];
 // Left plane   : P=(0, 0, 0),     N=(cos(fov/2), 0, sin(fov/2))
 // Right plane  : P=(0, 0, 0),     N=(-cos(fov/2), 0, sin(fov/2))
 ///////////////////////////////////////////////////////////////////////////////
-void init_frustum_planes(float fovx, float fovy, float z_near, float z_far) {
-    float cos_half_fovx = cos(fovx / 2);
-    float sin_half_fovx = sin(fovx / 2);
-    float cos_half_fovy = cos(fovy / 2);
-    float sin_half_fovy = sin(fovy / 2);
+void init_frustum_planes(fix16_t fovx, fix16_t fovy, fix16_t z_near, fix16_t z_far) {
+    fix16_t cos_half_fovx = fix16_cos(fix16_div(fovx, fix16_from_float(2)));
+    fix16_t sin_half_fovx = fix16_sin(fix16_div(fovx, fix16_from_float(2)));
+    fix16_t cos_half_fovy = fix16_cos(fix16_div(fovy, fix16_from_float(2)));
+    fix16_t sin_half_fovy = fix16_sin(fix16_div(fovy, fix16_from_float(2)));
 
     frustum_planes[LEFT_FRUSTUM_PLANE].point = vec3_new(0, 0, 0);
     frustum_planes[LEFT_FRUSTUM_PLANE].normal.x = cos_half_fovx;
@@ -78,8 +78,8 @@ void triangles_from_polygon(polygon_t* polygon, triangle_t triangles[], int* num
     *num_triangles = polygon->num_vertices - 2;
 }
 
-float float_lerp(float a, float b, float t) {
-    return a + t * (b - a);
+fix16_t float_lerp(fix16_t a, fix16_t b, fix16_t t) {
+    return a + fix16_mul(t, (b - a));
 }
 
 void clip_polygon_against_plane(polygon_t* polygon, int plane) {
@@ -100,17 +100,17 @@ void clip_polygon_against_plane(polygon_t* polygon, int plane) {
     tex2_t* previous_texcoord = &polygon->texcoords[polygon->num_vertices - 1];
 
     // Calculate the dot product of the current and previous vertex
-    float current_dot = 0;
-    float previous_dot = vec3_dot(vec3_sub(*previous_vertex, plane_point), plane_normal);
+    fix16_t current_dot = 0;
+    fix16_t previous_dot = vec3_dot(vec3_sub(*previous_vertex, plane_point), plane_normal);
 
     // Loop all the polygon vertices while the current is different than the last one
     while (current_vertex != &polygon->vertices[polygon->num_vertices]) {
         current_dot = vec3_dot(vec3_sub(*current_vertex, plane_point), plane_normal);
 
         // If we changed from inside to outside or from outside to inside
-        if (current_dot * previous_dot < 0) {
+        if (fix16_mul(current_dot, previous_dot) < 0) {
             // Find the interpolation factor t
-            float t = previous_dot / (previous_dot - current_dot);
+            fix16_t t = fix16_div(previous_dot, (previous_dot - current_dot));
 
             // Calculate the intersection point I = Q1 + t(Q2-Q1)
             vec3_t intersection_point = {

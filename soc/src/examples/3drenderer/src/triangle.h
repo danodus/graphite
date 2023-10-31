@@ -20,19 +20,20 @@ typedef struct {
     vec4_t points[3];
     tex2_t texcoords[3];
     uint16_t color;
+    fix16_t avg_depth;
 } triangle_t;
 
 void draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2, uint16_t color);
 void draw_filled_triangle(
-    int x0, int y0, float z0, float w0,
-    int x1, int y1, float z1, float w1,
-    int x2, int y2, float z2, float w2,
+    int x0, int y0, fix16_t z0, fix16_t w0,
+    int x1, int y1, fix16_t z1, fix16_t w1,
+    int x2, int y2, fix16_t z2, fix16_t w2,
     uint16_t color
 );
 void draw_textured_triangle(
-    int x0, int y0, float z0, float w0, float u0, float v0,
-    int x1, int y1, float z1, float w1, float u1, float v1,
-    int x2, int y2, float z2, float w2, float u2, float v2,
+    int x0, int y0, fix16_t z0, fix16_t w0, fix16_t u0, fix16_t v0,
+    int x1, int y1, fix16_t z1, fix16_t w1, fix16_t u1, fix16_t v1,
+    int x2, int y2, fix16_t z2, fix16_t w2, fix16_t u2, fix16_t v2,
     uint32_t* texture
 );
 

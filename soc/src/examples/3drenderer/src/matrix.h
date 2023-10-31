@@ -4,16 +4,16 @@
 #include "vector.h"
 
 typedef struct {
-    float m[4][4]; 
+    fix16_t m[4][4]; 
 } mat4_t;
 
 mat4_t mat4_identity(void);
-mat4_t mat4_make_scale(float sx, float sy, float sz);
-mat4_t mat4_make_translation(float tx, float ty, float tz);
-mat4_t mat4_make_rotation_x(float angle);
-mat4_t mat4_make_rotation_y(float angle);
-mat4_t mat4_make_rotation_z(float angle);
-mat4_t mat4_make_perspective(float fov, float aspect, float znear, float zfar);
+mat4_t mat4_make_scale(fix16_t sx, fix16_t sy, fix16_t sz);
+mat4_t mat4_make_translation(fix16_t tx, fix16_t ty, fix16_t tz);
+mat4_t mat4_make_rotation_x(fix16_t angle);
+mat4_t mat4_make_rotation_y(fix16_t angle);
+mat4_t mat4_make_rotation_z(fix16_t angle);
+mat4_t mat4_make_perspective(fix16_t fov, fix16_t aspect, fix16_t znear, fix16_t zfar);
 vec4_t mat4_mul_vec4(mat4_t m, vec4_t v);
 mat4_t mat4_mul_mat4(mat4_t a, mat4_t b);
 vec4_t mat4_mul_vec4_project(mat4_t mat_proj, vec4_t v);

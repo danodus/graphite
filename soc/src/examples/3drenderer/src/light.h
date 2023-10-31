@@ -10,6 +10,6 @@ typedef struct {
 
 extern light_t light;
 
-uint16_t light_apply_intensity(uint16_t original_color, float percentage_factor);
+uint16_t light_apply_intensity(uint16_t original_color, fix16_t percentage_factor);
 
 #endif

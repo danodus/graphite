@@ -6,13 +6,7 @@
 #include "mesh.h"
 #include "array.h"
 
-mesh_t mesh = {
-    .vertices = NULL,
-    .faces = NULL,
-    .rotation = { 0, 0, 0 },
-    .scale = { 1, 1, 1 },
-    .translation = { 0, 0, 0 }
-};
+mesh_t mesh;
 
 void load_obj_file_data(char* filename) {
     FL_FILE* file;
@@ -29,15 +23,24 @@ void load_obj_file_data(char* filename) {
     while (fl_fgets(line, 1024, file)) {
         // Vertex information
         if (strncmp(line, "v ", 2) == 0) {
-            vec3_t vertex;
-            sscanf(line, "v %f %f %f", &vertex.x, &vertex.y, &vertex.z);
-            array_push(mesh.vertices, vertex);
+            float x, y, z;
+            sscanf(line, "v %f %f %f", &x, &y, &z);
+            vec3_t v = {
+                .x = fix16_from_float(x),
+                .y = fix16_from_float(y),
+                .z = fix16_from_float(z)
+            };
+            array_push(mesh.vertices, v);
         }
         // Texture coordinate information
         if (strncmp(line, "vt ", 3) == 0) {
-            tex2_t texcoord;
-            sscanf(line, "vt %f %f", &texcoord.u, &texcoord.v);
-            array_push(texcoords, texcoord);
+            float u, v;
+            sscanf(line, "vt %f %f", &u, &v);
+            tex2_t t = {
+                .u = fix16_from_float(u),
+                .v = fix16_from_float(v)
+            };
+            array_push(texcoords, t);
         }
         // Face information
         if (strncmp(line, "f ", 2) == 0) {

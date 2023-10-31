@@ -6,9 +6,13 @@
 #include <sd_card.h>
 #include <fat_filelib.h>
 #include "upng.h"
+#include <libfixmath/fix16.h>
+
 #include "array.h"
 #include "clipping.h"
 #include "display.h"
+
+#include "array.h"
 #include "vector.h"
 #include "matrix.h"
 #include "light.h"
@@ -54,7 +58,7 @@ mat4_t proj_matrix;
 mat4_t view_matrix;
 
 bool is_running = false;
-float delta_time = 0;
+fix16_t delta_time = 0;
 int previous_frame_time = 0;
 
 enum cull_method {
@@ -79,9 +83,28 @@ void setup(void) {
     render_method = RENDER_WIRE;
     cull_method = CULL_BACKFACE;
 
+    mesh = (mesh_t) {
+        .vertices = NULL,
+        .faces = NULL,
+        .rotation = { 0, 0, 0 },
+        .scale = { fix16_from_float(1), fix16_from_float(1), fix16_from_float(1) },
+        .translation = { 0, 0, 0 }
+    };
+
+    camera = (camera_t) {
+        .position = { 0, 0, 0 },
+        .direction = { 0, 0, fix16_from_float(1) },
+        .forward_velocity = { 0, 0, 0 },
+        .yaw = 0
+    };
+
+    light = (light_t) {
+        .direction = { .x = fix16_from_float(0), .y = fix16_from_float(0), .z = fix16_from_float(1) }
+    };
+
     // Allocate the required memory in bytes to hold the color buffer
     color_buffer = (uint16_t*)malloc(sizeof(uint16_t) * window_width * window_height);
-    z_buffer = (float*)malloc(sizeof(float) * window_width * window_height);
+    z_buffer = (fix16_t*)malloc(sizeof(fix16_t) * window_width * window_height);
 
     // Creating a SDL texture that is used to display the color buffer
     color_buffer_texture = SDL_CreateTexture(
@@ -93,21 +116,21 @@ void setup(void) {
     );
 
     // Initialize the perspective projection matrix
-    float aspectx = (float)window_width / (float)window_height;
-    float aspecty = (float)window_height / (float)window_width;
-    float fovy = M_PI / 3.0; // 60 deg
-    float fovx = atan(tan(fovy / 2) * aspectx) * 2.0;
-    float z_near = 0.1;
-    float z_far = 100.0;
+    fix16_t aspectx = fix16_div(fix16_from_int(window_width), fix16_from_int(window_height));
+    fix16_t aspecty = fix16_div(fix16_from_int(window_height), fix16_from_int(window_width));
+    fix16_t fovy = fix16_from_float(M_PI / 3.0); // 60 deg
+    fix16_t fovx = fix16_mul(fix16_atan(fix16_mul(fix16_tan(fix16_div(fovy, fix16_from_float(2))), aspectx)), fix16_from_float(2.0));
+    fix16_t z_near = fix16_from_float(0.1);
+    fix16_t z_far = fix16_from_float(100.0);
     proj_matrix = mat4_make_perspective(fovy, aspecty, z_near, z_far);
 
     init_frustum_planes(fovx, fovy, z_near, z_far);
 
     // Loads the values in the mesh data structures
-    load_obj_file_data("/assets/f22.obj");
+    load_obj_file_data("/assets/cube.obj");
 
     // Load the texture information from an external PNG file
-    load_png_texture_data("/assets/f22.png");
+    load_png_texture_data("/assets/cube.png");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -141,19 +164,19 @@ void process_input(void) {
             if (event.key.keysym.sym == SDLK_x)
                 cull_method = CULL_NONE;
             if (event.key.keysym.sym == SDLK_UP)
-                camera.position.y += 3.0 * delta_time;
+                camera.position.y += fix16_mul(fix16_from_float(0.6), delta_time);
             if (event.key.keysym.sym == SDLK_DOWN)
-                camera.position.y -= 3.0 * delta_time;
+                camera.position.y -= fix16_mul(fix16_from_float(0.6), delta_time);
             if (event.key.keysym.sym == SDLK_a)
-                camera.yaw -= 1.0 * delta_time;
+                camera.yaw -= fix16_mul(fix16_from_float(0.3), delta_time);
             if (event.key.keysym.sym == SDLK_d)
-                camera.yaw += 1.0 * delta_time;
+                camera.yaw += fix16_mul(fix16_from_float(0.3), delta_time);
             if (event.key.keysym.sym == SDLK_w) {
-                camera.forward_velocity = vec3_mul(camera.direction, 5.0 * delta_time);
+                camera.forward_velocity = vec3_mul(camera.direction, fix16_mul(fix16_from_float(0.5), delta_time));
                 camera.position = vec3_add(camera.position, camera.forward_velocity);
             }
             if (event.key.keysym.sym == SDLK_s) {
-                camera.forward_velocity = vec3_mul(camera.direction, 5.0 * delta_time);
+                camera.forward_velocity = vec3_mul(camera.direction, fix16_mul(fix16_from_float(0.5), delta_time));
                 camera.position = vec3_sub(camera.position, camera.forward_velocity);
             }
             break;
@@ -172,7 +195,7 @@ void update(void) {
     }
 
     // Get a delta time factor converted to seconds to be used to update our game objects
-    delta_time = (SDL_GetTicks() - previous_frame_time) / 1000.0;
+    delta_time = fix16_div(fix16_from_int(SDL_GetTicks() - previous_frame_time), fix16_from_float(1000.0));
 
     previous_frame_time = SDL_GetTicks();
 
@@ -180,13 +203,14 @@ void update(void) {
     triangles_to_render = NULL;
 
     // Change the mesh scale/rotation per animation frame
-    mesh.rotation.x -= 0.05 * delta_time;
-    //mesh.rotation.y += 0.5 * delta_time;
-    //mesh.rotation.z += 0.02 * delta_time;
-    //mesh.scale.x += 0.02;
-    //mesh.scale.y += 0.01;
-    //mesh.translation.x += 0.1 * delta_time;
-    mesh.translation.z = 4.0;
+    //mesh.rotation.x -= fix16_from_float(0.1);
+    //mesh.rotation.y += fix16_from_float(0.1);
+    //mesh.rotation.z += fix16_from_float(0.1);
+    //mesh.scale.x = fix16_from_float(1);
+    //mesh.scale.y = fix16_from_float(1);
+    //mesh.scale.z = fix16_from_float(1);
+    //mesh.translation.x += fix16_from_float(0.1);
+    mesh.translation.z = fix16_from_float(10.0);
 
     // Create scale, rotation and translation matrix that will be used to multiply with the mesh vertices
     mat4_t scale_matrix = mat4_make_scale(mesh.scale.x, mesh.scale.y, mesh.scale.z);
@@ -196,13 +220,13 @@ void update(void) {
     mat4_t rotation_matrix_z = mat4_make_rotation_z(mesh.rotation.z);
 
     // Initialize the target looking at the positive z-axis
-    vec3_t target = { 0, 0, 1 };
+    vec3_t target = { 0, 0, fix16_from_float(1) };
     mat4_t camera_yaw_rotation = mat4_make_rotation_y(camera.yaw);
     camera.direction = vec3_from_vec4(mat4_mul_vec4(camera_yaw_rotation, vec4_from_vec3(target)));
 
     // Offset the camera position in the direction where the camera is pointing at
     target = vec3_add(camera.position, camera.direction);
-    vec3_t up_direction = { 0, 1, 0 };
+    vec3_t up_direction = { 0, fix16_from_float(1), 0 };
 
     // Create the view matrix
     view_matrix = mat4_look_at(camera.position, target, up_direction);
@@ -265,10 +289,10 @@ void update(void) {
             vec3_t camera_ray = vec3_sub(origin, vector_a);
 
             // Calculate how aligned the camera ray is with the face normal (using dot product)
-            float dot_normal_camera = vec3_dot(normal, camera_ray);
+            fix16_t dot_normal_camera = vec3_dot(normal, camera_ray);
 
             // Bypass the triangles that are looking away from the camera
-            if (dot_normal_camera < 0) {
+            if (dot_normal_camera < fix16_from_float(0)) {
                 continue;
             }
         }
@@ -308,19 +332,19 @@ void update(void) {
                 projected_points[j] = mat4_mul_vec4_project(proj_matrix, triangle_after_clipping.points[j]);
 
                 // Scale into the view
-                projected_points[j].x *= (window_width / 2.0);
-                projected_points[j].y *= (window_height / 2.0);
+                projected_points[j].x = fix16_mul(projected_points[j].x, fix16_from_float(window_width / 2.0));
+                projected_points[j].y = fix16_mul(projected_points[j].y, fix16_from_float(window_height / 2.0));
 
                 // Invert the y values to account for flipped screen y coordinate
-                projected_points[j].y *= -1;
+                projected_points[j].y = -projected_points[j].y;
 
                 // Translate the projected points to the middle of the screen
-                projected_points[j].x += (window_width / 2.0);
-                projected_points[j].y += (window_height / 2.0);
+                projected_points[j].x += fix16_from_float(window_width / 2.0);
+                projected_points[j].y += fix16_from_float(window_height / 2.0);
             }
 
             // Calculate the shade intensity based on how aligned is the face normal and the inverse of the light direction
-            float light_intensity_factor = -vec3_dot(light.direction, normal);
+            fix16_t light_intensity_factor = -vec3_dot(light.direction, normal);
 
             // Calculate the triangle color based on the light angle
             uint16_t triangle_color = light_apply_intensity(mesh_face.color, light_intensity_factor);
@@ -362,9 +386,9 @@ void render(void) {
         // Draw filled triangle
         if (render_method == RENDER_FILL_TRIANGLE || render_method == RENDER_FILL_TRIANGLE_WIRE) {
             draw_filled_triangle(
-                triangle.points[0].x, triangle.points[0].y, triangle.points[0].z, triangle.points[0].w,
-                triangle.points[1].x, triangle.points[1].y, triangle.points[1].z, triangle.points[1].w,
-                triangle.points[2].x, triangle.points[2].y, triangle.points[2].z, triangle.points[2].w,
+                fix16_to_int(triangle.points[0].x), fix16_to_int(triangle.points[0].y), triangle.points[0].z, triangle.points[0].w,
+                fix16_to_int(triangle.points[1].x), fix16_to_int(triangle.points[1].y), triangle.points[1].z, triangle.points[1].w,
+                fix16_to_int(triangle.points[2].x), fix16_to_int(triangle.points[2].y), triangle.points[2].z, triangle.points[2].w,
                 triangle.color
             );
         }
@@ -372,9 +396,9 @@ void render(void) {
         // Draw textured triangle
         if (render_method == RENDER_TEXTURED || render_method == RENDER_TEXTURED_WIRE) {
             draw_textured_triangle(
-                triangle.points[0].x, triangle.points[0].y, triangle.points[0].z, triangle.points[0].w, triangle.texcoords[0].u, triangle.texcoords[0].v,
-                triangle.points[1].x, triangle.points[1].y, triangle.points[1].z, triangle.points[1].w, triangle.texcoords[1].u, triangle.texcoords[1].v,
-                triangle.points[2].x, triangle.points[2].y, triangle.points[2].z, triangle.points[2].w, triangle.texcoords[2].u, triangle.texcoords[2].v,
+                fix16_to_int(triangle.points[0].x), fix16_to_int(triangle.points[0].y), triangle.points[0].z, triangle.points[0].w, triangle.texcoords[0].u, triangle.texcoords[0].v,
+                fix16_to_int(triangle.points[1].x), fix16_to_int(triangle.points[1].y), triangle.points[1].z, triangle.points[1].w, triangle.texcoords[1].u, triangle.texcoords[1].v,
+                fix16_to_int(triangle.points[2].x), fix16_to_int(triangle.points[2].y), triangle.points[2].z, triangle.points[2].w, triangle.texcoords[2].u, triangle.texcoords[2].v,
                 mesh_texture
             );
         }
@@ -382,21 +406,21 @@ void render(void) {
         // Draw unfilled triangle
         if (render_method == RENDER_WIRE || render_method == RENDER_WIRE_VERTEX || render_method == RENDER_FILL_TRIANGLE_WIRE || render_method == RENDER_TEXTURED_WIRE) {
             draw_triangle(
-                triangle.points[0].x,
-                triangle.points[0].y,
-                triangle.points[1].x,
-                triangle.points[1].y,
-                triangle.points[2].x,
-                triangle.points[2].y,
+                fix16_to_int(triangle.points[0].x),
+                fix16_to_int(triangle.points[0].y),
+                fix16_to_int(triangle.points[1].x),
+                fix16_to_int(triangle.points[1].y),
+                fix16_to_int(triangle.points[2].x),
+                fix16_to_int(triangle.points[2].y),
                 0xFFFF
             );
         }
 
         // Draw triangle vertex points
         if (render_method == RENDER_WIRE_VERTEX) {
-            draw_rect(triangle.points[0].x - 3, triangle.points[0].y - 3, 6, 6, 0xFFF0);
-            draw_rect(triangle.points[1].x - 3, triangle.points[1].y - 3, 6, 6, 0xFFF0);
-            draw_rect(triangle.points[2].x - 3, triangle.points[2].y - 3, 6, 6, 0xFFF0);
+            draw_rect(fix16_to_int(triangle.points[0].x) - 3, fix16_to_int(triangle.points[0].y) - 3, 6, 6, 0xFFF0);
+            draw_rect(fix16_to_int(triangle.points[1].x) - 3, fix16_to_int(triangle.points[1].y) - 3, 6, 6, 0xFFF0);
+            draw_rect(fix16_to_int(triangle.points[2].x) - 3, fix16_to_int(triangle.points[2].y) - 3, 6, 6, 0xFFF0);
         }
     }
 

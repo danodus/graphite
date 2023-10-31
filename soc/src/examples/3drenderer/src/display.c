@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <math.h>
 
+#include <libfixmath/fix16.h>
+
 #include "display.h"
 
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
 uint16_t* color_buffer = NULL;
-float* z_buffer = NULL;
+fix16_t* z_buffer = NULL;
 SDL_Texture* color_buffer_texture = NULL;
 int window_width = 640;
 int window_height = 480;
@@ -75,13 +77,13 @@ void draw_line(int x0, int y0, int x1, int y1, uint16_t color) {
 
     int longest_side_length = (abs(delta_x) >= abs(delta_y)) ? abs(delta_x) : abs(delta_y);
 
-    float x_inc = delta_x / (float)longest_side_length;
-    float y_inc = delta_y / (float)longest_side_length;
+    fix16_t x_inc = fix16_div(fix16_from_int(delta_x), fix16_from_int(longest_side_length));
+    fix16_t y_inc = fix16_div(fix16_from_int(delta_y), fix16_from_int(longest_side_length));
 
-    float x = x0;
-    float y = y0;
+    fix16_t x = fix16_from_int(x0);
+    fix16_t y = fix16_from_int(y0);
     for (int i = 0; i <= longest_side_length; i++) {
-        draw_pixel(round(x), round(y), color);
+        draw_pixel(fix16_to_int(x), fix16_to_int(y), color);
         x += x_inc;
         y += y_inc;        
     }
@@ -114,7 +116,7 @@ void clear_color_buffer(uint16_t color) {
 void clear_z_buffer(void) {
     for (int y = 0; y < window_height; y++) {
         for (int x = 0; x < window_width; x++) {
-            z_buffer[(window_width * y) + x] = 1.0;
+            z_buffer[(window_width * y) + x] = fix16_from_float(1.0);
         }
     }
 }

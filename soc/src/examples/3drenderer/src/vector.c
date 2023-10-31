@@ -6,13 +6,13 @@
 // Implementations of Vector 2 functions
 ///////////////////////////////////////////////////////////////////////////////
 
-vec2_t vec2_new(float x, float y) {
+vec2_t vec2_new(fix16_t x, fix16_t y) {
     vec2_t result = { x, y };
     return result;
 }
 
-float vec2_length(vec2_t v) {
-    return sqrt(v.x * v.x + v.y * v.y);
+fix16_t vec2_length(vec2_t v) {
+    return fix16_sqrt(fix16_mul(v.x, v.x) + fix16_mul(v.y, v.y));
 }
 
 vec2_t vec2_add(vec2_t a, vec2_t b) {
@@ -31,37 +31,37 @@ vec2_t vec2_sub(vec2_t a, vec2_t b) {
     return result;
 }
 
-vec2_t vec2_mul(vec2_t v, float factor) {
+vec2_t vec2_mul(vec2_t v, fix16_t factor) {
     vec2_t result = {
-        .x = v.x * factor,
-        .y = v.y * factor
+        .x = fix16_mul(v.x, factor),
+        .y = fix16_mul(v.y, factor)
     };
     return result;
 }
 
-vec2_t vec2_div(vec2_t v, float factor) {
+vec2_t vec2_div(vec2_t v, fix16_t factor) {
     vec2_t result = {
-        .x = v.x / factor,
-        .y = v.y / factor
+        .x = fix16_div(v.x, factor),
+        .y = fix16_div(v.y, factor)
     };
     return result;
 }
 
-float vec2_dot(vec2_t a, vec2_t b) {
-    return (a.x * b.x) + (a.y * b.y);
+fix16_t vec2_dot(vec2_t a, vec2_t b) {
+    return fix16_mul(a.x, b.x) + fix16_mul(a.y, b.y);
 }
 
 void vec2_normalize(vec2_t* v) {
-    float length = sqrt(v->x * v->x + v->y * v->y);
-    v->x /= length;
-    v->y /= length;
+    fix16_t length = fix16_sqrt(fix16_mul(v->x, v->x) + fix16_mul(v->y, v->y));
+    v->x = fix16_div(v->x, length);
+    v->y = fix16_div(v->y, length);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Implementations of Vector 3 functions
 ///////////////////////////////////////////////////////////////////////////////
 
-vec3_t vec3_new(float x, float y, float z) {
+vec3_t vec3_new(fix16_t x, fix16_t y, fix16_t z) {
     vec3_t result = { x, y, z };
     return result;
 }
@@ -71,8 +71,8 @@ vec3_t vec3_clone(vec3_t* v) {
     return result;
 }
 
-float vec3_length(vec3_t v) {
-    return sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+fix16_t vec3_length(vec3_t v) {
+    return fix16_sqrt(fix16_mul(v.x, v.x) + fix16_mul(v.y, v.y) + fix16_mul(v.z, v.z));
 }
 
 vec3_t vec3_add(vec3_t a, vec3_t b) {
@@ -93,66 +93,66 @@ vec3_t vec3_sub(vec3_t a, vec3_t b) {
     return result;
 }
 
-vec3_t vec3_mul(vec3_t v, float factor) {
+vec3_t vec3_mul(vec3_t v, fix16_t factor) {
     vec3_t result = {
-        .x = v.x * factor,
-        .y = v.y * factor,
-        .z = v.z * factor
+        .x = fix16_mul(v.x, factor),
+        .y = fix16_mul(v.y, factor),
+        .z = fix16_mul(v.z, factor)
     };
     return result;
 }
 
-vec3_t vec3_div(vec3_t v, float factor) {
+vec3_t vec3_div(vec3_t v, fix16_t factor) {
     vec3_t result = {
-        .x = v.x / factor,
-        .y = v.y / factor,
-        .z = v.z / factor
+        .x = fix16_div(v.x, factor),
+        .y = fix16_div(v.y, factor),
+        .z = fix16_div(v.z, factor)
     };
     return result;
 }
 
 vec3_t vec3_cross(vec3_t a, vec3_t b) {
     vec3_t result = {
-        .x = a.y * b.z - a.z * b.y,
-        .y = a.z * b.x - a.x * b.z,
-        .z = a.x * b.y - a.y * b.x
+        .x = fix16_mul(a.y, b.z) - fix16_mul(a.z, b.y),
+        .y = fix16_mul(a.z, b.x) - fix16_mul(a.x, b.z),
+        .z = fix16_mul(a.x, b.y) - fix16_mul(a.y, b.x)
     };
     return result;
 }
 
-float vec3_dot(vec3_t a, vec3_t b) {
-    return (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
+fix16_t vec3_dot(vec3_t a, vec3_t b) {
+    return fix16_mul(a.x, b.x) + fix16_mul(a.y, b.y) + fix16_mul(a.z, b.z);
 }
 
 void vec3_normalize(vec3_t* v) {
-    float length = sqrt(v->x * v->x + v->y * v->y + v->z * v->z);
-    v->x /= length;
-    v->y /= length;
-    v->z /= length;
+    fix16_t length = fix16_sqrt(fix16_mul(v->x, v->x) + fix16_mul(v->y, v->y) + fix16_mul(v->z, v->z));
+    v->x = fix16_div(v->x, length);
+    v->y = fix16_div(v->y, length);
+    v->z = fix16_div(v->z, length);
 }
 
-vec3_t vec3_rotate_x(vec3_t v, float angle) {
+vec3_t vec3_rotate_x(vec3_t v, fix16_t angle) {
     vec3_t rotated_vector = {
         .x = v.x,
-        .y = v.y * cos(angle) - v.z * sin(angle),
-        .z = v.y * sin(angle) + v.z * cos(angle)
+        .y = fix16_mul(v.y, fix16_cos(angle)) - fix16_mul(v.z, fix16_sin(angle)),
+        .z = fix16_mul(v.y, fix16_sin(angle)) + fix16_mul(v.z, fix16_cos(angle))
     };
     return rotated_vector;
 }
 
-vec3_t vec3_rotate_y(vec3_t v, float angle) {
+vec3_t vec3_rotate_y(vec3_t v, fix16_t angle) {
     vec3_t rotated_vector = {
-        .x = v.x * cos(angle) - v.z * sin(angle),
+        .x = fix16_mul(v.x, fix16_cos(angle)) - fix16_mul(v.z, fix16_sin(angle)),
         .y = v.y,
-        .z = v.x * sin(angle) + v.z * cos(angle)
+        .z = fix16_mul(v.x, fix16_sin(angle)) + fix16_mul(v.z, fix16_cos(angle))
     };
     return rotated_vector;
 }
 
-vec3_t vec3_rotate_z(vec3_t v, float angle) {
+vec3_t vec3_rotate_z(vec3_t v, fix16_t angle) {
     vec3_t rotated_vector = {
-        .x = v.x * cos(angle) - v.y * sin(angle),
-        .y = v.x * sin(angle) + v.y * cos(angle),
+        .x = fix16_mul(v.x, fix16_cos(angle)) - fix16_mul(v.y, fix16_sin(angle)),
+        .y = fix16_mul(v.x, fix16_sin(angle)) + fix16_mul(v.y, fix16_cos(angle)),
         .z = v.z,
     };
     return rotated_vector;
@@ -163,7 +163,7 @@ vec3_t vec3_rotate_z(vec3_t v, float angle) {
 ///////////////////////////////////////////////////////////////////////////////
 
 vec4_t vec4_from_vec3(vec3_t v) {
-    vec4_t result = { v.x, v.y, v.z, 1.0 };
+    vec4_t result = { v.x, v.y, v.z, fix16_from_float(1.0) };
     return result;
 }
 

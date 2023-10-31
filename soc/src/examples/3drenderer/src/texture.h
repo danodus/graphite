@@ -3,10 +3,11 @@
 
 #include <stdint.h>
 #include "upng.h"
+#include <libfixmath/fix16.h>
 
 typedef struct {
-    float u;
-    float v;
+    fix16_t u;
+    fix16_t v;
 } tex2_t;
 
 extern int texture_width;
