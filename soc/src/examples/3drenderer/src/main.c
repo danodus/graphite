@@ -7,16 +7,23 @@
 #include "vector.h"
 #include "mesh.h"
 
+///////////////////////////////////////////////////////////////////////////////
+// Array of triangles that sould be rendered frame by frame
+///////////////////////////////////////////////////////////////////////////////
 triangle_t* triangles_to_render = NULL;
 
-vec3_t camera_position = { .x = 0, .y = 0, .z = -5 };
-
+///////////////////////////////////////////////////////////////////////////////
+// Global variables for execution status and game loop
+///////////////////////////////////////////////////////////////////////////////
+vec3_t camera_position = { 0, 0, 0 };
 float fov_factor = 640;
 
 bool is_running = false;
-
 int previous_frame_time = 0;
 
+///////////////////////////////////////////////////////////////////////////////
+// Setup function to initialize variables and game objects
+///////////////////////////////////////////////////////////////////////////////
 void setup(void) {
     // Allocate the required memory in bytes to hold the color buffer
     color_buffer = (uint16_t*) malloc(sizeof(uint16_t) * window_width * window_height);
@@ -33,12 +40,15 @@ void setup(void) {
     // Loads the cube values in the mesh data structures
     // load_cube_mesh_data();
 #ifdef LOCAL
-    load_obj_file_data("./assets/f22.obj");
+    load_obj_file_data("./assets/cube.obj");
 #else
-    load_f22_mesh_data();
+    load_cube_mesh_data();
 #endif
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Poll system events and handle keyboard input
+///////////////////////////////////////////////////////////////////////////////
 void process_input(void) {
     SDL_Event event;
     SDL_PollEvent(&event);
@@ -54,7 +64,9 @@ void process_input(void) {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////
 // Function that receives a 3D vector and returns a projected 2D point
+///////////////////////////////////////////////////////////////////////////////
 vec2_t project(vec3_t point) {
     vec2_t projected_point = {
         .x = (fov_factor * point.x) / point.z,
@@ -63,6 +75,9 @@ vec2_t project(vec3_t point) {
     return projected_point;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Update function
+///////////////////////////////////////////////////////////////////////////////
 void update(void) {
 
     int time_to_wait = FRAME_TARGET_TIME - (SDL_GetTicks() - previous_frame_time);
@@ -77,7 +92,7 @@ void update(void) {
     triangles_to_render = NULL;
 
     mesh.rotation.x += 0.1;
-    mesh.rotation.y += 0.0;
+    mesh.rotation.y += 0.1;
     mesh.rotation.z += 0.0;
 
     // Loop all triangle faces of our mesh
@@ -90,7 +105,7 @@ void update(void) {
         face_vertices[1] = mesh.vertices[mesh_face.b - 1];
         face_vertices[2] = mesh.vertices[mesh_face.c - 1];
 
-        triangle_t projected_triangle;
+        vec3_t transformed_vertices[3];
 
         // Loop all three vertices of this current face and apply transformations
         for (int j = 0; j < 3; j++) {
@@ -101,10 +116,42 @@ void update(void) {
             transformed_vertex = vec3_rotate_y(transformed_vertex, mesh.rotation.z);
 
             // Translate the vertex away from the camera
-            transformed_vertex.z -= camera_position.z;
+            transformed_vertex.z += 5;
+
+            // Save the transformed vertex in the array of transformed vertices
+            transformed_vertices[j] = transformed_vertex;
+        }
+
+        // Check backface culling
+        vec3_t vector_a = transformed_vertices[0]; /*   A   */
+        vec3_t vector_b = transformed_vertices[1]; /*  / \  */
+        vec3_t vector_c = transformed_vertices[2]; /* C---B */
+
+        // Get the vector substraction of B-A and C-A
+        vec3_t vector_ab = vec3_sub(vector_b, vector_a);
+        vec3_t vector_ac = vec3_sub(vector_c, vector_a);
+
+        // Compute the face normal (using the cross product to find perpendicular)
+        vec3_t normal = vec3_cross(vector_ab, vector_ac);
+
+        // Find the vector between a point in the triangle and the camera origin
+        vec3_t camera_ray = vec3_sub(camera_position, vector_a);
+
+        // Calculate how aligned the camera ray is with the face normal (using dot product)
+        float dot_normal_camera = vec3_dot(normal, camera_ray);
+
+        // Bypass the triangles that are looking away from the camera
+        if (dot_normal_camera < 0) {
+            continue;
+        }
+
+        triangle_t projected_triangle;
+
+        // Loop all three vertices to perform projection
+        for (int j = 0; j < 3; j++) {
 
             // Project the current vertex
-            vec2_t projected_point = project(transformed_vertex);
+            vec2_t projected_point = project(transformed_vertices[j]);
 
             // Scale and translate the projected points to the middle of the screen
             projected_point.x += (window_width / 2);
@@ -118,6 +165,9 @@ void update(void) {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Render function to draw objects on the display
+///////////////////////////////////////////////////////////////////////////////
 void render(void) {
     clear_color_buffer(0xF000);
 
@@ -153,12 +203,18 @@ void render(void) {
     SDL_RenderPresent(renderer);
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Free resources
+///////////////////////////////////////////////////////////////////////////////
 void free_resources(void) {
     free(color_buffer);
     array_free(mesh.faces);
     array_free(mesh.vertices);
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Main
+///////////////////////////////////////////////////////////////////////////////
 int main(void) {
 
     is_running = initialize_window();
