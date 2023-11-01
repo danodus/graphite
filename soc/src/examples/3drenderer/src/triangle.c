@@ -22,7 +22,7 @@ void fill_flat_bottom_triangle(int x0, int y0, int x1, int y1, int x2, int y2, u
 
     // Loop all the scanlines from top to bottom
     for (int y = y0; y <= y2; y++) {
-        draw_line(x_start, y, x_end, y, color);
+        draw_horiz_line(x_start, x_end, y, color);
         x_start += inv_slope_1;
         x_end += inv_slope_2;
     }
@@ -42,7 +42,7 @@ void fill_flat_top_triangle(int x0, int y0, int x1, int y1, int x2, int y2, uint
 
     // Loop all the scanlines from bottom to top
     for (int y = y2; y >= y0; y--) {
-        draw_line(x_start, y, x_end, y, color);
+        draw_horiz_line(x_start, x_end, y, color);
         x_start -= inv_slope_1;
         x_end -= inv_slope_2;
     }
