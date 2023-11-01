@@ -1,7 +1,3 @@
-/*
-FIXME: whole picture is shifted cca 16 pixels to the left
-*/
-
 module vqueue
 #(
   parameter almost_empty = 8, // when less than this numer of elements left

@@ -14,7 +14,7 @@ Graphite is a FPGA based open source 3D graphics accelerator.
 
 ## Getting Started
 ```bash
-git clone https://github.com/dcliche/graphite.git
+git clone https://github.com/danodus/graphite.git
 cd graphite/rtl/sim
 make run
 ```
@@ -29,12 +29,14 @@ make run
 
 ## System on Chip
 
+Note: The integration of the Graphite core module is not yet available.
+
 A SoC for the ULX3S is also available with the following features:
 - RISC-V (RV32IM)
 - UART (115200-N-8-1)
-- RAM (32MiB shared between CPU and video)
-- Associative cache (2-way with LRU replacement policy)
-- 640x480 HDMI video output with framebuffer (ARGB444)
+- SDRAM (32MiB shared between CPU and video)
+- Set associative cache (2-way with LRU replacement policy)
+- 640x480 HDMI video output with framebuffer (ARGB4444)
 - PS/2 keyboard
 - PS/2 mouse
 - SD Card with hardware SPI
@@ -45,7 +47,7 @@ make
 cd ../../rtl/ulx3s
 make prog
 cd ../../src/examples/test_video
-make run
+make run SERIAL=<serial device>
 ```
 
 ## References

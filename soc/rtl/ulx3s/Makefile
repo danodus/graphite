@@ -15,7 +15,7 @@ TOP_MODULE_FILE = $(TOP_MODULE)_top.v
 
 SRC = \
   $(TOP_MODULE_FILE) \
-  ../RISCVTop.OStation.v \
+  ../RISCVTop.v \
   ../PROM.v \
   ../cache_controller.v \
   ../sdram.v \
@@ -24,13 +24,13 @@ SRC = \
   ../RS232R.v \
   ../RS232T.v \
   ../SPI.v \
-  ../processor.sv \
-  ../decoder.sv \
-  ../alu.sv \
-  ../register_file.sv \
-  ../multiplier.v \
-  ../divider.v \
-  ../VID.OStation.v \
+  ../riscv/processor.sv \
+  ../riscv/decoder.sv \
+  ../riscv/alu.sv \
+  ../riscv/register_file.sv \
+  ../riscv/multiplier.v \
+  ../riscv/divider.v \
+  ../VID.v \
   ../lattice/bram32bit.v \
   ../bram_true2p_2clk.v \
   ../vqueue.v \
