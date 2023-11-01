@@ -34,10 +34,18 @@ module SPI(
 
 wire endbit, endtick;
 reg [31:0] shreg;
+`ifdef FAST_CPU
+reg [6:0] tick;
+`else
 reg [5:0] tick;
+`endif
 reg [4:0] bitcnt;
 
-assign endtick = fast ? (tick == 2) : (tick == 63);  //25MHz clk
+`ifdef FAST_CPU
+assign endtick = fast ? (tick == 5) : (tick == 127);  // 50MHz clk
+`else
+assign endtick = fast ? (tick == 2) : (tick == 63);   // 25MHz clk
+`endif
 assign endbit = fast ? (bitcnt == 31) : (bitcnt == 7);
 assign dataRx = fast ? shreg : {24'b0, shreg[7:0]};
 assign MOSI = (~rst | rdy) ? 1 : shreg[7];
