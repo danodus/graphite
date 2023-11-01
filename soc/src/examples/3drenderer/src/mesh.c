@@ -11,7 +11,9 @@
 mesh_t mesh = {
     .vertices = NULL,
     .faces = NULL,
-    .rotation = { 0, 0, 0 }
+    .rotation = { 0, 0, 0 },
+    .scale = { 1, 1, 1 },
+    .translation = { 0, 0, 0 }
 };
 
 void load_cube_mesh_data(void) {
