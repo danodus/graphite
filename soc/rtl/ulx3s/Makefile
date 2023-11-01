@@ -1,17 +1,19 @@
+YOSYS := $(OSS_CAD_SUITE_PATH)yosys
+ECPPACK := $(OSS_CAD_SUITE_PATH)ecppack
+NEXTPNR := $(OSS_CAD_SUITE_PATH)nextpnr-ecp5
+FUJPROG := $(OSS_CAD_SUITE_PATH)fujprog
+
 # ******* project, board and chip name *******
-PROJECT = oberon
 BOARD = ulx3s
 # 12 25 45 85
-FPGA_SIZE = 85
+DEVICE := 85k
+PACKAGE := CABGA381
 
-FPGA_PACKAGE = CABGA381
-
-# ******* design files *******
-CONSTRAINTS = ulx3s_v31.lpf
+PIN_DEF := ulx3s_v31.lpf
 TOP_MODULE = ulx3s_v31
 TOP_MODULE_FILE = $(TOP_MODULE)_top.v
 
-VERILOG_FILES = \
+SRC = \
   $(TOP_MODULE_FILE) \
   ../RISCVTop.OStation.v \
   ../PROM.v \
@@ -35,11 +37,23 @@ VERILOG_FILES = \
   ../lattice/ecp5pll.sv \
   ../dvi/hdmi_interface.v \
 
-VERILOG_DEFINES = -DFAST_CPU
+DEFINES = -DFAST_CPU
 
-# synthesis options
-YOSYS_OPTIONS = -abc9
-NEXTPNR_OPTIONS = --timing-allow-fail --randomize-seed
+all: top.bin
 
-include trellis_path.mk
-include trellis_main.mk
+clean:
+	rm -f *.hex *.asc *.json *.bin *.log
+
+top.json: $(SRC) prom.mem
+	$(YOSYS) -ql top.log -p 'verilog_defines $(DEFINES) ; read_verilog -sv $(SRC); synth_ecp5 -top $(TOP_MODULE) -json top.json -abc9'
+
+top.asc: top.json $(PIN_DEF)
+	$(NEXTPNR) -l top_nextpnr.log --$(DEVICE) --package $(PACKAGE) --json top.json --lpf $(PIN_DEF) --textcfg top.asc --randomize-seed --timing-allow-fail
+
+top.bin: top.asc
+	$(ECPPACK) --compress --input top.asc --bit top.bin
+
+prog: top.bin
+	$(FUJPROG) -T bit top.bin
+
+.PHONY: all prog

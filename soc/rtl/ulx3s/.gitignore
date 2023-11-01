@@ -1,4 +1,4 @@
 *.json
 *.bit
 *.svf
-*.config
+*.log
