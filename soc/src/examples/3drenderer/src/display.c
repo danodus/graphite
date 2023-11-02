@@ -59,6 +59,11 @@ void draw_pixel(int x, int y, uint32_t color) {
 }
 
 void draw_horiz_line(int x0, int x1, int y, uint16_t color) {
+    if (x1 < x0) {
+        int t = x0;
+        x0 = x1;
+        x1 = t;
+    }    
     for (int x = x0; x <= x1; x++)
         draw_pixel(x, y, color);
 }
