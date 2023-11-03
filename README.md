@@ -2,6 +2,8 @@
 
 Graphite is a FPGA based open source 3D graphics accelerator.
 
+![Utah Teapot](doc/teapot.png)
+
 ## Features
 
 - Draw line;
