@@ -330,7 +330,7 @@ pid_t _wait(int *wstatus)
 
 clock_t _times(struct tms *buf)
 {
-	clock_t c = MEM_READ(BASE_IO + TIMER) / 1000;
+	clock_t c = MEM_READ(TIMER);
 	if (buf) {
 		buf->tms_utime = c;
 		buf->tms_stime = 0;
