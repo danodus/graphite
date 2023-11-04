@@ -313,7 +313,7 @@ end
         if(nop) case(sys_cmd_ack)
             2'b10: begin
                 crw <= 1'b0;	// VGA read
-                if(vidadr == 19'd19199) vidadr <= 12'd0; // 640*480*2/32-1
+                if(vidadr == 19'd19199) vidadr <= 19'd0; // 640*480*2/32-1
                 else vidadr <= vidadr + 1'b1;
             end
             2'b01, 2'b11: crw <= 1'b1;	// cache read/write			
