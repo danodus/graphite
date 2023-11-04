@@ -113,7 +113,7 @@ reg [18:0] vidadr = 0;
 
 assign iowadr = adr[5:2];
 assign ioenb = (adr[31:28] == 4'hE);
-wire mreq = !ioenb;
+wire mreq = !ioenb && !pm_sel;
 
 wire cpu_we, cpu_sel;
 assign rd = cpu_sel && !pm_sel && !cpu_we;

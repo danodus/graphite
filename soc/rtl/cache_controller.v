@@ -73,13 +73,7 @@ module cache_controller(
     wire [(1<<`WAYS)-1:0]free;
     wire wr = |wmask;
     
-    reg [(1<<`WAYS)-1:0]cache_dirty[0:(1<<`SETS)-1];/* = 
-        {4'h0, 4'h0, 4'h0, 4'h0, 4'h0, 4'h0, 4'h0, 4'h0, 4'h0, 4'h0, 4'h0, 4'h0, 4'h1, 4'h1, 4'h1, 4'h1};*/
-/*	reg [`WAYS-1:0]cache_lru[0:(1<<`WAYS)-1][0:(1<<`SETS)-1] =
-        {{2'h0, 2'h0, 2'h0, 2'h0, 2'h0, 2'h0, 2'h0, 2'h0, 2'h0, 2'h0, 2'h0, 2'h0, 2'h0, 2'h0, 2'h0, 2'h0},
-         {2'h1, 2'h1, 2'h1, 2'h1, 2'h1, 2'h1, 2'h1, 2'h1, 2'h1, 2'h1, 2'h1, 2'h1, 2'h1, 2'h1, 2'h1, 2'h1},
-         {2'h2, 2'h2, 2'h2, 2'h2, 2'h2, 2'h2, 2'h2, 2'h2, 2'h2, 2'h2, 2'h2, 2'h2, 2'h2, 2'h2, 2'h2, 2'h2},
-         {2'h3, 2'h3, 2'h3, 2'h3, 2'h3, 2'h3, 2'h3, 2'h3, 2'h3, 2'h3, 2'h3, 2'h3, 2'h3, 2'h3, 2'h3, 2'h3}};*/
+    reg [(1<<`WAYS)-1:0]cache_dirty[0:(1<<`SETS)-1];
     initial $readmemh("cache_init0.mem", cache_dirty);
 
     reg [`WAYS-1:0]cache_lru0[0:(1<<`SETS)-1];
@@ -91,41 +85,15 @@ module cache_controller(
     initial $readmemh("cache_init2.mem", cache_lru2);
     initial $readmemh("cache_init3.mem", cache_lru3);
          
-/*	reg [17-`SETS:0]cache_addr[0:(1<<`WAYS)-1][0:(1<<`SETS)-1]=
-        {{9'h000, 9'h000, 9'h000, 9'h000, 9'h000, 9'h000, 9'h000, 9'h000, 9'h000, 9'h000, 9'h000, 9'h000, 9'h0ff, 9'h0ff, 9'h0ff, 9'h0ff},
-         {9'h001, 9'h001, 9'h001, 9'h001, 9'h001, 9'h001, 9'h001, 9'h001, 9'h001, 9'h001, 9'h001, 9'h001, 9'h000, 9'h000, 9'h000, 9'h000},
-         {9'h002, 9'h002, 9'h002, 9'h002, 9'h002, 9'h002, 9'h002, 9'h002, 9'h002, 9'h002, 9'h002, 9'h002, 9'h001, 9'h001, 9'h001, 9'h001},
-         {9'h003, 9'h003, 9'h003, 9'h003, 9'h003, 9'h003, 9'h003, 9'h003, 9'h003, 9'h003, 9'h003, 9'h003, 9'h002, 9'h002, 9'h002, 9'h002}};*/
-    reg [17-`SETS:0]cache_addr0[0:(1<<`SETS)-1];
-    reg [17-`SETS:0]cache_addr1[0:(1<<`SETS)-1];
-    reg [17-`SETS:0]cache_addr2[0:(1<<`SETS)-1];
-    reg [17-`SETS:0]cache_addr3[0:(1<<`SETS)-1];
+    // MSB is cache valid
+    reg [1+17-`SETS:0]cache_addr0[0:(1<<`SETS)-1];
+    reg [1+17-`SETS:0]cache_addr1[0:(1<<`SETS)-1];
+    reg [1+17-`SETS:0]cache_addr2[0:(1<<`SETS)-1];
+    reg [1+17-`SETS:0]cache_addr3[0:(1<<`SETS)-1];
     initial $readmemh("cache_init0.mem", cache_addr0);
     initial $readmemh("cache_init1.mem", cache_addr1);
     initial $readmemh("cache_init2.mem", cache_addr2);
     initial $readmemh("cache_init3.mem", cache_addr3);
-
-/*
-        integer i1,j1;
-        initial begin
-          for (i1 = 0; i1 < 4; i1 = i1 + 1) begin
-            cache_dirty[i1] = 0;
-            for (j1 = 0; j1 < 8; j1 = j1 + 1) begin
-              cache_lru[1][i1] = i1;
-              cache_addr[j1][i1] = i1;
-            end
-            $display("%d", i1);
-          end
-        end
-        
-        integer i,j,fd,rv;
-        initial begin
-          fd = $fopen( "mem.data", "r");
-          for (i = 0; i < 4; i = i + 1)
-            for (j = 0; j < 3; j = j + 1)
-              rv = $fscanf(fd, "%h", mem[j][i]);
-        end
-*/
     
     reg [2:0]STATE = 0;
     reg [6:0]lowaddr = 0; //cache mem address
@@ -133,14 +101,10 @@ module cache_controller(
     wire [31:0]cache_QA;
     wire [`WAYS-1:0]lru[(1<<`WAYS)-1:0];
 
-//	genvar i;
-//	for(i=0; i<(1<<`WAYS); i=i+1) begin
-//		assign fit[i] = ~r_flush && (cache_addr[i][index] == addr[25:8+`SETS]);
-//	end
-    assign fit[0] = ~r_flush && (cache_addr0[index] == addr[25:8+`SETS]);
-    assign fit[1] = ~r_flush && (cache_addr1[index] == addr[25:8+`SETS]);
-    assign fit[2] = ~r_flush && (cache_addr2[index] == addr[25:8+`SETS]);
-    assign fit[3] = ~r_flush && (cache_addr3[index] == addr[25:8+`SETS]);
+    assign fit[0] = ~r_flush && (cache_addr0[index] == {1'b1, addr[25:8+`SETS]});
+    assign fit[1] = ~r_flush && (cache_addr1[index] == {1'b1, addr[25:8+`SETS]});
+    assign fit[2] = ~r_flush && (cache_addr2[index] == {1'b1, addr[25:8+`SETS]});
+    assign fit[3] = ~r_flush && (cache_addr3[index] == {1'b1, addr[25:8+`SETS]});
     assign free[0] = r_flush ? (flushcount[`WAYS+`SETS-1:`SETS] == 0) : ~|cache_lru0[index];
     assign free[1] = r_flush ? (flushcount[`WAYS+`SETS-1:`SETS] == 1) : ~|cache_lru1[index];
     assign free[2] = r_flush ? (flushcount[`WAYS+`SETS-1:`SETS] == 2) : ~|cache_lru2[index];
@@ -164,27 +128,6 @@ module cache_controller(
         ddr_dout <= lowaddr[0] ? cache_QA[15:0] : cache_QA[31:16];
     end
 
-/*		
-    cache cache_mem
-    (
-        .ClockA(ddr_clk), // input clka
-        .ClockEnA(cache_write_data | cache_read_data), // input ena
-        .ByteEnA({lowaddr[0], lowaddr[0], ~lowaddr[0], ~lowaddr[0]}),
-        .WrA(cache_write_data),
-        .AddressA({blk, ~index[`SETS-1:2], index[1:0], lowaddr[6:1]}), // input [11 : 0] addra
-        .DataInA({ddr_din, ddr_din}), // input [31 : 0] dina
-        .QA(cache_QA), // output [31 : 0] douta
-        .ClockB(!clk), // input clkb
-        .ClockEnB(mreq & hit & st0), // input enb
-        .WrB(mreq & hit & st0 & wr), 
-        .ByteEnB(wmask), // input [3 : 0] web
-        .AddressB({blk, ~index[`SETS-1:2], index[1:0], addr[7:2]}), // input [11 : 0] addrb
-        .DataInB(din), // input [31 : 0] dinb
-        .QB(dout), // output [31 : 0] doutb
-        .ResetA(1'b0),
-        .ResetB(1'b0)
-    );
-*/
         bram32bit
         #(
           .addr_width(12)
@@ -205,7 +148,6 @@ module cache_controller(
           .data_out_b(dout)
         );
 
-//	for(i=0; i<(1<<`WAYS); i=i+1)
         always @(posedge clk)
             if(st0 && mreq)
                 if(hit) begin
@@ -233,20 +175,18 @@ module cache_controller(
             3'b000: begin
                 if(mreq && !hit) begin	// cache miss
                     case(fblk)
-                        0: begin waddr <= {cache_addr0[index], index}; if(!r_flush) cache_addr0[index] <= addr[25:8+`SETS]; end
-                        1: begin waddr <= {cache_addr1[index], index}; if(!r_flush) cache_addr1[index] <= addr[25:8+`SETS]; end
-                        2: begin waddr <= {cache_addr2[index], index}; if(!r_flush) cache_addr2[index] <= addr[25:8+`SETS]; end
-                        3: begin waddr <= {cache_addr3[index], index}; if(!r_flush) cache_addr3[index] <= addr[25:8+`SETS]; end
+                        0: begin waddr <= {cache_addr0[index], index}; if(!r_flush) cache_addr0[index] <= {1'b1, addr[25:8+`SETS]}; end
+                        1: begin waddr <= {cache_addr1[index], index}; if(!r_flush) cache_addr1[index] <= {1'b1, addr[25:8+`SETS]}; end
+                        2: begin waddr <= {cache_addr2[index], index}; if(!r_flush) cache_addr2[index] <= {1'b1, addr[25:8+`SETS]}; end
+                        3: begin waddr <= {cache_addr3[index], index}; if(!r_flush) cache_addr3[index] <= {1'b1, addr[25:8+`SETS]}; end
                     endcase
-//					waddr <= {cache_addr[fblk][index], index}; 
-//					if(!r_flush) cache_addr[fblk][index] <= addr[25:8+`SETS];
                     ddr_rd <= ~dirty & ~r_flush;
                     ddr_wr <= dirty;
                     STATE <= dirty ? 3'b011 : 3'b100;
                 end else flushcount[`WAYS+`SETS] <= flushcount[`WAYS+`SETS] | flushreq;
             end
             3'b011: begin	// write cache to ddr
-                ddr_rd <= ~r_flush; //1'b1;
+                ddr_rd <= ~r_flush;
                 if(s_lowaddr5) begin
                     ddr_wr <= 1'b0;
                     STATE <= 3'b111;
