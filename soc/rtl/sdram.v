@@ -116,7 +116,7 @@ module SDRAM_16bit(
                             STATE <= 2;	// precharge all
                         end else if(|sys_CMD) begin
                             sys_cmd_ack <= sys_CMD;
-                            {linAddr, bAddr, colAddr} <= sys_ADDR;
+                            {bAddr, linAddr, colAddr} <= sys_ADDR;
                             STATE <= 5;
                         end else STATE <= 0;
                     end
