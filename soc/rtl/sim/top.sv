@@ -1,16 +1,20 @@
-module top (
-    input  wire logic       clk,
-    input  wire logic       clk_sdram,
-    input  wire logic       reset_i,
-    output      logic [7:0] display_o,
-    input  wire logic       rx_i,
-    output      logic       tx_o,
+// top.sv
+// Copyright (c) 2023 Daniel Cliche
+// SPDX-License-Identifier: MIT
 
-    output logic vga_hsync,
-    output logic vga_vsync,
-    output logic [3:0] vga_r,
-    output logic [3:0] vga_g,
-    output logic [3:0] vga_b,
+module top (
+    input  wire logic        clk,
+    input  wire logic        clk_sdram,
+    input  wire logic        reset_i,
+    output      logic [7:0]  display_o,
+    input  wire logic        rx_i,
+    output      logic        tx_o,
+
+    output      logic        vga_hsync,
+    output      logic        vga_vsync,
+    output      logic [3:0]  vga_r,
+    output      logic [3:0]  vga_g,
+    output      logic [3:0]  vga_b,
 
     input  wire logic [7:0]  ps2_kbd_code_i,
     input  wire logic        ps2_kbd_strobe_i,
@@ -29,44 +33,47 @@ module top (
     inout       logic [15:0] sdram_dq_io  
     );
 
-    assign sdram_cke_o = 1'b1; // -- SDRAM clock enable
+    assign sdram_cke_o = 1'b1; // SDRAM clock enable
 
-    RISCVTop sys_inst
+    soc_top soc_top
     (
-        .CLK_CPU(clk),
-        .CLK_SDRAM(clk_sdram),
-        .CLK_PIXEL(clk),
-        .RESET(reset_i), // right
-        .RX(),   // RS-232
-        .TX(),
-        .LED(display_o),
+        .clk_cpu(clk),
+        .clk_sdram(clk_sdram),
+        .clk_pixel(clk),
+        .reset_i(reset_i),
 
-        .SD_DO(),          // SPI - SD card & network
-        .SD_DI(),
-        .SD_CK(),
-        .SD_nCS(),
-
-        .VGA_HSYNC(vga_hsync),
-        .VGA_VSYNC(vga_vsync),
-        .VGA_BLANK(),
-        .VGA_R(vga_r),
-        .VGA_G(vga_g),
-        .VGA_B(vga_b),
-
-        .PS2CLKA(), // keyboard clock
-        .PS2DATA(), // keyboard data
-        .PS2CLKB(), // mouse clock
-        .PS2DATB(), // mouse data
-
-        .SDRAM_nCAS(sdram_cas_n_o),
-        .SDRAM_nRAS(sdram_ras_n_o),
-        .SDRAM_nCS(sdram_cs_n_o),
-        .SDRAM_nWE(sdram_we_n_o),
-        .SDRAM_BA(sdram_ba_o),
-        .SDRAM_ADDR(sdram_a_o),
-        .SDRAM_DATA(sdram_dq_io),
-        .SDRAM_DQML(sdram_dqm_o[0]),
-        .SDRAM_DQMH(sdram_dqm_o[1])
+        // UART
+        .rx_i(),
+        .tx_o(),
+        // LED
+        .led_o(display_o),
+        // SD card
+        .sd_do_i(),
+        .sd_di_o(),
+        .sd_ck_o(),
+        .sd_cs_n_o(),
+        // VGA video
+        .vga_hsync_o(vga_hsync),
+        .vga_vsync_o(vga_vsync),
+        .vga_blank_o(),
+        .vga_r_o(vga_r),
+        .vga_g_o(vga_g),
+        .vga_b_o(vga_b),
+        // PS/2 keyboard
+        .ps2clka_i(),
+        .ps2data_i(),
+        // PS/2 mouse
+        .ps2clkb_io(),
+        .ps2datb_io(),
+        // SDRAM
+        .sdram_cas_n_o(sdram_cas_n_o),
+        .sdram_ras_n_o(sdram_ras_n_o),
+        .sdram_cs_n_o(sdram_cs_n_o),
+        .sdram_we_n_o(sdram_we_n_o),
+        .sdram_ba_o(sdram_ba_o),
+        .sdram_addr_o(sdram_a_o),
+        .sdram_data_io(sdram_dq_io),
+        .sdram_dqm_o(sdram_dqm_o)
     );
 
     initial begin

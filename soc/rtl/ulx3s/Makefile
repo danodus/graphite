@@ -10,12 +10,12 @@ DEVICE := 85k
 PACKAGE := CABGA381
 
 PIN_DEF := ulx3s_v31.lpf
-TOP_MODULE = ulx3s_v31
-TOP_MODULE_FILE = $(TOP_MODULE)_top.v
+TOP_MODULE = ulx3s_v31_top
+TOP_MODULE_FILE = $(TOP_MODULE).sv
 
 SRC = \
   $(TOP_MODULE_FILE) \
-  ../RISCVTop.v \
+  ../soc_top.sv \
   ../PROM.v \
   ../cache_controller.v \
   ../sdram.v \

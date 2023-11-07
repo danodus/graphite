@@ -13,7 +13,7 @@ SRC = RS232R.v \
 	bram_true2p_2clk.v \
 	PS2.v SPI.v cache_controller.v \
 	sdram.v \
-	RISCVTop.v \
+	soc_top.sv \
 	VID.v \
 	vqueue.v \
 	riscv/alu.sv \
