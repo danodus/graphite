@@ -19,45 +19,35 @@ CONSEQUENTIAL DAMAGES OR ANY DAMAGES OR LIABILITY WHATSOEVER, WHETHER IN
 AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE DEALINGS IN OR USE OR PERFORMANCE OF THE SOFTWARE.*/
 
-// NW 4.5.09 / 15.11.10
-// RS232 receiver for 115200 or 230400 bps, 8 bit data
-// clock is 25 MHz
+// NW 20.10.2012
+// PS2 receiver for keyboard, 8 bit data
 
-
-module RS232R(
+module ps2kbd(
     input clk, rst,
-	 input RxD,
-    input fsel,
     input done,   // "byte has been read"
-    output rdy,
-    output [7:0] data);
+    output rdy,   // "byte is available"
+    output shift, // shift in, tramsmitter
+    output [7:0] data,
+    input PS2C,   // serial input
+    input PS2D);
+	 
+reg Q0, Q1;  // synchronizer and falling edge detector
+reg [10:0] shreg;
+reg [3:0] inptr, outptr;
+reg [7:0] fifo [15:0];  // 16 byte buffer
+wire endbit;
 
-wire endtick, midtick, endbit;
-wire [11:0] limit;
-reg run, stat;
-reg Q0, Q1;  // synchronizer and edge detector
-reg [11:0] tick;
-reg [3:0] bitcnt;
-reg [7:0] shreg;
-
-`ifdef FAST_CPU
-assign limit = fsel ? 109*2 : 217*2;
-`else
-assign limit = fsel ? 109 : 217;
-`endif
-assign endtick = tick == limit;
-assign midtick = tick == {1'b0, limit[11:1]};  // limit/2
-assign endbit = bitcnt == 8;
-assign data = shreg;
-assign rdy = stat;
+assign endbit = ~shreg[0];  //start bit reached correct pos
+assign shift = Q1 & ~Q0;
+assign data = fifo[outptr];
+assign rdy = ~(inptr == outptr);
 
 always @ (posedge clk) begin
-  Q0 <= RxD; Q1 <= Q0;
-  run <= (Q1 & ~Q0) | ~(~rst | endtick & endbit) & run;
-  tick <= (run & ~endtick) ? tick+1 : 0;
-  bitcnt <= (endtick & ~endbit) ? bitcnt + 1 :
-    (endtick & endbit) ? 0 : bitcnt;
-  shreg <= midtick ? {Q1, shreg[7:1]} : shreg;
-  stat <= (endtick & endbit) | ~(~rst | done) & stat;
-end
+  Q0 <= PS2C; Q1 <= Q0;
+  shreg <= (~rst | endbit) ? 11'h7FF :
+    shift ? {PS2D, shreg[10:1]} : shreg;
+  outptr <= ~rst ? 0 : rdy & done ? outptr+1 : outptr;
+  inptr <= ~rst ? 0 : endbit ? inptr+1 : inptr;
+  if (endbit) fifo[inptr] <= shreg[8:1];
+end	 
 endmodule

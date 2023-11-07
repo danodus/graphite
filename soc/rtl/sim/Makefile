@@ -5,16 +5,18 @@ VERILATOR = verilator
 LDFLAGS := -LDFLAGS "$(shell sdl2-config --libs)"
 CFLAGS := -CFLAGS "$(shell sdl2-config --cflags)"
 
-SRC = RS232R.v \
-	bram32bit.v \
-	mousem.v \
-	PROM.v \
-	RS232T.v \
+SRC = bram32bit.v \
+	prom.v \
+	uart_tx.v \
+	uart_rx.v \
 	bram_true2p_2clk.v \
-	PS2.v SPI.v cache_controller.v \
+	ps2kbd.v \
+	ps2mouse.v \
+	spi.v \
+	cache_controller.v \
 	sdram.v \
 	soc_top.sv \
-	VID.v \
+	video.v \
 	vqueue.v \
 	riscv/alu.sv \
 	riscv/multiplier.v \

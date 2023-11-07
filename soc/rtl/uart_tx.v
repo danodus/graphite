@@ -23,7 +23,7 @@ CONNECTION WITH THE DEALINGS IN OR USE OR PERFORMANCE OF THE SOFTWARE.*/
 // RS232 transmitter for 115200/230400 bps, 8 bit data
 // clock is 25 MHz; 25000 / 1302 = 19.2 KHz
 
-module RS232T(
+module uart_tx(
     input clk, rst,
     input start, // request to accept and send a byte
 	 input fsel,  // frequency selection

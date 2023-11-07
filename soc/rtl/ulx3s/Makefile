@@ -16,21 +16,21 @@ TOP_MODULE_FILE = $(TOP_MODULE).sv
 SRC = \
   $(TOP_MODULE_FILE) \
   ../soc_top.sv \
-  ../PROM.v \
+  ../prom.v \
   ../cache_controller.v \
   ../sdram.v \
-  ../PS2.v \
-  ../mousem.v \
-  ../RS232R.v \
-  ../RS232T.v \
-  ../SPI.v \
+  ../ps2kbd.v \
+  ../ps2mouse.v \
+  ../uart_rx.v \
+  ../uart_tx.v \
+  ../spi.v \
   ../riscv/processor.sv \
   ../riscv/decoder.sv \
   ../riscv/alu.sv \
   ../riscv/register_file.sv \
   ../riscv/multiplier.v \
   ../riscv/divider.v \
-  ../VID.v \
+  ../video.v \
   ../lattice/bram32bit.v \
   ../bram_true2p_2clk.v \
   ../vqueue.v \

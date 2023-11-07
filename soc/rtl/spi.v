@@ -24,7 +24,7 @@ CONNECTION WITH THE DEALINGS IN OR USE OR PERFORMANCE OF THE SOFTWARE.*/
 // e.g 8.33MHz or ~400KHz respectively at 25MHz (slow needed for SD-card init)
 // note: bytes are always MSbit first; but if fast, words are LSByte first
 
-module SPI(
+module spi(
   input clk, rst,
   input start, fast,
   input [31:0] dataTx,

@@ -23,7 +23,7 @@ CONNECTION WITH THE DEALINGS IN OR USE OR PERFORMANCE OF THE SOFTWARE.*/
 // OberonStation (externally-clocked) ver PR 7.8.15/03.10.15
 // Modified for SDRAM - Nicolae Dumitrache 2016
 
-module VID
+module video
 (
     input clk, pclk, ce,
     input [31:0] viddata,

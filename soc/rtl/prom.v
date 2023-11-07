@@ -21,7 +21,7 @@ CONNECTION WITH THE DEALINGS IN OR USE OR PERFORMANCE OF THE SOFTWARE.*/
 
 // 32-bit PROM initialised from hex file  PDR 23.12.13
 
-module PROM (input clk,
+module prom (input clk,
   input ce,
   input [8:0] adr,
   output reg [31:0] data);

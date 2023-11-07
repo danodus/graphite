@@ -25,7 +25,7 @@ CONNECTION WITH THE DEALINGS IN OR USE OR PERFORMANCE OF THE SOFTWARE.*/
 // EMARD added z-axis (wheel) 10.05.2019
 // https://isdaman.com/alsos/hardware/mouse/ps2interface.htm
 
-module mousem
+module ps2mouse
 #(
   parameter c_x_bits = 11,   // >= 8
   parameter c_y_bits = 11,   // >= 8

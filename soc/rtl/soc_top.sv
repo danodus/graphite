@@ -133,7 +133,7 @@ module soc_top(
     assign wr = cpu_sel && !pm_sel && cpu_we;
 
     logic [31:0] pmout;
-    PROM PM (.adr(adr[10:2]), .data(pmout), .clk(clk_cpu), .ce(CE));
+    prom prom(.adr(adr[10:2]), .data(pmout), .clk(clk_cpu), .ce(CE));
 
     logic pm_sel = adr[31:28] == 4'hF;
 
@@ -156,21 +156,21 @@ module soc_top(
         .ack_i(1'b1)
     );
 
-    RS232R receiver(.clk(clk_cpu), .rst(rst_n), .RxD(rx_i), .fsel(bitrate), .done(doneRx),
+    uart_rx uart_rx(.clk(clk_cpu), .rst(rst_n), .RxD(rx_i), .fsel(bitrate), .done(doneRx),
     .data(dataRx), .rdy(rdyRx));
-    RS232T transmitter(.clk(clk_cpu), .rst(rst_n), .start(startTx), .fsel(bitrate),
+    uart_tx uart_tx(.clk(clk_cpu), .rst(rst_n), .start(startTx), .fsel(bitrate),
     .data(dataTx), .TxD(tx_o), .rdy(rdyTx));
-    SPI spi(.clk(clk_cpu), .rst(rst_n), .start(spiStart), .dataTx(outbus),
+    spi spi(.clk(clk_cpu), .rst(rst_n), .start(spiStart), .dataTx(outbus),
     .fast(spiCtrl[2]), .dataRx(spiRx), .rdy(spiRdy),
         .SCLK(SCLK[0]), .MOSI(MOSI[0]), .MISO(MISO[0] & MISO[1]));
-    VID vid(.clk(clk_cpu), .ce(qready), .pclk(clk_pixel), .req(dspreq),
+    video video(.clk(clk_cpu), .ce(qready), .pclk(clk_pixel), .req(dspreq),
     .viddata(inbusvid), .de(de), .RGB(RGB), .hsync(vga_hsync), .vsync(vga_vsync));
-    PS2 kbd(.clk(clk_cpu), .rst(rst_n), .done(doneKbd), .rdy(rdyKbd), .shift(),
+    ps2kbd ps2kbd(.clk(clk_cpu), .rst(rst_n), .done(doneKbd), .rdy(rdyKbd), .shift(),
     .data(dataKbd), .PS2C(ps2clka_i), .PS2D(ps2data_i));
     logic [2:0] mousebtn;
-    mousem
+    ps2mouse
     #(.c_x_bits(10), .c_y_bits(10), .c_y_neg(1), .c_z_ena(0), .c_hotplug(1))
-    Ms
+    ps2mouse
     (
     .clk(clk_cpu), .clk_ena(1'b1), .ps2m_reset(~rst_n), .ps2m_clk(ps2clkb_io), .ps2m_dat(ps2datb_io),
     .x(dataMs[9:0]), .y(dataMs[21:12]), .btn(mousebtn)
