@@ -2,7 +2,7 @@ module top (
     input  wire logic       clk,
     input  wire logic       clk_sdram,
     input  wire logic       reset_i,
-    output      logic [7:0] display_o,
+    output      logic [7:0] led_o,
     input  wire logic       rx_i,
     output      logic       tx_o,
 
@@ -31,42 +31,26 @@ module top (
 
     assign sdram_cke_o = 1'b1; // -- SDRAM clock enable
 
-    RISCVTop sys_inst
+    gsoc gsoc
     (
-        .CLK_CPU(clk),
-        .CLK_SDRAM(clk_sdram),
-        .CLK_PIXEL(clk),
-        .RESET(reset_i), // right
-        .RX(),   // RS-232
-        .TX(),
-        .LED(display_o),
+        .clk_cpu(clk),
+        .clk_sdram(clk_sdram),
+        .clk_pixel(clk),
+        .reset_i(reset_i),
+        
+        .led_o(led_o),
 
-        .SD_DO(),          // SPI - SD card & network
-        .SD_DI(),
-        .SD_CK(),
-        .SD_nCS(),
+        .rx_i(),
+        .tx_o(),
 
-        .VGA_HSYNC(vga_hsync),
-        .VGA_VSYNC(vga_vsync),
-        .VGA_BLANK(),
-        .VGA_R(vga_r),
-        .VGA_G(vga_g),
-        .VGA_B(vga_b),
-
-        .PS2CLKA(), // keyboard clock
-        .PS2DATA(), // keyboard data
-        .PS2CLKB(), // mouse clock
-        .PS2DATB(), // mouse data
-
-        .SDRAM_nCAS(sdram_cas_n_o),
-        .SDRAM_nRAS(sdram_ras_n_o),
-        .SDRAM_nCS(sdram_cs_n_o),
-        .SDRAM_nWE(sdram_we_n_o),
-        .SDRAM_BA(sdram_ba_o),
-        .SDRAM_ADDR(sdram_a_o),
-        .SDRAM_DATA(sdram_dq_io),
-        .SDRAM_DQML(sdram_dqm_o[0]),
-        .SDRAM_DQMH(sdram_dqm_o[1])
+        .sdram_cs_n_o(sdram_cs_n_o),
+        .sdram_we_n_o(sdram_we_n_o),
+        .sdram_ras_n_o(sdram_ras_n_o),
+        .sdram_cas_n_o(sdram_cas_n_o),
+        .sdram_a_o(sdram_a_o),
+        .sdram_ba_o(sdram_ba_o),
+        .sdram_dqm_o(sdram_dqm_o),
+        .sdram_dq_io(sdram_dq_io)
     );
 
     initial begin

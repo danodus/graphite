@@ -37,7 +37,7 @@ A SoC for the ULX3S is also available with the following features:
 - RISC-V (RV32IM)
 - UART (115200-N-8-1)
 - SDRAM (32MiB shared between CPU and video)
-- Set associative cache (2-way with LRU replacement policy)
+- Set associative cache (4-way with LRU replacement policy)
 - 640x480 HDMI video output with framebuffer (ARGB4444)
 - PS/2 keyboard
 - PS/2 mouse

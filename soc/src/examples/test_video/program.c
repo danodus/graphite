@@ -1,17 +1,14 @@
-#define BASE_IO 0xE0000000
+#include <io.h>
+
 #define BASE_VIDEO 0x1000000
 
-#define TIMER (BASE_IO + 0)
-#define LED (BASE_IO + 4)
-
-#define MEM_WRITE(_addr_, _value_) (*((volatile unsigned int *)(_addr_)) = _value_)
-#define MEM_READ(_addr_) *((volatile unsigned int *)(_addr_))
-
+/*
 void delay(unsigned int ms)
 {
     unsigned int t = MEM_READ(TIMER) + ms;
     while (MEM_READ(TIMER) < t);
 }
+*/
 
 unsigned int val(int x, int y, unsigned int c)
 {
@@ -28,6 +25,15 @@ unsigned int val(int x, int y, unsigned int c)
 
 void main(void)
 {
+    int counter = 0;
+    for (;;) {
+        unsigned int timer = MEM_READ(TIMER);
+        MEM_WRITE(LED, timer);
+        //print("Hello world!\r\n");
+        counter++;
+    }
+
+/*
     unsigned int counter = 0;
     int error_detected = 0;
     for (;;) {
@@ -52,4 +58,5 @@ void main(void)
 
         counter++;
     }
+*/
 }

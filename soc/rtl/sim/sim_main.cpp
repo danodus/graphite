@@ -363,7 +363,7 @@ int main(int argc, char **argv, char **env)
                 for (int i = 7; i >= 0; --i)
                 {
                     SDL_Rect r{scale_x * x, scale_y * y, scale_x * 50, scale_y * 50};
-                    SDL_SetRenderDrawColor(renderer, 30, (top->display_o >> i) & 1 ? 255 : 30, 30, 255);
+                    SDL_SetRenderDrawColor(renderer, 30, (top->led_o >> i) & 1 ? 255 : 30, 30, 255);
                     SDL_RenderFillRect(renderer, &r);
                     x += 60;
                 }

@@ -16,7 +16,8 @@
     add x14,x0,x0
     add x15,x0,x0
     
-    li sp,1024*1024
+    lui sp, %hi(__stacktop)
+    addi sp, sp, %lo(__stacktop)
 
     jal ra,main
 

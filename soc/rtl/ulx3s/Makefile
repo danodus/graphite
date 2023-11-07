@@ -10,34 +10,31 @@ DEVICE := 85k
 PACKAGE := CABGA381
 
 PIN_DEF := ulx3s_v31.lpf
-TOP_MODULE = ulx3s_v31
-TOP_MODULE_FILE = $(TOP_MODULE)_top.v
+TOP_MODULE = top
+TOP_MODULE_FILE = $(TOP_MODULE).sv
 
 SRC = \
   $(TOP_MODULE_FILE) \
-  ../RISCVTop.v \
-  ../PROM.v \
-  ../cache_controller.v \
-  ../sdram.v \
-  ../PS2.v \
-  ../mousem.v \
-  ../RS232R.v \
-  ../RS232T.v \
-  ../SPI.v \
-  ../riscv/processor.sv \
-  ../riscv/decoder.sv \
-  ../riscv/alu.sv \
-  ../riscv/register_file.sv \
-  ../riscv/multiplier.v \
-  ../riscv/divider.v \
-  ../VID.v \
-  ../lattice/bram32bit.v \
-  ../bram_true2p_2clk.v \
-  ../vqueue.v \
-  ../lattice/ecp5pll.sv \
-  ../dvi/hdmi_interface.v \
+  ../../../external/xglib/rtl/bram.sv \
+  ../../../external/xglib/rtl/fifo.sv \
+	../../../external/xglib/rtl/uart.sv \
+	../../../external/xglib/rtl/sdram_ctrl.v \
+	../../../external/xglib/rtl/cache_ctrl.v \
+	../../../external/xglib/rtl/riscv/alu.sv \
+	../../../external/xglib/rtl/riscv/multiplier.v \
+	../../../external/xglib/rtl/riscv/divider.v \
+	../../../external/xglib/rtl/riscv/decoder.sv \
+	../../../external/xglib/rtl/riscv/processor.sv \
+	../../../external/xglib/rtl/riscv/register_file.sv \
+	../gsoc.sv \
+	../sdram.sv \
+	../timer_device.sv \
+	../led_device.sv \
+	../uart_device.sv \
+  ../lattice/ecp5pll.sv
 
-DEFINES = -DFAST_CPU
+#DEFINES = -DFAST_CPU
+DEFINES =
 
 all: top.bin
 

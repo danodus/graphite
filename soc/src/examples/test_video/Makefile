@@ -10,7 +10,7 @@ OBJDUMP = ${RISCV_TOOLCHAIN_PATH}${RISCV_TOOLCHAIN_PREFIX}objdump
 CC = ${RISCV_TOOLCHAIN_PATH}${RISCV_TOOLCHAIN_PREFIX}gcc
 RISCV_CC_OPT ?= -march=rv32im -mabi=ilp32
 
-PROGRAM_SOURCE = start.S program.c
+PROGRAM_SOURCE = start.S ../lib/io.c program.c
 SERIAL ?= /dev/tty.usbserial-D00039
 
 LDFILE ?= program.ld
@@ -33,6 +33,6 @@ program.bin: program.elf program.lst
 	${OBJCOPY} -O binary program.elf program.bin
 
 program.elf: $(PROGRAM_SOURCE) $(EXTRA_SOURCE)
-	${CC} $(RISCV_CC_OPT) -nostartfiles -O3 -T $(LDFILE) -I ../../lib -I ../common $(EXTRA_CC_ARGS) $(PROGRAM_SOURCE) $(EXTRA_SOURCE) -o program.elf -lm
+	${CC} $(RISCV_CC_OPT) -nostartfiles -O3 -T $(LDFILE) -I ../lib $(EXTRA_CC_ARGS) $(PROGRAM_SOURCE) $(EXTRA_SOURCE) -o program.elf -lm
 
 .PHONY: all clean run
