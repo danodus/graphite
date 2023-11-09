@@ -1,6 +1,6 @@
 # Graphite
 
-Graphite is a FPGA based open source 3D graphics accelerator.
+Graphite is a FPGA based open source 2D/3D graphics accelerator.
 
 ![Utah Teapot](doc/teapot.png)
 
@@ -31,14 +31,13 @@ make run
 
 ## System on Chip
 
-Note: The integration of the Graphite core module is not yet available.
-
 A SoC for the ULX3S is also available with the following features:
 - RISC-V (RV32IM)
 - UART (115200-N-8-1)
 - SDRAM (32MiB shared between CPU and video)
-- Set associative cache (2-way with LRU replacement policy)
+- Set associative cache (4-way with LRU replacement policy)
 - 640x480 HDMI video output with framebuffer (ARGB4444)
+- Graphite 2D/3D graphics accelerator
 - PS/2 keyboard
 - PS/2 mouse
 - SD Card with hardware SPI
@@ -48,7 +47,7 @@ cd soc/src/bios
 make
 cd ../../rtl/ulx3s
 make prog
-cd ../../src/examples/test_video
+cd ../../src/examples/test_graphite
 make run SERIAL=<serial device>
 ```
 
