@@ -23,6 +23,7 @@ module graphite #(
     ) (
     input  wire logic                        clk,
     input  wire logic                        reset_i,
+    input  wire logic                        ce_i,
 
     // AXI stream command interface (slave)
     input  wire logic                        cmd_axis_tvalid_i,
@@ -117,7 +118,7 @@ module graphite #(
     assign cmd_axis_tready_o = state == WAIT_COMMAND;
 
     always_ff @(posedge clk) begin
-        case (state)
+        if (ce_i) case (state)
             WAIT_COMMAND: begin
                 swap_o <= 1'b0;
                 if (cmd_axis_tvalid_i)
@@ -820,7 +821,8 @@ module graphite #(
             vram_sel_o          <= 1'b0;
             vram_wr_o           <= 1'b0;
             front_address       <= 32'h0;
-            back_address        <= FB_WIDTH * FB_HEIGHT;
+            //back_address        <= FB_WIDTH * FB_HEIGHT;
+            back_address        <= 32'h0;
             depth_address       <= 2 * FB_WIDTH * FB_HEIGHT;
             texture_address     <= 3 * FB_WIDTH * FB_HEIGHT;
             state               <= WAIT_COMMAND;

@@ -76,6 +76,7 @@ module soc_top(
     // 5  SPI status / SPI control
     // 6  PS2 keyboard / --
     // 7  mouse / --
+    // 8  graphite
     
     logic rst_n = 1'b0;
     logic vga_hsync, vga_vsync;
@@ -140,7 +141,7 @@ module soc_top(
     processor cpu(
         .clk(clk_cpu),
         .reset_i(~rst_n),
-        .ce_i(CE),
+        .ce_i(CE && !process_graphite),
 
         // interrupts (2)
         .irq_i(2'b00),
@@ -180,6 +181,45 @@ module soc_top(
     assign dataMs[26] = mousebtn[0]; // right
     assign dataMs[27] = 1'b1;
 
+    // Graphite
+    logic           graphite_cmd_axis_tvalid;
+    logic           graphite_cmd_axis_tready;
+    logic [31:0]    graphite_cmd_axis_tdata;
+
+    logic graphite_vram_ack;
+    logic graphite_vram_sel;
+    logic graphite_vram_wr;
+    logic [3:0] graphite_vram_mask;
+    logic [31:0] graphite_vram_addr;
+    logic [15:0] graphite_vram_data_in, graphite_vram_data_out;
+
+    graphite #(
+        .FB_WIDTH(640),
+        .FB_HEIGHT(480)
+    ) graphite(
+        .clk(clk_cpu),
+        .reset_i(~rst_n),
+        .ce_i(CE),
+
+        // AXI stream command interface (slave)
+        .cmd_axis_tvalid_i(graphite_cmd_axis_tvalid),
+        .cmd_axis_tready_o(graphite_cmd_axis_tready),
+        .cmd_axis_tdata_i(graphite_cmd_axis_tdata),
+
+        // VRAM write
+        .vram_ack_i(1'b1),
+        .vram_sel_o(graphite_vram_sel),
+        .vram_wr_o(graphite_vram_wr),
+        .vram_mask_o(graphite_vram_mask),
+        .vram_addr_o(graphite_vram_addr),
+        .vram_data_in_i(inbus0[15:0]),
+        .vram_data_out_o(graphite_vram_data_out),
+
+        .vsync_i(),
+        .swap_o(),
+        .front_addr_o()
+    );
+
     assign inbus = ~ioenb ? inbus0 :
     ((iowadr == 0) ? cnt1 :
         (iowadr == 1) ? {32'b0 } :
@@ -188,7 +228,8 @@ module soc_top(
         (iowadr == 4) ? spiRx :
         (iowadr == 5) ? {31'b0, spiRdy} :
         (iowadr == 6) ? {3'b0, rdyKbd, dataMs} :
-        (iowadr == 7) ? {24'b0, dataKbd} : 0);
+        (iowadr == 7) ? {24'b0, dataKbd} :
+        (iowadr == 8) ? {31'b0, graphite_cmd_axis_tready} : 32'd0);
 
     assign dataTx = outbus[7:0];
     assign startTx = wr & ioenb & (iowadr == 2);
@@ -213,7 +254,8 @@ module soc_top(
             doneKbd <= 1'b1;
     end
 
-    always @(posedge clk_cpu) begin
+    // Auto reset and counter
+    always_ff @(posedge clk_cpu) begin
     `ifdef SYNTHESIS
         rst_n <= ((cnt1[4:0] == 0) & limit) ? ~reset_i : rst_n;
     `else // SYNTHESIS
@@ -221,10 +263,29 @@ module soc_top(
     `endif // SYNTHESIS
         cnt0 <= limit ? 0 : cnt0 + 1;
         cnt1 <= cnt1 + limit;
-        if(CE) begin
-            led_o <= ~rst_n ? 0 : (wr & ioenb & (iowadr == 1)) ? outbus[7:0] : led_o;
-            spiCtrl <= ~rst_n ? 0 : (wr & ioenb & (iowadr == 5)) ? outbus[3:0] : spiCtrl;
-            bitrate <= ~rst_n ? 0 : (wr & ioenb & (iowadr == 3)) ? outbus[0] : bitrate;
+    end
+
+    // IO write
+    always_ff @(posedge clk_cpu) begin
+        if (~rst_n) begin
+            led_o <= 8'd0;
+            spiCtrl <= 4'd0;
+            bitrate <= 1'b0;
+            graphite_cmd_axis_tvalid <= 1'b0;
+        end else begin
+            graphite_cmd_axis_tvalid <= 1'b0;
+            if(CE && wr && ioenb) begin
+                if (iowadr == 1)
+                    led_o <= outbus[7:0];
+                else if (iowadr == 3)
+                    bitrate <= outbus[0];
+                else if (iowadr == 5)
+                    spiCtrl <= outbus[3:0];
+                else if (iowadr == 8) begin
+                    graphite_cmd_axis_tdata  <= outbus[31:0];
+                    graphite_cmd_axis_tvalid <= 1'b1;
+                end
+            end
         end
     end
 
@@ -243,7 +304,7 @@ module soc_top(
         case(cntrl0_user_command_register)
             2'b01: sys_addr = {waddr[16:0], 6'b000000}; // write 256bytes
             2'b10: sys_addr = {1'b1, vidadr[18:0], 3'b000}; // read 32bytes video
-            2'b11: sys_addr = {adr[24:8], 6'b000000}; // read 256bytes	
+            2'b11: sys_addr = {cache_ctrl_adr[24:8], 6'b000000}; // read 256bytes	
         endcase
     end
 
@@ -268,14 +329,39 @@ module soc_top(
     logic ddr_rd;
     logic ddr_wr;
     logic [1:0] auto_flush = 2'b00;
-    cache_controller cache_ctl 
+
+    logic [31:0] cache_ctrl_adr;
+    logic [31:0] cache_ctrl_din;
+    logic cache_ctrl_mreq;
+    logic [3:0] cache_ctrl_wmask;
+
+    logic process_graphite;
+    assign process_graphite = !cpu_sel && !graphite_cmd_axis_tready;
+
+    always_comb begin
+        if (process_graphite) begin
+            cache_ctrl_adr = 32'h1000000 + {graphite_vram_addr[30:1], 2'b0};
+            cache_ctrl_din = {graphite_vram_data_out, graphite_vram_data_out};
+            //cache_ctrl_din = {16'd0, graphite_vram_data_out};
+            cache_ctrl_mreq = graphite_vram_sel;
+            cache_ctrl_wmask = graphite_vram_addr[0] ? {{2{graphite_vram_wr}}, 2'b0} : {2'b0, {2{graphite_vram_wr}}};
+            //cache_ctrl_wmask = {4{graphite_vram_wr}};
+        end else begin
+            cache_ctrl_adr = adr;
+            cache_ctrl_din = outbus;
+            cache_ctrl_mreq = mreq;
+            cache_ctrl_wmask = wmask & {4{wr}};
+        end
+    end
+
+    cache_controller cache_ctrl 
     (
-         .addr(adr[25:0]), 
+         .addr(cache_ctrl_adr[25:0]), 
          .dout(inbus0), 
-         .din(outbus), 
+         .din(cache_ctrl_din), 
          .clk(clk_cpu),
-         .mreq(mreq), 
-         .wmask(wmask & {4{wr}}),
+         .mreq(cache_ctrl_mreq), 
+         .wmask(cache_ctrl_wmask),
          .ce(CE), 
          .ddr_din(sys_DOUT), 
          .ddr_dout(cntrl0_user_input_data), 

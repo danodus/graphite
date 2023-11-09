@@ -36,6 +36,9 @@ SRC = \
   ../vqueue.v \
   ../lattice/ecp5pll.sv \
   ../dvi/hdmi_interface.v \
+  ../../../rtl/graphite.sv \
+  ../../../rtl/reciprocal.sv \
+  ../../../rtl/div.sv
 
 DEFINES = -DFAST_CPU
 

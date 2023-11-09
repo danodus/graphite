@@ -36,6 +36,7 @@ module top(
     ) graphite (
         .clk(clk),
         .reset_i(reset_i),
+        .ce_i(1'b1),
         .cmd_axis_tvalid_i(cmd_axis_tvalid_i),
         .cmd_axis_tready_o(cmd_axis_tready_o),
         .cmd_axis_tdata_i(cmd_axis_tdata_i),
