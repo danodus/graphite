@@ -212,7 +212,7 @@ module soc_top(
         .vram_wr_o(graphite_vram_wr),
         .vram_mask_o(graphite_vram_mask),
         .vram_addr_o(graphite_vram_addr),
-        .vram_data_in_i(inbus0[15:0]),
+        .vram_data_in_i(graphite_vram_addr[0] ? inbus0[31:16] : inbus0[15:0]),
         .vram_data_out_o(graphite_vram_data_out),
 
         .vsync_i(),
