@@ -821,8 +821,7 @@ module graphite #(
             vram_sel_o          <= 1'b0;
             vram_wr_o           <= 1'b0;
             front_address       <= 32'h0;
-            //back_address        <= FB_WIDTH * FB_HEIGHT;
-            back_address        <= 32'h0;
+            back_address        <= FB_WIDTH * FB_HEIGHT;
             depth_address       <= 2 * FB_WIDTH * FB_HEIGHT;
             texture_address     <= 3 * FB_WIDTH * FB_HEIGHT;
             state               <= WAIT_COMMAND;

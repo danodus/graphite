@@ -277,7 +277,7 @@ void xd_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32
     send_command(&c);
 
     c.opcode = OP_DRAW;
-    c.param = (/*depth_test ? 0b1000 : */0b0000) | (clamp_s ? 0b0100 : 0b0000) | (clamp_t ? 0b0010 : 0b0000) |
+    c.param = (depth_test ? 0b1000 : 0b0000) | (clamp_s ? 0b0100 : 0b0000) | (clamp_t ? 0b0010 : 0b0000) |
               ((tex != NULL) ? 0b0001 : 0b0000);
     send_command(&c);
 
@@ -292,9 +292,9 @@ void clear(unsigned int color)
     cmd.param = color;
     send_command(&cmd);
     // Clear depth buffer
-    //cmd.opcode = OP_CLEAR;
-    //cmd.param = 0x010000;
-    //send_command(&cmd);
+    cmd.opcode = OP_CLEAR;
+    cmd.param = 0x010000;
+    send_command(&cmd);
 }
 
 void write_texture() {
@@ -356,8 +356,8 @@ void main(void)
     write_texture();
 
     bool is_rotating = true;
-    bool is_textured = false;
-    bool is_lighting_ena = false;
+    bool is_textured = true;
+    bool is_lighting_ena = true;
     bool is_wireframe = false;
 
     clear(0xF333);
@@ -386,7 +386,7 @@ void main(void)
         uint32_t t1 = MEM_READ(TIMER);
 
         uint32_t t1_clear = MEM_READ(TIMER);
-        //clear(0x00F333);
+        clear(0x00F333);
         uint32_t t2_clear = MEM_READ(TIMER);
 
         uint32_t t1_xform = MEM_READ(TIMER);
@@ -406,7 +406,7 @@ void main(void)
         draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, model, &mat_world, &mat_proj, &mat_view, is_lighting_ena, is_wireframe, is_textured ? &dummy_texture : NULL, false, false);
         uint32_t t2_draw = MEM_READ(TIMER);
 
-        //swap();
+        swap();
 
         if (is_rotating) {
             theta += 0.1f;

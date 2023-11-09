@@ -192,6 +192,7 @@ module soc_top(
     logic [3:0] graphite_vram_mask;
     logic [31:0] graphite_vram_addr;
     logic [15:0] graphite_vram_data_in, graphite_vram_data_out;
+    logic [31:0] graphite_front_addr;
 
     graphite #(
         .FB_WIDTH(640),
@@ -215,9 +216,9 @@ module soc_top(
         .vram_data_in_i(graphite_vram_addr[0] ? inbus0[31:16] : inbus0[15:0]),
         .vram_data_out_o(graphite_vram_data_out),
 
-        .vsync_i(),
+        .vsync_i(vga_vsync),
         .swap_o(),
-        .front_addr_o()
+        .front_addr_o(graphite_front_addr)
     );
 
     assign inbus = ~ioenb ? inbus0 :
@@ -299,11 +300,13 @@ module soc_top(
     logic [17:0] waddr;
 
     logic [22:0] sys_addr;
+    logic [18:0] front_vidadr;
+    assign front_vidadr = graphite_front_addr[22:4] + vidadr;
     always_comb begin
         sys_addr = 23'hxxxxx;
         case(cntrl0_user_command_register)
             2'b01: sys_addr = {waddr[16:0], 6'b000000}; // write 256bytes
-            2'b10: sys_addr = {1'b1, vidadr[18:0], 3'b000}; // read 32bytes video
+            2'b10: sys_addr = {1'b1, front_vidadr[18:0], 3'b000}; // read 32bytes video
             2'b11: sys_addr = {cache_ctrl_adr[24:8], 6'b000000}; // read 256bytes	
         endcase
     end
