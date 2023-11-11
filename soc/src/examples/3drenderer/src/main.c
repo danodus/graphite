@@ -231,7 +231,7 @@ void update(void) {
     // Sort the triangles to render by their avg_depth
     int num_triangles = array_length(triangles_to_render);
     for (int i = 0; i < num_triangles; i++) {
-        for (int j = 0; j < num_triangles; j++) {
+        for (int j = i; j < num_triangles; j++) {
             if (triangles_to_render[i].avg_depth < triangles_to_render[j].avg_depth) {
                 // Swap the triangles in the array
                 triangle_t temp = triangles_to_render[i];
