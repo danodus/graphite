@@ -6,6 +6,7 @@
 #include "display.h"
 #include "vector.h"
 #include "matrix.h"
+#include "light.h"
 #include "mesh.h"
 
 #ifndef M_PI
@@ -68,9 +69,9 @@ void setup(void) {
     // Loads the cube values in the mesh data structures
     // load_cube_mesh_data();
 #ifdef LOCAL
-    load_obj_file_data("./assets/cube.obj");
+    load_obj_file_data("./assets/f22.obj");
 #else
-    load_cube_mesh_data();
+    load_f22_mesh_data();
 #endif
 }
 
@@ -167,21 +168,24 @@ void update(void) {
             transformed_vertices[j] = transformed_vertex;
         }
 
+        // Compute the face normal (using the cross product to find perpendicular)
+        vec3_t normal;
+
+        vec3_t vector_a = vec3_from_vec4(transformed_vertices[0]); /*   A   */
+        vec3_t vector_b = vec3_from_vec4(transformed_vertices[1]); /*  / \  */
+        vec3_t vector_c = vec3_from_vec4(transformed_vertices[2]); /* C---B */
+
+        // Get the vector substraction of B-A and C-A
+        vec3_t vector_ab = vec3_sub(vector_b, vector_a);
+        vec3_t vector_ac = vec3_sub(vector_c, vector_a);
+        vec3_normalize(&vector_ab);
+        vec3_normalize(&vector_ac);
+
+        normal = vec3_cross(vector_ab, vector_ac);
+        vec3_normalize(&normal);        
+
         // Backface culling test to see if the current face should be projected
         if (cull_method == CULL_BACKFACE) {
-            vec3_t vector_a = vec3_from_vec4(transformed_vertices[0]); /*   A   */
-            vec3_t vector_b = vec3_from_vec4(transformed_vertices[1]); /*  / \  */
-            vec3_t vector_c = vec3_from_vec4(transformed_vertices[2]); /* C---B */
-
-            // Get the vector substraction of B-A and C-A
-            vec3_t vector_ab = vec3_sub(vector_b, vector_a);
-            vec3_t vector_ac = vec3_sub(vector_c, vector_a);
-            vec3_normalize(&vector_ab);
-            vec3_normalize(&vector_ac);
-
-            // Compute the face normal (using the cross product to find perpendicular)
-            vec3_t normal = vec3_cross(vector_ab, vector_ac);
-            vec3_normalize(&normal);
 
             // Find the vector between a point in the triangle and the camera origin
             vec3_t camera_ray = vec3_sub(camera_position, vector_a);
@@ -214,13 +218,19 @@ void update(void) {
         // Calculate the average depth of each face based on the vertices after transformations
         float avg_depth = (transformed_vertices[0].z + transformed_vertices[1].z + transformed_vertices[2].z) / 3.0;
 
+        // Calculate the shade intensity based on how aligned is the face normal and the inverse of the light direction
+        float light_intensity_factor = -vec3_dot(light.direction, normal);
+
+        // Calculate the triangle color based on the light angle
+        uint16_t triangle_color = light_apply_intensity(mesh_face.color, light_intensity_factor);
+
         triangle_t projected_triangle = {
             .points = {
                 { projected_points[0].x, projected_points[0].y },
                 { projected_points[1].x, projected_points[1].y },
                 { projected_points[2].x, projected_points[2].y }
             },
-            .color = mesh_face.color,
+            .color = triangle_color,
             .avg_depth = avg_depth
         };
 
