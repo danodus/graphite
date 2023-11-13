@@ -1,10 +1,12 @@
-#include "sw_rasterizer.h"
+// sw_rasterizer_barycentric.c
+// Copyright (c) 2021-2022 Daniel Cliche
+// SPDX-License-Identifier: MIT
 
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#include <math.h>
+
+#include "sw_rasterizer.h"
 
 #define RECIPROCAL_NUMERATOR    256
 
@@ -17,16 +19,16 @@ static draw_pixel_fn_t g_draw_pixel_fn;
 
 fx32* g_depth_buffer;
 
-void sw_init_rasterizer(int fb_width, int fb_height, draw_pixel_fn_t draw_pixel_fn) {
+void sw_init_rasterizer_barycentric(int fb_width, int fb_height, draw_pixel_fn_t draw_pixel_fn) {
     g_fb_width = fb_width;
     g_fb_height = fb_height;
     g_depth_buffer = (fx32*)malloc(fb_width * fb_height * sizeof(fx32));
     g_draw_pixel_fn = draw_pixel_fn;
 }
 
-void sw_dispose_rasterizer() { free(g_depth_buffer); }
+void sw_dispose_rasterizer_barycentric() { free(g_depth_buffer); }
 
-void sw_clear_depth_buffer() { memset(g_depth_buffer, FX(0.0f), g_fb_width * g_fb_height * sizeof(fx32)); }
+void sw_clear_depth_buffer_barycentric() { memset(g_depth_buffer, FX(0.0f), g_fb_width * g_fb_height * sizeof(fx32)); }
 
 static fx32 reciprocal(fx32 x) {
     return x > 0 ? DIV(FX(RECIPROCAL_NUMERATOR), x) : FX(RECIPROCAL_NUMERATOR);
@@ -44,24 +46,6 @@ static int min3(int a, int b, int c) { return min(a, min(b, c)); }
 
 static int max3(int a, int b, int c) { return max(a, max(b, c)); }
 
-static fx32 clamp(fx32 v) {
-    if (v < FX(0.0f)) {
-        v = FX(0.0f);
-    } else if (v > FX(1.0f)) {
-        v = FX(1.0f);
-    }
-    return v;
-}
-
-static fx32 wrap(fx32 v) {
-    if (v < FX(0.0f)) {
-        v = FX(0.0f);
-    } else if (v >= FX(1.0f)) {
-        v = FX(fmod(FLT(v), 1.0f));
-    }
-    return v;
-}
-
 static sample_t texture_sample_color(texture_t* tex, fx32 u, fx32 v) {
     if (tex != NULL) {
         if (u < FX(0.5) && v < FX(0.5)) return (sample_t){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
@@ -72,11 +56,11 @@ static sample_t texture_sample_color(texture_t* tex, fx32 u, fx32 v) {
     return (sample_t){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
 }
 
-void sw_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1, fx32 y1,
-                      fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2, fx32 z2, fx32 u2,
-                      fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex, bool clamp_s, bool clamp_t,
-                      bool depth_test) {
-    
+void sw_draw_triangle_barycentric(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0,
+                      fx32 x1, fx32 y1, fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1,
+                      fx32 x2, fx32 y2, fx32 z2, fx32 u2, fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2,
+                      bool texture, bool clamp_s, bool clamp_t, bool depth_test, bool persp_correct)
+{
     fx32 vv0[3] = {x0, y0, z0};
     fx32 vv1[3] = {x1, y1, z1};
     fx32 vv2[3] = {x2, y2, z2};
@@ -125,49 +109,7 @@ void sw_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32
                 // Perspective correction
                 fx32 z = MUL(w0, vv0[2]) + MUL(w1, vv1[2]) + MUL(w2, vv2[2]);
 
-                int depth_index = y * g_fb_width + x;
-                if (!depth_test || (z > g_depth_buffer[depth_index])) {
-                    fx32 inv_z = reciprocal(z);
-                    u = MUL(u, inv_z);
-                    u = DIV(u, FX(RECIPROCAL_NUMERATOR));
-                    v = MUL(v, inv_z);
-                    v = DIV(v, FX(RECIPROCAL_NUMERATOR));
-                    r = MUL(r, inv_z);
-                    r = DIV(r, FX(RECIPROCAL_NUMERATOR));
-                    g = MUL(g, inv_z);
-                    g = DIV(g, FX(RECIPROCAL_NUMERATOR));
-                    b = MUL(b, inv_z);
-                    b = DIV(b, FX(RECIPROCAL_NUMERATOR));
-                    a = MUL(a, inv_z);
-                    a = DIV(a, FX(RECIPROCAL_NUMERATOR));
-
-                    if (clamp_s) {
-                        u = clamp(u);
-                    } else {
-                        u = wrap(u);
-                    }
-                    
-                    if (clamp_t) {
-                        v = clamp(v);
-                    } else {
-                        v = wrap(v);
-                    }
-
-                    sample_t sample = texture_sample_color(tex, u, v);
-                    r = MUL(r, sample.x);
-                    g = MUL(g, sample.y);
-                    b = MUL(b, sample.z);
-
-                    int rr = INT(MUL(r, FX(15.0f)));
-                    int gg = INT(MUL(g, FX(15.0f)));
-                    int bb = INT(MUL(b, FX(15.0f)));
-                    int aa = INT(MUL(a, FX(15.0f)));
-
-                    (*g_draw_pixel_fn)(x, y, aa << 12 | rr << 8 | gg << 4 | bb);
-
-                    // write to depth buffer
-                    g_depth_buffer[depth_index] = z;
-                }
+                sw_fragment_shader(g_fb_width, x, y, z, u, v, r, g, b, a, depth_test, texture, g_depth_buffer, persp_correct, g_draw_pixel_fn);
             }
         }
 }

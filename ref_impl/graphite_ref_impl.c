@@ -11,6 +11,8 @@ static int screen_scale = 3;
 
 static SDL_Renderer* renderer;
 
+bool g_rasterizer_barycentric = false;
+
 void draw_pixel(int x, int y, int color) {
     float r = (float)((color >> 8) & 0xF) / 15.0f;
     float g = (float)((color >> 4) & 0xF) / 15.0f;
@@ -20,16 +22,22 @@ void draw_pixel(int x, int y, int color) {
     SDL_RenderDrawPoint(renderer, x, y);
 }
 
-void xd_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1, fx32 y1,
-                      fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2, fx32 z2, fx32 u2,
-                      fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex, bool clamp_s, bool clamp_t,
-                      bool depth_test) {
-    sw_draw_triangle(x0, y0, z0, u0, v0, r0, g0, b0, a0, x1, y1, z1, u1, v1, r1, g1, b1, a1, x2, y2, z2, u2, v2, r2, g2,
-                     b2, a2, tex, clamp_s, clamp_t, depth_test);
+void xd_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0,
+                      fx32 x1, fx32 y1, fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1,
+                      fx32 x2, fx32 y2, fx32 z2, fx32 u2, fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2,
+                      texture_t *texture, bool clamp_s, bool clamp_t, bool depth_test) {
+    if (g_rasterizer_barycentric) {
+        sw_draw_triangle_barycentric(x0, y0, z0, u0, v0, r0, g0, b0, a0, x1, y1, z1, u1, v1, r1, g1, b1, a1, x2, y2, z2, u2, v2, r2, g2,
+                        b2, a2, texture ? true : false, clamp_s, clamp_t, depth_test, true);
+    } else {
+        sw_draw_triangle_standard(x0, y0, z0, u0, v0, r0, g0, b0, a0, x1, y1, z1, u1, v1, r1, g1, b1, a1, x2, y2, z2, u2, v2, r2, g2,
+                        b2, a2, texture ? true : false, clamp_s, clamp_t, depth_test, true);
+    }
 }
 
-int main(int argc, char* argv[]) {
-    sw_init_rasterizer(screen_width, screen_height, draw_pixel);
+int main() {
+    sw_init_rasterizer_standard(screen_width, screen_height, draw_pixel);
+    sw_init_rasterizer_barycentric(screen_width, screen_height, draw_pixel);
 
     SDL_Init(SDL_INIT_VIDEO);
 
@@ -71,7 +79,11 @@ int main(int argc, char* argv[]) {
     while (!quit) {
         SDL_SetRenderDrawColor(renderer, 50, 50, 50, SDL_ALPHA_OPAQUE);
         SDL_RenderClear(renderer);
-        sw_clear_depth_buffer();
+        if (g_rasterizer_barycentric) {
+            sw_clear_depth_buffer_barycentric();
+        } else {
+            sw_clear_depth_buffer_standard();
+        }
 
         //
         // camera
@@ -187,6 +199,14 @@ int main(int argc, char* argv[]) {
                     case SDL_SCANCODE_KP_MINUS:
                         if (scale > 1.0f)
                             scale -= 1.0f;
+                        break;                        
+                    case SDL_SCANCODE_BACKSLASH:
+                        g_rasterizer_barycentric = !g_rasterizer_barycentric;
+                        if (g_rasterizer_barycentric) {
+                            printf("Barycentric\n");
+                        } else {
+                            printf("Standard\n");
+                        }
                         break;
                     default:
                         // do nothing
@@ -201,7 +221,8 @@ int main(int argc, char* argv[]) {
     SDL_DestroyWindow(window);
     SDL_Quit();
 
-    sw_dispose_rasterizer();
+    sw_dispose_rasterizer_barycentric();
+    sw_dispose_rasterizer_standard();
 
     return 0;
 }
