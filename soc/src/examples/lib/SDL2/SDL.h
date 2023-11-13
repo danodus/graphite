@@ -25,6 +25,8 @@ enum {
     SDLK_2 = '2',
     SDLK_3 = '3',
     SDLK_4 = '4',
+    SDLK_5 = '5',
+    SDLK_6 = '6',
     SDLK_c = 'c',
     SDLK_d = 'd'
 };
