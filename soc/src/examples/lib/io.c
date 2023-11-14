@@ -27,7 +27,7 @@ char *uitoa(unsigned int value, char* result, int base)
 char get_chr()
 {
     while (1) {
-        if (!(MEM_READ(UART_STATUS) & 1)) {
+        if (MEM_READ(UART_STATUS) & 1) {
             unsigned int c = MEM_READ(UART_DATA);
             return (char)c;
         }
