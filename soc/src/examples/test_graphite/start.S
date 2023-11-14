@@ -47,9 +47,9 @@ start:
     add x15,x0,x0
 
     lui sp, %hi(__stacktop)
-    addi sp, sp, %lo(__stacktop)    
+    addi sp, sp, %lo(__stacktop)
     
     jal ra,main
 
-    lui a0,0
+    li a0,0xF0000000
     jalr zero,a0,0
