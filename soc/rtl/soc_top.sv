@@ -28,7 +28,10 @@ CONNECTION WITH THE DEALINGS IN OR USE OR PERFORMANCE OF THE SOFTWARE.
 // PS/2 mouse and network 7.1.2014 PDR
 // Modified for SDRAM - Nicolae Dumitrache 2016: +cache (16KB, 4-way 8-set), +SDRAM interface (100Mhz)
 
-module soc_top(
+module soc_top #(
+    parameter FREQ_HZ = 25_000_000,
+    parameter BAUD_RATE = 115_200
+) (
     input  wire logic        clk_cpu,
     input  wire logic        clk_sdram,
     input  wire logic        clk_pixel,
@@ -117,7 +120,7 @@ module soc_top(
     logic bitrate;  // for RS232
     logic limit;  // of cnt0
 
-    logic [15:0] cnt0 = 0;
+    logic [16:0] cnt0 = 0;
     logic [31:0] cnt1 = 0; // milliseconds
 
     logic [31:0] spiRx;
@@ -157,11 +160,11 @@ module soc_top(
         .ack_i(1'b1)
     );
 
-    uart_rx uart_rx(.clk(clk_cpu), .rst(rst_n), .RxD(rx_i), .fsel(bitrate), .done(doneRx),
+    uart_rx #(.FREQ_HZ(FREQ_HZ), .BAUD_RATE(BAUD_RATE)) uart_rx(.clk(clk_cpu), .rst(rst_n), .RxD(rx_i), .fsel(bitrate), .done(doneRx),
     .data(dataRx), .rdy(rdyRx));
-    uart_tx uart_tx(.clk(clk_cpu), .rst(rst_n), .start(startTx), .fsel(bitrate),
+    uart_tx #(.FREQ_HZ(FREQ_HZ), .BAUD_RATE(BAUD_RATE)) uart_tx(.clk(clk_cpu), .rst(rst_n), .start(startTx), .fsel(bitrate),
     .data(dataTx), .TxD(tx_o), .rdy(rdyTx));
-    spi spi(.clk(clk_cpu), .rst(rst_n), .start(spiStart), .dataTx(outbus),
+    spi #(.FREQ_HZ(FREQ_HZ)) spi(.clk(clk_cpu), .rst(rst_n), .start(spiStart), .dataTx(outbus),
     .fast(spiCtrl[2]), .dataRx(spiRx), .rdy(spiRdy),
         .SCLK(SCLK[0]), .MOSI(MOSI[0]), .MISO(MISO[0] & MISO[1]));
     video video(.clk(clk_cpu), .ce(qready), .pclk(clk_pixel), .req(dspreq),
@@ -234,11 +237,7 @@ module soc_top(
 
     assign dataTx = outbus[7:0];
     assign startTx = wr & ioenb & (iowadr == 2);
-    `ifdef FAST_CPU
-    assign limit = (cnt0 == 49999);
-    `else
-    assign limit = (cnt0 == 24999);
-    `endif
+    assign limit = (cnt0 == FREQ_HZ / 1000 - 1);
     assign spiStart = wr & ioenb & (iowadr == 4);
     assign SS = ~spiCtrl[1:0];  //active low slave select
     assign MOSI[1] = MOSI[0], SCLK[1] = SCLK[0];

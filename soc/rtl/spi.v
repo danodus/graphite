@@ -24,7 +24,9 @@ CONNECTION WITH THE DEALINGS IN OR USE OR PERFORMANCE OF THE SOFTWARE.*/
 // e.g 8.33MHz or ~400KHz respectively at 25MHz (slow needed for SD-card init)
 // note: bytes are always MSbit first; but if fast, words are LSByte first
 
-module spi(
+module spi #(
+  parameter FREQ_HZ = 25_000_000
+) (
   input clk, rst,
   input start, fast,
   input [31:0] dataTx,
@@ -34,18 +36,12 @@ module spi(
 
 wire endbit, endtick;
 reg [31:0] shreg;
-`ifdef FAST_CPU
-reg [6:0] tick;
-`else
-reg [5:0] tick;
-`endif
+localparam max_tick_slow = FREQ_HZ * 64 / 25_000_000 - 1;
+localparam max_tick_fast = FREQ_HZ * 3 / 25_000_000 - 1;
+reg [$clog2(max_tick_slow)-1:0] tick;
 reg [4:0] bitcnt;
 
-`ifdef FAST_CPU
-assign endtick = fast ? (tick == 5) : (tick == 127);  // 50MHz clk
-`else
-assign endtick = fast ? (tick == 2) : (tick == 63);   // 25MHz clk
-`endif
+assign endtick = fast ? (tick == max_tick_fast) : (tick == max_tick_slow);
 assign endbit = fast ? (bitcnt == 31) : (bitcnt == 7);
 assign dataRx = fast ? shreg : {24'b0, shreg[7:0]};
 assign MOSI = (~rst | rdy) ? 1 : shreg[7];

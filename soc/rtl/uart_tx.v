@@ -20,13 +20,15 @@ AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE DEALINGS IN OR USE OR PERFORMANCE OF THE SOFTWARE.*/
 
 // NW 4.5.09 / 15.8.10 / 15.11.10
-// RS232 transmitter for 115200/230400 bps, 8 bit data
-// clock is 25 MHz; 25000 / 1302 = 19.2 KHz
+// RS232 transmitter for 8 bit data
 
-module uart_tx(
+module uart_tx #(
+  parameter FREQ_HZ = 25_000_000,
+  parameter BAUD_RATE = 115_200
+) (
     input clk, rst,
     input start, // request to accept and send a byte
-	 input fsel,  // frequency selection
+	  input fsel,  // frequency selection
     input [7:0] data,
     output rdy,
     output TxD);
@@ -38,11 +40,7 @@ reg [11:0] tick;
 reg [3:0] bitcnt;
 reg [8:0] shreg;
 
-`ifdef FAST_CPU
-assign limit = fsel ? 109*2 : 217*2;
-`else
-assign limit = fsel ? 109 : 217;
-`endif
+assign limit = fsel ? FREQ_HZ / (BAUD_RATE * 2) : FREQ_HZ / BAUD_RATE;
 assign endtick = tick == limit;
 assign endbit = bitcnt == 9;
 assign rdy = ~run;

@@ -49,6 +49,14 @@ module ulx3s_v31_top(
     inout       logic usb_fpga_bd_dp, usb_fpga_bd_dn // enable internal pullups at constraints file
 );
 
+`ifdef FAST_CPU
+    localparam cpu_clock_hz = 100_000_000;
+`else
+    localparam cpu_clock_hz = 50_000_000;
+`endif
+    localparam sdram_clock_hz = 100_000_000;
+    localparam pixel_clock_hz = 25_000_000;
+
     assign wifi_gpio0 = btn[0];
 
     assign sdram_cke = 1'b1; // SDRAM clock enable
@@ -56,14 +64,13 @@ module ulx3s_v31_top(
     assign usb_fpga_pu_dp = 1'b1; 	// pull USB D+ to +3.3V through 1.5K resistor
     assign usb_fpga_pu_dn = 1'b1; 	// pull USB D- to +3.3V through 1.5K resistor
 
-    parameter pixel_clock_MHz = 25;
     logic pll_video_locked;
     logic [3:0] clocks_video;
     ecp5pll
     #(
-        .in_hz(               25*1000000),
-        .out0_hz(5*pixel_clock_MHz*1000000),
-        .out1_hz(  pixel_clock_MHz*1000000)
+        .in_hz(25_000_000),
+        .out0_hz(5*pixel_clock_hz),
+        .out1_hz(pixel_clock_hz)
     )
     ecp5pll_video_inst
     (
@@ -80,15 +87,9 @@ module ulx3s_v31_top(
     ecp5pll
     #(
         .in_hz( 25*1000000),
-`ifdef FAST_CPU
-        .out0_hz(100*1000000),
-        .out1_hz(100*1000000), .out1_deg(180),
-        .out2_hz( 50*1000000)
-`else
-        .out0_hz(50*1000000),
-        .out1_hz(50*1000000), .out1_deg(180),
-        .out2_hz(25*1000000)
-`endif
+        .out0_hz(sdram_clock_hz),
+        .out1_hz(sdram_clock_hz), .out1_deg(180),
+        .out2_hz(cpu_clock_hz)
     )
     ecp5pll_system_inst
     (
@@ -107,8 +108,10 @@ module ulx3s_v31_top(
     logic pll_locked;
     assign pll_locked = pll_system_locked & pll_video_locked;
 
-    soc_top soc_top
-    (
+    soc_top #(
+        .FREQ_HZ(cpu_clock_hz),
+        .BAUD_RATE(115_200)
+    ) soc_top(
         .clk_cpu(clk_cpu),
         .clk_sdram(clk_sdram),
         .clk_pixel(clk_pixel),

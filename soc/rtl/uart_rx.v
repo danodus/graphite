@@ -20,13 +20,15 @@ AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE DEALINGS IN OR USE OR PERFORMANCE OF THE SOFTWARE.*/
 
 // NW 4.5.09 / 15.11.10
-// RS232 receiver for 115200 or 230400 bps, 8 bit data
-// clock is 25 MHz
+// RS232 receiver for 8 bit data
 
 
-module uart_rx(
+module uart_rx #(
+  parameter FREQ_HZ = 25_000_000,
+  parameter BAUD_RATE = 115_200
+) (
     input clk, rst,
-	 input RxD,
+	  input RxD,
     input fsel,
     input done,   // "byte has been read"
     output rdy,
@@ -40,11 +42,7 @@ reg [11:0] tick;
 reg [3:0] bitcnt;
 reg [7:0] shreg;
 
-`ifdef FAST_CPU
-assign limit = fsel ? 109*2 : 217*2;
-`else
-assign limit = fsel ? 109 : 217;
-`endif
+assign limit = fsel ? FREQ_HZ / (BAUD_RATE * 2) : FREQ_HZ / BAUD_RATE;
 assign endtick = tick == limit;
 assign midtick = tick == {1'b0, limit[11:1]};  // limit/2
 assign endbit = bitcnt == 8;
