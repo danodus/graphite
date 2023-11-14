@@ -17,11 +17,14 @@
 
 char *uitoa(unsigned int value, char* result, int base);
 
+// UART
+int chr_avail();
 char get_chr();
 void print_chr(char c);
 void print_buf(const char *s, size_t len);
 void print(const char *s);
 
+// Keyboard
 int key_avail();
 int get_key();
 

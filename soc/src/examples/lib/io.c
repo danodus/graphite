@@ -24,6 +24,11 @@ char *uitoa(unsigned int value, char* result, int base)
     return result;
 }
 
+int chr_avail()
+{
+    return MEM_READ(UART_STATUS) & 1;
+}
+
 char get_chr()
 {
     while (1) {
