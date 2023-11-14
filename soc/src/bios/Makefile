@@ -11,6 +11,8 @@ CC = ${RISCV_TOOLCHAIN_PATH}${RISCV_TOOLCHAIN_PREFIX}gcc
 RISCV_CC_OPT ?= -march=rv32im -mabi=ilp32
 
 PROGRAM_SOURCE = start.S program.c
+CC_OPT = -DFAST_CPU=1
+
 SERIAL ?= /dev/tty.usbserial-ibNy7k1v1
 
 LDFILE ?= program.ld
@@ -34,6 +36,6 @@ program.bin: program.elf program.lst
 	${OBJCOPY} -O binary program.elf program.bin
 
 program.elf: $(PROGRAM_SOURCE) $(EXTRA_SOURCE)
-	${CC} $(RISCV_CC_OPT) -nostartfiles -O3 -T $(LDFILE) -I ../../lib -I ../common $(EXTRA_CC_ARGS) $(PROGRAM_SOURCE) $(EXTRA_SOURCE) -o program.elf -lm
+	${CC} $(RISCV_CC_OPT) -nostartfiles -O3 -T $(LDFILE) -I ../../lib -I ../common $(CC_OPT) $(PROGRAM_SOURCE) -o program.elf -lm
 
 .PHONY: all clean
