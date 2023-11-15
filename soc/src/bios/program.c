@@ -54,11 +54,6 @@ unsigned int read_word()
 
 int receive_program()
 {
-#if FAST_CPU
-    // Fast bitrate
-    MEM_WRITE(UART_STATUS, 0x1);
-#endif
-
     MEM_WRITE(LED, 0xFF);
     print("Ready to receive...\r\n");
 
@@ -69,12 +64,6 @@ int receive_program()
 
     if (size == 0) {
         MEM_WRITE(LED, 0x01);
-
-#if FAST_CPU
-        // Slow bitrate
-        MEM_WRITE(UART_STATUS, 0x0);
-#endif
-
         return 0;
     }
 
@@ -86,16 +75,16 @@ int receive_program()
     }
     MEM_WRITE(LED, 0x00);
 
-#if FAST_CPU
-    // Slow bitrate
-    MEM_WRITE(UART_STATUS, 0x0);
-#endif
-
     return 1;
 }
 
 void main(void)
 {
+#if FAST_CPU
+    // Fast bitrate
+    MEM_WRITE(UART_STATUS, 0x1);
+#endif
+
     if (receive_program())
         start_prog();
 }
