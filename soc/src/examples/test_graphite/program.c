@@ -61,6 +61,9 @@ struct Command {
 
 uint16_t *img = NULL;
 
+int nb_triangles;
+bool rasterizer_ena = true;
+
 bool init_img() {
     img = (uint16_t *)malloc(TEXTURE_WIDTH * TEXTURE_HEIGHT * sizeof(uint16_t));
     if (!img)
@@ -98,6 +101,10 @@ void xd_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32
                       fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex, bool clamp_s, bool clamp_t,
                       bool depth_test)
 {
+    nb_triangles++;
+    if (!rasterizer_ena)
+        return;
+
     struct Command c;
 
     c.opcode = OP_SET_X0;
@@ -248,7 +255,6 @@ void xd_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32
     c.param = (depth_test ? 0b1000 : 0b0000) | (clamp_s ? 0b0100 : 0b0000) | (clamp_t ? 0b0010 : 0b0000) |
               ((tex != NULL) ? 0b0001 : 0b0000);
     send_command(&c);
-
 }
 
 void clear(unsigned int color)
@@ -296,7 +302,9 @@ void swap()
 
 void main(void)
 {
-    printf("[q]: quit, [s]: stats, [SPACE]: rotation, [t]: texture, [l]: lighting, [w]: wireframe, [m]: teapot/cube, [u]: clamp s, [v] clamp t\r\n");
+    printf("[q]: quit, [s]: stats, [SPACE]: rotation,\r\n"
+        "[t]: texture, [l]: lighting, [w]: wireframe, [m]: teapot/cube,\r\n"
+        "[u]: clamp s, [v] clamp t, [r] rasterizer ena\r\n");
 
     float theta = 0.5f;
 
@@ -358,6 +366,8 @@ void main(void)
                 clamp_s = !clamp_s;
             } else if (c == 'v') {
                 clamp_t = !clamp_t;
+            } else if (c == 'r') {
+                rasterizer_ena = !rasterizer_ena;
             } 
         }        
 
@@ -381,6 +391,7 @@ void main(void)
 
         uint32_t t1_draw = MEM_READ(TIMER);
         texture_t dummy_texture;
+        nb_triangles = 0;
         draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, model, &mat_world, &mat_proj, &mat_view, is_lighting_ena, is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t);
         uint32_t t2_draw = MEM_READ(TIMER);
 
@@ -395,7 +406,7 @@ void main(void)
         uint32_t t2 = MEM_READ(TIMER);
 
         if (print_stats)
-            printf("xform: %d ms, clear: %d ms, draw: %d ms, total: %d ms\r\n", t2_xform - t1_xform, t2_clear - t1_clear, t2_draw - t1_draw, t2 - t1);
+            printf("xform: %d ms, clear: %d ms, draw: %d ms, total: %d ms, nb triangles: %d\r\n", t2_xform - t1_xform, t2_clear - t1_clear, t2_draw - t1_draw, t2 - t1, nb_triangles);
     }
 
     dispose_img();
