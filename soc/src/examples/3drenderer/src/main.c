@@ -71,7 +71,7 @@ void setup(void) {
     proj_matrix = mat4_make_perspective(fov, aspect, znear, zfar);
 
     // Manually load the hardcorded texture data from the static array
-    mesh_texture = (uint16_t*)REDBRICK_TEXTURE;
+    mesh_texture = (uint32_t*)REDBRICK_TEXTURE;
     texture_width = 64;
     texture_height = 64;
 

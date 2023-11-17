@@ -102,6 +102,10 @@ static SDL_Keycode get_keycode(int scancode) {
             return SDLK_3;
         case 0x25:
             return SDLK_4;
+        case 0x2E:
+            return SDLK_5;
+        case 0x36:
+            return SDLK_6;
         case 0x21:
             return SDLK_c;
         case 0x23:
