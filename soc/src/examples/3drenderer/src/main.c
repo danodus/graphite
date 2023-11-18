@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <SDL.h>
+#include "upng.h"
 #include "array.h"
 #include "display.h"
 #include "vector.h"
@@ -70,17 +71,21 @@ void setup(void) {
     float zfar = 100.0;
     proj_matrix = mat4_make_perspective(fov, aspect, znear, zfar);
 
+    // Loads the values in the mesh data structures
+#ifdef LOCAL
+    load_obj_file_data("./assets/cube.obj");
+    //load_cube_mesh_data();
+
+    // Load the texture information from an external PNG file
+    load_png_texture_data("./assets/cube.png");
+#else
+
+    load_cube_mesh_data();
+
     // Manually load the hardcorded texture data from the static array
     mesh_texture = (uint32_t*)REDBRICK_TEXTURE;
     texture_width = 64;
     texture_height = 64;
-
-    // Loads the values in the mesh data structures
-#ifdef LOCAL
-    //load_obj_file_data("./assets/cube.obj");
-    load_cube_mesh_data();
-#else
-    load_cube_mesh_data();
 #endif
 }
 
@@ -135,9 +140,9 @@ void update(void) {
     triangles_to_render = NULL;
 
     // Change the mesh scale/rotation per animation frame
-    mesh.rotation.x += 0.1;
-    mesh.rotation.y += 0.1;
-    mesh.rotation.z += 0.1;
+    //mesh.rotation.x += 0.01;
+    mesh.rotation.y += 0.003;
+    //mesh.rotation.z += 0.01;
     //mesh.scale.x += 0.02;
     //mesh.scale.y += 0.01;
     //mesh.translation.x += 0.1;
@@ -343,6 +348,7 @@ void render(void) {
 ///////////////////////////////////////////////////////////////////////////////
 void free_resources(void) {
     free(color_buffer);
+    upng_free(png_texture);
     array_free(mesh.faces);
     array_free(mesh.vertices);
 }
