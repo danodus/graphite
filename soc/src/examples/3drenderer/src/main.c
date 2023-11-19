@@ -53,7 +53,8 @@ void setup(void) {
     cull_method = CULL_BACKFACE;
 
     // Allocate the required memory in bytes to hold the color buffer
-    color_buffer = (uint16_t*) malloc(sizeof(uint16_t) * window_width * window_height);
+    color_buffer = (uint16_t*)malloc(sizeof(uint16_t) * window_width * window_height);
+    z_buffer = (float*)malloc(sizeof(float) * window_width * window_height);
 
     // Creating a SDL texture that is used to display the color buffer
     color_buffer_texture = SDL_CreateTexture(
@@ -140,8 +141,8 @@ void update(void) {
     triangles_to_render = NULL;
 
     // Change the mesh scale/rotation per animation frame
-    //mesh.rotation.x += 0.01;
-    mesh.rotation.y += 0.003;
+    mesh.rotation.x += -0.01;
+    //mesh.rotation.y += 0.003;
     //mesh.rotation.z += 0.01;
     //mesh.scale.x += 0.02;
     //mesh.scale.y += 0.01;
@@ -236,9 +237,6 @@ void update(void) {
             projected_points[j].y += (window_height / 2.0);
         }
 
-        // Calculate the average depth of each face based on the vertices after transformations
-        float avg_depth = (transformed_vertices[0].z + transformed_vertices[1].z + transformed_vertices[2].z) / 3.0;
-
         // Calculate the shade intensity based on how aligned is the face normal and the inverse of the light direction
         float light_intensity_factor = -vec3_dot(light.direction, normal);
 
@@ -256,25 +254,11 @@ void update(void) {
                 { mesh_face.b_uv.u, mesh_face.b_uv.v },
                 { mesh_face.c_uv.u, mesh_face.c_uv.v }
             },
-            .color = triangle_color,
-            .avg_depth = avg_depth
+            .color = triangle_color
         };
 
         // Save the projected triangle in the array of triangles to render
         array_push(triangles_to_render, projected_triangle);
-    }
-
-    // Sort the triangles to render by their avg_depth
-    int num_triangles = array_length(triangles_to_render);
-    for (int i = 0; i < num_triangles; i++) {
-        for (int j = i; j < num_triangles; j++) {
-            if (triangles_to_render[i].avg_depth < triangles_to_render[j].avg_depth) {
-                // Swap the triangles in the array
-                triangle_t temp = triangles_to_render[i];
-                triangles_to_render[i] = triangles_to_render[j];
-                triangles_to_render[j] = temp;
-            }
-        }
     }
 }
 
@@ -283,6 +267,7 @@ void update(void) {
 ///////////////////////////////////////////////////////////////////////////////
 void render(void) {
     clear_color_buffer(0xF000);
+    clear_z_buffer();
 
     draw_grid();
 
@@ -294,12 +279,9 @@ void render(void) {
         // Draw filled triangle
         if (render_method == RENDER_FILL_TRIANGLE || render_method == RENDER_FILL_TRIANGLE_WIRE) {
             draw_filled_triangle(
-                triangle.points[0].x,
-                triangle.points[0].y,
-                triangle.points[1].x,
-                triangle.points[1].y,
-                triangle.points[2].x,
-                triangle.points[2].y,
+                triangle.points[0].x, triangle.points[0].y, triangle.points[0].z, triangle.points[0].w,
+                triangle.points[1].x, triangle.points[1].y, triangle.points[1].z, triangle.points[1].w,
+                triangle.points[2].x, triangle.points[2].y, triangle.points[2].z, triangle.points[2].w,
                 triangle.color
             );
         }
@@ -347,6 +329,7 @@ void render(void) {
 // Free resources
 ///////////////////////////////////////////////////////////////////////////////
 void free_resources(void) {
+    free(z_buffer);
     free(color_buffer);
     upng_free(png_texture);
     array_free(mesh.faces);
