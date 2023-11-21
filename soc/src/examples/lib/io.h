@@ -9,6 +9,8 @@
 #define LED             (BASE_IO + 4)
 #define UART_DATA       (BASE_IO + 8)
 #define UART_STATUS     (BASE_IO + 12)
+#define SPI_DATA        (BASE_IO + 16)
+#define SPI_STATUS      (BASE_IO + 20)
 #define KEYBOARD_STATUS (BASE_IO + 24)
 #define KEYBOARD_DATA   (BASE_IO + 28)
 
