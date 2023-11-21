@@ -48,5 +48,5 @@ start:
     
     jal ra,main
 
-    lui a0,0
+    li a0,0xF0000000
     jalr zero,a0,0

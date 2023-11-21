@@ -1,7 +1,9 @@
 MEMORY
 {
-   ram      (rwx) : ORIGIN = 0x00000000, LENGTH = 128*1024
+   ram      (rwx) : ORIGIN = 0x00000000, LENGTH = 16*1024*1024
 }
+
+__stacktop = ORIGIN(ram) + LENGTH(ram);
 
 SECTIONS {
 	.memory : {
