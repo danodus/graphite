@@ -45,7 +45,7 @@ assign endtick = fast ? (tick == max_tick_fast) : (tick == max_tick_slow);
 assign endbit = fast ? (bitcnt == 31) : (bitcnt == 7);
 assign dataRx = fast ? shreg : {24'b0, shreg[7:0]};
 assign MOSI = (~rst | rdy) ? 1 : shreg[7];
-assign SCLK = (~rst | rdy) ? 0 : fast ? endtick : tick[5];
+assign SCLK = (~rst | rdy) ? 0 : fast ? endtick : tick[$clog2(max_tick_slow)-1];
 
 always @ (posedge clk) begin
   tick <= (~rst | rdy | endtick) ? 0 : tick + 1;
