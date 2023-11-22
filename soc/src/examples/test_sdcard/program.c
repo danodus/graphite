@@ -79,12 +79,15 @@ int main(void) {
     if (fl_attach_media(read_sector, write_sector) != FAT_INIT_OK)
     {
         printf("Failed to init file system\r\n");
+        fl_shutdown();
         return EXIT_FAILURE;
     }
 
     list_directory("/");
 
     printf("Success!\r\n");
+
+    fl_shutdown();
 
     return EXIT_SUCCESS;
 }
