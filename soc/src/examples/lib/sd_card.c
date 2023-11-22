@@ -326,7 +326,7 @@ bool sd_write_single_block(sd_context_t *ctx, uint32_t addr, const uint8_t *buf)
     return res1 == 0x00 && token == 0x05;    
 }
 
-bool sd_init(sd_context_t *ctx)
+static bool sd_init_internal(sd_context_t *ctx)
 {
     ctx->sd_cs = 0;
 
@@ -354,4 +354,15 @@ bool sd_init(sd_context_t *ctx)
     }
 
     return res[0] == 0x00;
+}
+
+bool sd_init(sd_context_t *ctx)
+{
+    int retries = 0;
+    while (retries++ < 3) {
+        if (sd_init_internal(ctx))
+            return true;
+        delay(100);
+    }
+    return false;
 }
