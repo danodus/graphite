@@ -216,17 +216,10 @@ void draw_texel(
     if (interpolated_reciprocal_w < z_buffer[(window_width * y) + x]) {
 
         uint8_t* tc = (uint8_t*)(&texture[(texture_width * tex_y) + tex_x]);
-#ifdef LOCAL
         uint16_t cr = tc[0] >> 4;
         uint16_t cg = tc[1] >> 4;
         uint16_t cb = tc[2] >> 4;
         uint16_t ca = tc[3] >> 4;
-#else
-        uint16_t ca = tc[3] >> 4;
-        uint16_t cr = tc[2] >> 4;
-        uint16_t cg = tc[1] >> 4;
-        uint16_t cb = tc[0] >> 4;
-#endif
         uint16_t color = (ca << 12) | (cr << 8) | (cg << 4) | cb;
 
         draw_pixel(x, y, color);

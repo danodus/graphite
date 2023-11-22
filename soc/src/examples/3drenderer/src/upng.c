@@ -28,6 +28,7 @@ freely, subject to the following restrictions:
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include <fat_filelib.h>
 
 #include "upng.h"
 
@@ -1161,7 +1162,7 @@ upng_t* upng_new_from_file(const char *filename)
 {
 	upng_t* upng;
 	unsigned char *buffer;
-	FILE *file;
+	FL_FILE *file;
 	long size;
 
 	upng = upng_new();
@@ -1169,26 +1170,26 @@ upng_t* upng_new_from_file(const char *filename)
 		return NULL;
 	}
 
-	file = fopen(filename, "rb");
+	file = fl_fopen(filename, "rb");
 	if (file == NULL) {
 		SET_ERROR(upng, UPNG_ENOTFOUND);
 		return upng;
 	}
 
 	/* get filesize */
-	fseek(file, 0, SEEK_END);
-	size = ftell(file);
-	rewind(file);
+	fl_fseek(file, 0, SEEK_END);
+	size = fl_ftell(file);
+	fl_fseek(file, 0, SEEK_SET);
 
 	/* read contents of the file into the vector */
 	buffer = (unsigned char *)malloc((unsigned long)size);
 	if (buffer == NULL) {
-		fclose(file);
+		fl_fclose(file);
 		SET_ERROR(upng, UPNG_ENOMEM);
 		return upng;
 	}
-	fread(buffer, 1, (unsigned long)size, file);
-	fclose(file);
+	fl_fread(buffer, 1, (unsigned long)size, file);
+	fl_fclose(file);
 
 	/* set the read buffer as our source buffer, with owning flag set */
 	upng->source.buffer = buffer;

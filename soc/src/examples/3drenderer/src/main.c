@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <SDL.h>
+#include <sd_card.h>
+#include <fat_filelib.h>
 #include "upng.h"
 #include "array.h"
 #include "display.h"
@@ -16,6 +18,26 @@
 #ifndef M_PI
 #define M_PI 3.141592654
 #endif
+
+sd_context_t sd_ctx;
+
+int read_sector(uint32_t sector, uint8_t *buffer, uint32_t sector_count) {
+    for (uint32_t i = 0; i < sector_count; ++i) {
+        if (!sd_read_single_block(&sd_ctx, sector + i, buffer))
+            return 0;
+        buffer += SD_BLOCK_LEN;
+    }
+    return 1;
+}
+
+int write_sector(uint32_t sector, uint8_t *buffer, uint32_t sector_count) {
+    for (uint32_t i = 0; i < sector_count; ++i) {
+        if (!sd_write_single_block(&sd_ctx, sector + i, buffer))
+            return 0;
+        buffer += SD_BLOCK_LEN;
+    }
+    return 1;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Array of triangles that sould be rendered frame by frame
@@ -76,21 +98,10 @@ void setup(void) {
     proj_matrix = mat4_make_perspective(fov, aspect, znear, zfar);
 
     // Loads the values in the mesh data structures
-#ifdef LOCAL
-    load_obj_file_data("./assets/f22.obj");
-    //load_cube_mesh_data();
+    load_obj_file_data("/assets/f22.obj");
 
     // Load the texture information from an external PNG file
-    load_png_texture_data("./assets/f22.png");
-#else
-
-    load_cube_mesh_data();
-
-    // Manually load the hardcorded texture data from the static array
-    mesh_texture = (uint32_t*)REDBRICK_TEXTURE;
-    texture_width = 64;
-    texture_height = 64;
-#endif
+    load_png_texture_data("/assets/f22.png");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -163,7 +174,7 @@ void update(void) {
     triangles_to_render = NULL;
 
     // Change the mesh scale/rotation per animation frame
-    //mesh.rotation.x += 0.05 * delta_time;
+    mesh.rotation.x -= 0.05 * delta_time;
     //mesh.rotation.y += 0.5 * delta_time;
     //mesh.rotation.z += 0.02 * delta_time;
     //mesh.scale.x += 0.02;
@@ -379,6 +390,20 @@ void free_resources(void) {
 ///////////////////////////////////////////////////////////////////////////////
 int main(void) {
 
+    if (!sd_init(&sd_ctx)) {
+        printf("SD card initialization failed.\r\n");
+        return EXIT_FAILURE;
+    }
+
+    fl_init();
+
+    // Attach media access functions to library
+    if (fl_attach_media(read_sector, write_sector) != FAT_INIT_OK)
+    {
+        printf("Failed to init file system\r\n");
+        return EXIT_FAILURE;
+    }
+
     is_running = initialize_window();
 
     setup();
@@ -392,5 +417,7 @@ int main(void) {
     destroy_window();
     free_resources();
 
-    return 0;
+    fl_shutdown();
+
+    return EXIT_SUCCESS;
 }

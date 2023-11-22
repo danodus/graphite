@@ -1,12 +1,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <fat_filelib.h>
 
 #include "mesh.h"
 #include "array.h"
-
-#include "cube.h"
-#include "f22.h"
 
 mesh_t mesh = {
     .vertices = NULL,
@@ -16,37 +14,19 @@ mesh_t mesh = {
     .translation = { 0, 0, 0 }
 };
 
-void load_cube_mesh_data(void) {
-    for (int i = 0; i < N_CUBE_VERTICES; i++) {
-        vec3_t cube_vertex = cube_vertices[i];
-        array_push(mesh.vertices, cube_vertex);
-    }
-    for (int i = 0; i < N_CUBE_FACES; i++) {
-        face_t cube_face = cube_faces[i];
-        array_push(mesh.faces, cube_face);
-    }
-}
-
-void load_f22_mesh_data(void) {
-    for (int i = 0; i < N_F22_VERTICES; i++) {
-        vec3_t f22_vertex = f22_vertices[i];
-        array_push(mesh.vertices, f22_vertex);
-    }
-    for (int i = 0; i < N_F22_FACES; i++) {
-        face_t f22_face = f22_faces[i];
-        array_push(mesh.faces, f22_face);
-    }
-}
-
-#ifdef LOCAL
 void load_obj_file_data(char* filename) {
-    FILE* file;
-    file = fopen(filename, "r");
+    FL_FILE* file;
+    file = fl_fopen(filename, "r");
+
+    if (file == NULL) {
+        printf("Unable to open %s\r\n", filename);
+        return;
+    }
 
     tex2_t* texcoords = NULL;
 
     char line[1024];
-    while (fgets(line, 1024, file)) {
+    while (fl_fgets(line, 1024, file)) {
         // Vertex information
         if (strncmp(line, "v ", 2) == 0) {
             vec3_t vertex;
@@ -84,6 +64,5 @@ void load_obj_file_data(char* filename) {
     }
     array_free(texcoords);
 
-    fclose(file);
+    fl_fclose(file);
 }
-#endif
