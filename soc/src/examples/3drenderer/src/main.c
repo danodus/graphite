@@ -5,9 +5,9 @@
 #include <SDL.h>
 #include <sd_card.h>
 #include <fat_filelib.h>
-#include "upng.h"
 #include <libfixmath/fix16.h>
 
+#include "upng.h"
 #include "array.h"
 #include "clipping.h"
 #include "display.h"
@@ -61,27 +61,13 @@ bool is_running = false;
 fix16_t delta_time = 0;
 int previous_frame_time = 0;
 
-enum cull_method {
-    CULL_NONE,
-    CULL_BACKFACE
-} cull_method;
-
-enum render_method {
-    RENDER_WIRE,
-    RENDER_WIRE_VERTEX,
-    RENDER_FILL_TRIANGLE,
-    RENDER_FILL_TRIANGLE_WIRE,
-    RENDER_TEXTURED,
-    RENDER_TEXTURED_WIRE
-} render_method;
-
 ///////////////////////////////////////////////////////////////////////////////
 // Setup function to initialize variables and game objects
 ///////////////////////////////////////////////////////////////////////////////
 void setup(void) {
     // Initialize render mode and triangle culling method
-    render_method = RENDER_WIRE;
-    cull_method = CULL_BACKFACE;
+    set_render_method(RENDER_WIRE);
+    set_cull_method(CULL_BACKFACE);
 
     mesh = (mesh_t) {
         .vertices = NULL,
@@ -102,22 +88,9 @@ void setup(void) {
         .direction = { .x = fix16_from_float(0), .y = fix16_from_float(0), .z = fix16_from_float(1) }
     };
 
-    // Allocate the required memory in bytes to hold the color buffer
-    color_buffer = (uint16_t*)malloc(sizeof(uint16_t) * window_width * window_height);
-    z_buffer = (fix16_t*)malloc(sizeof(fix16_t) * window_width * window_height);
-
-    // Creating a SDL texture that is used to display the color buffer
-    color_buffer_texture = SDL_CreateTexture(
-        renderer,
-        SDL_PIXELFORMAT_ARGB4444,
-        SDL_TEXTUREACCESS_STREAMING,
-        window_width,
-        window_height
-    );
-
     // Initialize the perspective projection matrix
-    fix16_t aspectx = fix16_div(fix16_from_int(window_width), fix16_from_int(window_height));
-    fix16_t aspecty = fix16_div(fix16_from_int(window_height), fix16_from_int(window_width));
+    fix16_t aspectx = fix16_div(fix16_from_int(get_window_width()), fix16_from_int(get_window_height()));
+    fix16_t aspecty = fix16_div(fix16_from_int(get_window_height()), fix16_from_int(get_window_width()));
     fix16_t fovy = fix16_from_float(M_PI / 3.0); // 60 deg
     fix16_t fovx = fix16_mul(fix16_atan(fix16_mul(fix16_tan(fix16_div(fovy, fix16_from_float(2))), aspectx)), fix16_from_float(2.0));
     fix16_t z_near = fix16_from_float(0.1);
@@ -138,48 +111,63 @@ void setup(void) {
 ///////////////////////////////////////////////////////////////////////////////
 void process_input(void) {
     SDL_Event event;
-    SDL_PollEvent(&event);
-
-    switch (event.type) {
-        case SDL_QUIT:
-            is_running = false;
-            break;
-        case SDL_KEYDOWN:
-            if (event.key.keysym.sym == SDLK_ESCAPE)
+    while (SDL_PollEvent(&event)) {
+        switch (event.type) {
+            case SDL_QUIT:
                 is_running = false;
-            if (event.key.keysym.sym == SDLK_1)
-                render_method = RENDER_WIRE_VERTEX;
-            if (event.key.keysym.sym == SDLK_2)
-                render_method = RENDER_WIRE;
-            if (event.key.keysym.sym == SDLK_3)
-                render_method = RENDER_FILL_TRIANGLE;
-            if (event.key.keysym.sym == SDLK_4)
-                render_method = RENDER_FILL_TRIANGLE_WIRE;
-            if (event.key.keysym.sym == SDLK_5)
-                render_method = RENDER_TEXTURED;
-            if (event.key.keysym.sym == SDLK_6)
-                render_method = RENDER_TEXTURED_WIRE;
-            if (event.key.keysym.sym == SDLK_c)
-                cull_method = CULL_BACKFACE;
-            if (event.key.keysym.sym == SDLK_x)
-                cull_method = CULL_NONE;
-            if (event.key.keysym.sym == SDLK_UP)
-                camera.position.y += fix16_mul(fix16_from_float(0.6), delta_time);
-            if (event.key.keysym.sym == SDLK_DOWN)
-                camera.position.y -= fix16_mul(fix16_from_float(0.6), delta_time);
-            if (event.key.keysym.sym == SDLK_a)
-                camera.yaw -= fix16_mul(fix16_from_float(0.3), delta_time);
-            if (event.key.keysym.sym == SDLK_d)
-                camera.yaw += fix16_mul(fix16_from_float(0.3), delta_time);
-            if (event.key.keysym.sym == SDLK_w) {
-                camera.forward_velocity = vec3_mul(camera.direction, fix16_mul(fix16_from_float(0.5), delta_time));
-                camera.position = vec3_add(camera.position, camera.forward_velocity);
-            }
-            if (event.key.keysym.sym == SDLK_s) {
-                camera.forward_velocity = vec3_mul(camera.direction, fix16_mul(fix16_from_float(0.5), delta_time));
-                camera.position = vec3_sub(camera.position, camera.forward_velocity);
-            }
-            break;
+                break;
+            case SDL_KEYDOWN:
+                switch (event.key.keysym.sym) {
+                    case SDLK_ESCAPE:
+                        is_running = false;
+                        break;
+                    case SDLK_1:
+                        set_render_method(RENDER_WIRE_VERTEX);
+                        break;
+                    case SDLK_2:
+                        set_render_method(RENDER_WIRE);
+                        break;
+                    case SDLK_3:
+                        set_render_method(RENDER_FILL_TRIANGLE);
+                        break;
+                    case SDLK_4:
+                        set_render_method(RENDER_FILL_TRIANGLE_WIRE);
+                        break;
+                    case SDLK_5:
+                        set_render_method(RENDER_TEXTURED);
+                        break;
+                    case SDLK_6:
+                        set_render_method(RENDER_TEXTURED_WIRE);
+                        break;
+                    case SDLK_c:
+                        set_cull_method(CULL_BACKFACE);
+                        break;
+                    case SDLK_x:
+                        set_cull_method(CULL_NONE);
+                        break;
+                    case SDLK_UP:
+                        camera.position.y += fix16_mul(fix16_from_float(0.6), delta_time);
+                        break;
+                    case SDLK_DOWN:
+                        camera.position.y -= fix16_mul(fix16_from_float(0.6), delta_time);
+                        break;
+                    case SDLK_a:
+                        camera.yaw -= fix16_mul(fix16_from_float(0.3), delta_time);
+                        break;
+                    case SDLK_d:
+                        camera.yaw += fix16_mul(fix16_from_float(0.3), delta_time);
+                        break;
+                    case SDLK_w:
+                        camera.forward_velocity = vec3_mul(camera.direction, fix16_mul(fix16_from_float(0.5), delta_time));
+                        camera.position = vec3_add(camera.position, camera.forward_velocity);
+                        break;
+                    case SDLK_s:
+                        camera.forward_velocity = vec3_mul(camera.direction, fix16_mul(fix16_from_float(0.5), delta_time));
+                        camera.position = vec3_sub(camera.position, camera.forward_velocity);
+                        break;
+                }
+                break;
+        }
     }
 }
 
@@ -282,7 +270,7 @@ void update(void) {
         vec3_normalize(&normal);        
 
         // Backface culling test to see if the current face should be projected
-        if (cull_method == CULL_BACKFACE) {
+        if (get_cull_method() == CULL_BACKFACE) {
 
             // Find the vector between a point in the triangle and the camera origin
             vec3_t origin = { 0, 0, 0 };
@@ -332,15 +320,15 @@ void update(void) {
                 projected_points[j] = mat4_mul_vec4_project(proj_matrix, triangle_after_clipping.points[j]);
 
                 // Scale into the view
-                projected_points[j].x = fix16_mul(projected_points[j].x, fix16_from_float(window_width / 2.0));
-                projected_points[j].y = fix16_mul(projected_points[j].y, fix16_from_float(window_height / 2.0));
+                projected_points[j].x = fix16_mul(projected_points[j].x, fix16_from_float(get_window_width() / 2.0));
+                projected_points[j].y = fix16_mul(projected_points[j].y, fix16_from_float(get_window_height() / 2.0));
 
                 // Invert the y values to account for flipped screen y coordinate
                 projected_points[j].y = -projected_points[j].y;
 
                 // Translate the projected points to the middle of the screen
-                projected_points[j].x += fix16_from_float(window_width / 2.0);
-                projected_points[j].y += fix16_from_float(window_height / 2.0);
+                projected_points[j].x += fix16_from_float(get_window_width() / 2.0);
+                projected_points[j].y += fix16_from_float(get_window_height() / 2.0);
             }
 
             // Calculate the shade intensity based on how aligned is the face normal and the inverse of the light direction
@@ -384,7 +372,7 @@ void render(void) {
         triangle_t triangle = triangles_to_render[i];
 
         // Draw filled triangle
-        if (render_method == RENDER_FILL_TRIANGLE || render_method == RENDER_FILL_TRIANGLE_WIRE) {
+        if (get_render_method() == RENDER_FILL_TRIANGLE || get_render_method() == RENDER_FILL_TRIANGLE_WIRE) {
             draw_filled_triangle(
                 fix16_to_int(triangle.points[0].x), fix16_to_int(triangle.points[0].y), triangle.points[0].z, triangle.points[0].w,
                 fix16_to_int(triangle.points[1].x), fix16_to_int(triangle.points[1].y), triangle.points[1].z, triangle.points[1].w,
@@ -394,7 +382,7 @@ void render(void) {
         }
 
         // Draw textured triangle
-        if (render_method == RENDER_TEXTURED || render_method == RENDER_TEXTURED_WIRE) {
+        if (get_render_method() == RENDER_TEXTURED || get_render_method() == RENDER_TEXTURED_WIRE) {
             draw_textured_triangle(
                 fix16_to_int(triangle.points[0].x), fix16_to_int(triangle.points[0].y), triangle.points[0].z, triangle.points[0].w, triangle.texcoords[0].u, triangle.texcoords[0].v,
                 fix16_to_int(triangle.points[1].x), fix16_to_int(triangle.points[1].y), triangle.points[1].z, triangle.points[1].w, triangle.texcoords[1].u, triangle.texcoords[1].v,
@@ -404,7 +392,7 @@ void render(void) {
         }
 
         // Draw unfilled triangle
-        if (render_method == RENDER_WIRE || render_method == RENDER_WIRE_VERTEX || render_method == RENDER_FILL_TRIANGLE_WIRE || render_method == RENDER_TEXTURED_WIRE) {
+        if (get_render_method() == RENDER_WIRE || get_render_method() == RENDER_WIRE_VERTEX || get_render_method() == RENDER_FILL_TRIANGLE_WIRE || get_render_method() == RENDER_TEXTURED_WIRE) {
             draw_triangle(
                 fix16_to_int(triangle.points[0].x),
                 fix16_to_int(triangle.points[0].y),
@@ -417,7 +405,7 @@ void render(void) {
         }
 
         // Draw triangle vertex points
-        if (render_method == RENDER_WIRE_VERTEX) {
+        if (get_render_method() == RENDER_WIRE_VERTEX) {
             draw_rect(fix16_to_int(triangle.points[0].x) - 3, fix16_to_int(triangle.points[0].y) - 3, 6, 6, 0xFFF0);
             draw_rect(fix16_to_int(triangle.points[1].x) - 3, fix16_to_int(triangle.points[1].y) - 3, 6, 6, 0xFFF0);
             draw_rect(fix16_to_int(triangle.points[2].x) - 3, fix16_to_int(triangle.points[2].y) - 3, 6, 6, 0xFFF0);
@@ -428,16 +416,12 @@ void render(void) {
     array_free(triangles_to_render);
 
     render_color_buffer();
-
-    SDL_RenderPresent(renderer);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Free resources
 ///////////////////////////////////////////////////////////////////////////////
 void free_resources(void) {
-    free(z_buffer);
-    free(color_buffer);
     upng_free(png_texture);
     array_free(mesh.faces);
     array_free(mesh.vertices);
