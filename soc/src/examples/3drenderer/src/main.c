@@ -77,12 +77,8 @@ void setup(void) {
         .translation = { 0, 0, 0 }
     };
 
-    camera = (camera_t) {
-        .position = { 0, 0, 0 },
-        .direction = { 0, 0, fix16_from_float(1) },
-        .forward_velocity = { 0, 0, 0 },
-        .yaw = 0
-    };
+    // Initialize the camera
+    init_camera(vec3_new(0, 0, 0), vec3_new(0, 0, fix16_from_float(1)), vec3_new(0, 0, 0), 0, 0);
 
     // Initialize the scene light direction
     init_light(vec3_new(0, 0, fix16_from_float(1)));
@@ -144,25 +140,38 @@ void process_input(void) {
                     case SDLK_x:
                         set_cull_method(CULL_NONE);
                         break;
-                    case SDLK_UP:
-                        camera.position.y += fix16_mul(fix16_from_float(0.6), delta_time);
+                    case SDLK_LEFT: {
+                        fix16_t camera_yaw = get_camera_yaw();
+                        camera_yaw -= fix16_mul(fix16_from_float(0.3), delta_time);
+                        set_camera_yaw(camera_yaw);
                         break;
+                    }
+                    case SDLK_RIGHT: {
+                        fix16_t camera_yaw = get_camera_yaw();
+                        camera_yaw += fix16_mul(fix16_from_float(0.3), delta_time);
+                        set_camera_yaw(camera_yaw);
+                        break;
+                    }
+                    case SDLK_s: {
+                        fix16_t camera_pitch = get_camera_pitch();
+                        camera_pitch -= fix16_mul(fix16_from_float(0.3), delta_time);
+                        set_camera_pitch(camera_pitch);
+                        break;
+                    }
+                    case SDLK_w: {
+                        fix16_t camera_pitch = get_camera_pitch();
+                        camera_pitch += fix16_mul(fix16_from_float(0.3), delta_time);
+                        set_camera_pitch(camera_pitch);
+                        break;
+                    }
+                    case SDLK_UP: {
+                        set_camera_forward_velocity(vec3_mul(get_camera_direction(), fix16_mul(fix16_from_float(0.5), delta_time)));
+                        set_camera_position(vec3_add(get_camera_position(), get_camera_forward_velocity()));
+                        break;
+                    }
                     case SDLK_DOWN:
-                        camera.position.y -= fix16_mul(fix16_from_float(0.6), delta_time);
-                        break;
-                    case SDLK_a:
-                        camera.yaw -= fix16_mul(fix16_from_float(0.3), delta_time);
-                        break;
-                    case SDLK_d:
-                        camera.yaw += fix16_mul(fix16_from_float(0.3), delta_time);
-                        break;
-                    case SDLK_w:
-                        camera.forward_velocity = vec3_mul(camera.direction, fix16_mul(fix16_from_float(0.5), delta_time));
-                        camera.position = vec3_add(camera.position, camera.forward_velocity);
-                        break;
-                    case SDLK_s:
-                        camera.forward_velocity = vec3_mul(camera.direction, fix16_mul(fix16_from_float(0.5), delta_time));
-                        camera.position = vec3_sub(camera.position, camera.forward_velocity);
+                        set_camera_forward_velocity(vec3_mul(get_camera_direction(), fix16_mul(fix16_from_float(0.5), delta_time)));
+                        set_camera_position(vec3_sub(get_camera_position(), get_camera_forward_velocity()));
                         break;
                 }
                 break;
@@ -207,16 +216,11 @@ void update(void) {
     mat4_t rotation_matrix_z = mat4_make_rotation_z(mesh.rotation.z);
 
     // Initialize the target looking at the positive z-axis
-    vec3_t target = { 0, 0, fix16_from_float(1) };
-    mat4_t camera_yaw_rotation = mat4_make_rotation_y(camera.yaw);
-    camera.direction = vec3_from_vec4(mat4_mul_vec4(camera_yaw_rotation, vec4_from_vec3(target)));
-
-    // Offset the camera position in the direction where the camera is pointing at
-    target = vec3_add(camera.position, camera.direction);
+    vec3_t target = get_camera_lookat_target();
     vec3_t up_direction = { 0, fix16_from_float(1), 0 };
 
     // Create the view matrix
-    view_matrix = mat4_look_at(camera.position, target, up_direction);
+    view_matrix = mat4_look_at(get_camera_position(), target, up_direction);
 
     // Loop all triangle faces of our mesh
     int num_faces = array_length(mesh.faces);
