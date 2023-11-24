@@ -84,9 +84,8 @@ void setup(void) {
         .yaw = 0
     };
 
-    light = (light_t) {
-        .direction = { .x = fix16_from_float(0), .y = fix16_from_float(0), .z = fix16_from_float(1) }
-    };
+    // Initialize the scene light direction
+    init_light(vec3_new(0, 0, fix16_from_float(1)));
 
     // Initialize the perspective projection matrix
     fix16_t aspectx = fix16_div(fix16_from_int(get_window_width()), fix16_from_int(get_window_height()));
@@ -332,7 +331,7 @@ void update(void) {
             }
 
             // Calculate the shade intensity based on how aligned is the face normal and the inverse of the light direction
-            fix16_t light_intensity_factor = -vec3_dot(light.direction, normal);
+            fix16_t light_intensity_factor = -vec3_dot(get_light_direction(), normal);
 
             // Calculate the triangle color based on the light angle
             uint16_t triangle_color = light_apply_intensity(mesh_face.color, light_intensity_factor);
