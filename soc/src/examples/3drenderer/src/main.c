@@ -69,16 +69,8 @@ void setup(void) {
     set_render_method(RENDER_WIRE);
     set_cull_method(CULL_BACKFACE);
 
-    mesh = (mesh_t) {
-        .vertices = NULL,
-        .faces = NULL,
-        .rotation = { 0, 0, 0 },
-        .scale = { fix16_from_float(1), fix16_from_float(1), fix16_from_float(1) },
-        .translation = { 0, 0, 0 }
-    };
-
     // Initialize the camera
-    init_camera(vec3_new(0, 0, 0), vec3_new(0, 0, fix16_from_float(1)), vec3_new(0, 0, 0), 0, 0);
+    init_camera(vec3_new(0, 0, fix16_from_float(-5)), vec3_new(0, 0, fix16_from_float(1)), vec3_new(0, 0, 0), 0, 0);
 
     // Initialize the scene light direction
     init_light(vec3_new(0, 0, fix16_from_float(1)));
@@ -94,11 +86,10 @@ void setup(void) {
 
     init_frustum_planes(fovx, fovy, z_near, z_far);
 
-    // Loads the values in the mesh data structures
-    load_obj_file_data("/assets/cube.obj");
-
-    // Load the texture information from an external PNG file
-    load_png_texture_data("/assets/cube.png");
+    load_mesh("/assets/runway.obj", "/assets/runway.png", vec3_new(fix16_from_float(1), fix16_from_float(1), fix16_from_float(1)), vec3_new(0, fix16_from_float(-1.5), fix16_from_float(23)), vec3_new(0, 0, 0));
+    load_mesh("/assets/f22.obj", "/assets/f22.png", vec3_new(fix16_from_float(1), fix16_from_float(1), fix16_from_float(1)), vec3_new(0, fix16_from_float(-1.3), fix16_from_float(5)), vec3_new(0, fix16_from_float(-M_PI/2), 0));
+    load_mesh("/assets/efa.obj", "/assets/efa.png", vec3_new(fix16_from_float(1), fix16_from_float(1), fix16_from_float(1)), vec3_new(fix16_from_float(-2), fix16_from_float(-1.3), fix16_from_float(9)), vec3_new(0, fix16_from_float(-M_PI/2), 0));
+    load_mesh("/assets/f117.obj", "/assets/f117.png", vec3_new(fix16_from_float(1), fix16_from_float(1), fix16_from_float(1)), vec3_new(fix16_from_float(2), fix16_from_float(-1.3), fix16_from_float(9)), vec3_new(0, fix16_from_float(-M_PI/2), 0));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -142,35 +133,35 @@ void process_input(void) {
                         break;
                     case SDLK_LEFT: {
                         fix16_t camera_yaw = get_camera_yaw();
-                        camera_yaw -= fix16_mul(fix16_from_float(0.3), delta_time);
+                        camera_yaw -= fix16_mul(fix16_from_float(0.1), delta_time);
                         set_camera_yaw(camera_yaw);
                         break;
                     }
                     case SDLK_RIGHT: {
                         fix16_t camera_yaw = get_camera_yaw();
-                        camera_yaw += fix16_mul(fix16_from_float(0.3), delta_time);
+                        camera_yaw += fix16_mul(fix16_from_float(0.1), delta_time);
                         set_camera_yaw(camera_yaw);
                         break;
                     }
                     case SDLK_s: {
                         fix16_t camera_pitch = get_camera_pitch();
-                        camera_pitch -= fix16_mul(fix16_from_float(0.3), delta_time);
+                        camera_pitch -= fix16_mul(fix16_from_float(0.1), delta_time);
                         set_camera_pitch(camera_pitch);
                         break;
                     }
                     case SDLK_w: {
                         fix16_t camera_pitch = get_camera_pitch();
-                        camera_pitch += fix16_mul(fix16_from_float(0.3), delta_time);
+                        camera_pitch += fix16_mul(fix16_from_float(0.1), delta_time);
                         set_camera_pitch(camera_pitch);
                         break;
                     }
                     case SDLK_UP: {
-                        set_camera_forward_velocity(vec3_mul(get_camera_direction(), fix16_mul(fix16_from_float(0.5), delta_time)));
+                        set_camera_forward_velocity(vec3_mul(get_camera_direction(), fix16_mul(fix16_from_float(0.2), delta_time)));
                         set_camera_position(vec3_add(get_camera_position(), get_camera_forward_velocity()));
                         break;
                     }
                     case SDLK_DOWN:
-                        set_camera_forward_velocity(vec3_mul(get_camera_direction(), fix16_mul(fix16_from_float(0.5), delta_time)));
+                        set_camera_forward_velocity(vec3_mul(get_camera_direction(), fix16_mul(fix16_from_float(0.2), delta_time)));
                         set_camera_position(vec3_sub(get_camera_position(), get_camera_forward_velocity()));
                         break;
                 }
@@ -180,40 +171,37 @@ void process_input(void) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Update function
+// Process the graphics pipeline stages for all the mesh triangles
 ///////////////////////////////////////////////////////////////////////////////
-void update(void) {
-
-    int time_to_wait = FRAME_TARGET_TIME - (SDL_GetTicks() - previous_frame_time);
-
-    if (time_to_wait > 0 && time_to_wait <= FRAME_TARGET_TIME) {
-        SDL_Delay(time_to_wait);
-    }
-
-    // Get a delta time factor converted to seconds to be used to update our game objects
-    delta_time = fix16_div(fix16_from_int(SDL_GetTicks() - previous_frame_time), fix16_from_float(1000.0));
-
-    previous_frame_time = SDL_GetTicks();
-
-    // Initialize the array of triangles to render
-    triangles_to_render = NULL;
-
-    // Change the mesh scale/rotation per animation frame
-    //mesh.rotation.x -= fix16_from_float(0.1);
-    //mesh.rotation.y += fix16_from_float(0.1);
-    //mesh.rotation.z += fix16_from_float(0.1);
-    //mesh.scale.x = fix16_from_float(1);
-    //mesh.scale.y = fix16_from_float(1);
-    //mesh.scale.z = fix16_from_float(1);
-    //mesh.translation.x += fix16_from_float(0.1);
-    mesh.translation.z = fix16_from_float(10.0);
-
+// +-------------+
+// | Model space |  <-- original mesh vertices
+// +-------------+
+// |   +-------------+
+// `-> | World space |  <-- multiply by world matrix
+//     +-------------+
+//     |   +--------------+
+//     `-> | Camera space |  <-- multiply by view matrix
+//         +--------------+
+//         |    +------------+
+//         `--> |  Clipping  |  <-- clip against the six frustum planes
+//              +------------+
+//              |    +------------+
+//              `--> | Projection |  <-- multiply by projection matrix
+//                   +------------+
+//                   |    +-------------+
+//                   `--> | Image space |  <-- apply perspective divide
+//                        +-------------+
+//                        |    +--------------+
+//                        `--> | Screen space |  <-- ready to render
+//                             +--------------+
+///////////////////////////////////////////////////////////////////////////////
+void process_graphics_pipeline_stages(mesh_t* mesh){
     // Create scale, rotation and translation matrix that will be used to multiply with the mesh vertices
-    mat4_t scale_matrix = mat4_make_scale(mesh.scale.x, mesh.scale.y, mesh.scale.z);
-    mat4_t translation_matrix = mat4_make_translation(mesh.translation.x, mesh.translation.y, mesh.translation.z);
-    mat4_t rotation_matrix_x = mat4_make_rotation_x(mesh.rotation.x);
-    mat4_t rotation_matrix_y = mat4_make_rotation_y(mesh.rotation.y);
-    mat4_t rotation_matrix_z = mat4_make_rotation_z(mesh.rotation.z);
+    mat4_t scale_matrix = mat4_make_scale(mesh->scale.x, mesh->scale.y, mesh->scale.z);
+    mat4_t translation_matrix = mat4_make_translation(mesh->translation.x, mesh->translation.y, mesh->translation.z);
+    mat4_t rotation_matrix_x = mat4_make_rotation_x(mesh->rotation.x);
+    mat4_t rotation_matrix_y = mat4_make_rotation_y(mesh->rotation.y);
+    mat4_t rotation_matrix_z = mat4_make_rotation_z(mesh->rotation.z);
 
     // Initialize the target looking at the positive z-axis
     vec3_t target = get_camera_lookat_target();
@@ -223,14 +211,14 @@ void update(void) {
     view_matrix = mat4_look_at(get_camera_position(), target, up_direction);
 
     // Loop all triangle faces of our mesh
-    int num_faces = array_length(mesh.faces);
+    int num_faces = array_length(mesh->faces);
     for (int i = 0; i < num_faces; i++) {
-        face_t mesh_face = mesh.faces[i];
+        face_t mesh_face = mesh->faces[i];
 
         vec3_t face_vertices[3];
-        face_vertices[0] = mesh.vertices[mesh_face.a - 1];
-        face_vertices[1] = mesh.vertices[mesh_face.b - 1];
-        face_vertices[2] = mesh.vertices[mesh_face.c - 1];
+        face_vertices[0] = mesh->vertices[mesh_face.a - 1];
+        face_vertices[1] = mesh->vertices[mesh_face.b - 1];
+        face_vertices[2] = mesh->vertices[mesh_face.c - 1];
 
         vec4_t transformed_vertices[3];
 
@@ -257,30 +245,16 @@ void update(void) {
         }
 
         // Compute the face normal (using the cross product to find perpendicular)
-        vec3_t normal;
-
-        vec3_t vector_a = vec3_from_vec4(transformed_vertices[0]); /*   A   */
-        vec3_t vector_b = vec3_from_vec4(transformed_vertices[1]); /*  / \  */
-        vec3_t vector_c = vec3_from_vec4(transformed_vertices[2]); /* C---B */
-
-        // Get the vector substraction of B-A and C-A
-        vec3_t vector_ab = vec3_sub(vector_b, vector_a);
-        vec3_t vector_ac = vec3_sub(vector_c, vector_a);
-        vec3_normalize(&vector_ab);
-        vec3_normalize(&vector_ac);
-
-        normal = vec3_cross(vector_ab, vector_ac);
-        vec3_normalize(&normal);        
+        vec3_t face_normal = get_triangle_normal(transformed_vertices);
 
         // Backface culling test to see if the current face should be projected
         if (get_cull_method() == CULL_BACKFACE) {
 
             // Find the vector between a point in the triangle and the camera origin
-            vec3_t origin = { 0, 0, 0 };
-            vec3_t camera_ray = vec3_sub(origin, vector_a);
+            vec3_t camera_ray = vec3_sub(vec3_new(0, 0, 0), vec3_from_vec4(transformed_vertices[0]));
 
             // Calculate how aligned the camera ray is with the face normal (using dot product)
-            fix16_t dot_normal_camera = vec3_dot(normal, camera_ray);
+            fix16_t dot_normal_camera = vec3_dot(face_normal, camera_ray);
 
             // Bypass the triangles that are looking away from the camera
             if (dot_normal_camera < fix16_from_float(0)) {
@@ -335,7 +309,7 @@ void update(void) {
             }
 
             // Calculate the shade intensity based on how aligned is the face normal and the inverse of the light direction
-            fix16_t light_intensity_factor = -vec3_dot(get_light_direction(), normal);
+            fix16_t light_intensity_factor = -vec3_dot(get_light_direction(), face_normal);
 
             // Calculate the triangle color based on the light angle
             uint16_t triangle_color = light_apply_intensity(mesh_face.color, light_intensity_factor);
@@ -351,12 +325,45 @@ void update(void) {
                     { triangle_after_clipping.texcoords[1].u, triangle_after_clipping.texcoords[1].v },
                     { triangle_after_clipping.texcoords[2].u, triangle_after_clipping.texcoords[2].v }
                 },
-                .color = triangle_color
+                .color = triangle_color,
+                .texture = mesh->texture
             };
 
             // Save the projected triangle in the array of triangles to render
             array_push(triangles_to_render, triangle_to_render);
         }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Update function
+///////////////////////////////////////////////////////////////////////////////
+void update(void) {
+
+    int time_to_wait = FRAME_TARGET_TIME - (SDL_GetTicks() - previous_frame_time);
+
+    if (time_to_wait > 0 && time_to_wait <= FRAME_TARGET_TIME) {
+        SDL_Delay(time_to_wait);
+    }
+
+    // Get a delta time factor converted to seconds to be used to update our game objects
+    delta_time = fix16_div(fix16_from_int(SDL_GetTicks() - previous_frame_time), fix16_from_float(1000.0));
+
+    previous_frame_time = SDL_GetTicks();
+
+    // Initialize the array of triangles to render
+    triangles_to_render = NULL;
+
+    // Loop all the meshes of our scene
+    for (int mesh_index = 0; mesh_index < get_num_meshes(); mesh_index++) {
+        mesh_t* mesh = get_mesh(mesh_index);
+
+        // Change the mesh scale/rotation per animation frame
+        //mesh->rotation.x += fix16_mul(fix16_from_float(0.1), delta_time);
+        //mesh->translation.z = fix16_from_float(10.0);
+
+        // Process the graphics pipeline stages for every mesh of our 3D scene
+        process_graphics_pipeline_stages(mesh);
     }
 }
 
@@ -390,7 +397,7 @@ void render(void) {
                 fix16_to_int(triangle.points[0].x), fix16_to_int(triangle.points[0].y), triangle.points[0].z, triangle.points[0].w, triangle.texcoords[0].u, triangle.texcoords[0].v,
                 fix16_to_int(triangle.points[1].x), fix16_to_int(triangle.points[1].y), triangle.points[1].z, triangle.points[1].w, triangle.texcoords[1].u, triangle.texcoords[1].v,
                 fix16_to_int(triangle.points[2].x), fix16_to_int(triangle.points[2].y), triangle.points[2].z, triangle.points[2].w, triangle.texcoords[2].u, triangle.texcoords[2].v,
-                mesh_texture
+                triangle.texture
             );
         }
 
@@ -425,9 +432,8 @@ void render(void) {
 // Free resources
 ///////////////////////////////////////////////////////////////////////////////
 void free_resources(void) {
-    upng_free(png_texture);
-    array_free(mesh.faces);
-    array_free(mesh.vertices);
+    free_meshes();
+    destroy_window();
 }
 
 ///////////////////////////////////////////////////////////////////////////////

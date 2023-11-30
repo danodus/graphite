@@ -5,6 +5,24 @@
 
 #include "display.h"
 
+vec3_t get_triangle_normal(vec4_t vertices[3]) {
+
+    vec3_t vector_a = vec3_from_vec4(vertices[0]); /*   A   */
+    vec3_t vector_b = vec3_from_vec4(vertices[1]); /*  / \  */
+    vec3_t vector_c = vec3_from_vec4(vertices[2]); /* C---B */
+
+    // Get the vector substraction of B-A and C-A
+    vec3_t vector_ab = vec3_sub(vector_b, vector_a);
+    vec3_t vector_ac = vec3_sub(vector_c, vector_a);
+    vec3_normalize(&vector_ab);
+    vec3_normalize(&vector_ac);
+
+    vec3_t normal = vec3_cross(vector_ab, vector_ac);
+    vec3_normalize(&normal);
+
+    return normal;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Draw a triangle
 ///////////////////////////////////////////////////////////////////////////////
@@ -177,7 +195,7 @@ void draw_filled_triangle(
 // Function to draw textured pixel at position x and y using interpolation
 ///////////////////////////////////////////////////////////////////////////////
 void draw_texel(
-    int x, int y, uint32_t* texture,
+    int x, int y, upng_t* texture,
     vec4_t point_a, vec4_t point_b, vec4_t point_c,
     tex2_t a_uv, tex2_t b_uv, tex2_t c_uv
 ) {
@@ -208,6 +226,10 @@ void draw_texel(
     interpolated_u = fix16_div(interpolated_u, interpolated_reciprocal_w);
     interpolated_v = fix16_div(interpolated_v, interpolated_reciprocal_w);
 
+    // Get the mesh texture width and height dimensions
+    int texture_width = upng_get_width(texture);
+    int texture_height = upng_get_height(texture);
+
     // Map the UV coordinate to the full texture width and height
     int tex_x = abs(fix16_to_int(fix16_mul(interpolated_u, fix16_from_int(texture_width)))) % texture_width;
     int tex_y = abs(fix16_to_int(fix16_mul(interpolated_v, fix16_from_int(texture_height)))) % texture_height;
@@ -217,8 +239,10 @@ void draw_texel(
 
     // Only draw a pixel if the depth value is less than the one previously stored in the z-buffer
     if (interpolated_reciprocal_w < get_zbuffer_at(x, y)) {
+        // Get the buffer of colors from the texture
+        uint32_t* texture_buffer = (uint32_t *)upng_get_buffer(texture);
 
-        uint8_t* tc = (uint8_t*)(&texture[(texture_width * tex_y) + tex_x]);
+        uint8_t* tc = (uint8_t*)(&texture_buffer[(texture_width * tex_y) + tex_x]);
         uint16_t cr = tc[0] >> 4;
         uint16_t cg = tc[1] >> 4;
         uint16_t cb = tc[2] >> 4;
@@ -240,7 +264,7 @@ void draw_textured_triangle(
     int x0, int y0, fix16_t z0, fix16_t w0, fix16_t u0, fix16_t v0,
     int x1, int y1, fix16_t z1, fix16_t w1, fix16_t u1, fix16_t v1,
     int x2, int y2, fix16_t z2, fix16_t w2, fix16_t u2, fix16_t v2,
-    uint32_t* texture
+    upng_t* texture
 ) {
     // We need to sort the vertices by y-coordinate ascending (y0 < y1 < y2)
     if (y0 > y1) {
