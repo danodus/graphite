@@ -36,8 +36,8 @@ module spi #(
 
 wire endbit, endtick;
 reg [31:0] shreg;
-localparam max_tick_slow = FREQ_HZ * 64 / 25_000_000 - 1;
-localparam max_tick_fast = FREQ_HZ * 3 / 25_000_000 - 1;
+localparam max_tick_slow = 64'(FREQ_HZ * 64) / 25_000_000 - 1;
+localparam max_tick_fast = 64'(FREQ_HZ * 3) / 25_000_000 - 1;
 reg [$clog2(max_tick_slow)-1:0] tick;
 reg [4:0] bitcnt;
 
