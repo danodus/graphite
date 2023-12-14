@@ -37,8 +37,7 @@ SRC = \
   ../../../rtl/reciprocal.sv \
   ../../../rtl/div.sv
 
-#DEFINES = -DFAST_CPU
-DEFINES =
+DEFINES = -DFAST_CPU
 
 all: top.bin
 
