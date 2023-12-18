@@ -72,7 +72,6 @@ vec3d vector_cross_product(vec3d* v1, vec3d* v2) {
 }
 
 vec3d vector_intersect_plane(vec3d* plane_p, vec3d* plane_n, vec3d* line_start, vec3d* line_end, fx32* t) {
-    *plane_n = vector_normalize(plane_n);
     fx32 plane_d = -vector_dot_product(plane_n, plane_p);
     fx32 ad = vector_dot_product(line_start, plane_n);
     fx32 bd = vector_dot_product(line_end, plane_n);
@@ -90,9 +89,6 @@ fx32 dist_point_to_plane(vec3d* plane_p, vec3d* plane_n, vec3d* p) {
 
 int triangle_clip_against_plane(vec3d plane_p, vec3d plane_n, triangle_t* in_tri, triangle_t* out_tri1,
                                 triangle_t* out_tri2) {
-    // make sure plane normal is indeed normal
-    plane_n = vector_normalize(&plane_n);
-
     // create two temporary storage arrays to classify points either side of the plane
     // if distance sign is positive, point lies on the inside of plane
     vec3d* inside_points[3];
