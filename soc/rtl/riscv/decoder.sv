@@ -19,7 +19,7 @@ module decoder #(
     output      logic [5:0]  reg_out2_sel_o,
     output      logic [2:0]  alu_op_o,
     output      logic        alu_op_qual_o,
-    output      logic        alu_op_ext_o,
+    output      logic [1:0]  alu_op_ext_o,
     output      logic        d_we_o,
     output      logic        addr_valid_o,
     output      logic [31:0] addr_o,
@@ -64,7 +64,7 @@ module decoder #(
 
         alu_op_o        = 3'b000;
         alu_op_qual_o   = 1'b0;
-        alu_op_ext_o    = 1'b0;
+        alu_op_ext_o    = 2'b00;
 
         addr_valid_o    = 1'b0;
         d_we_o          = 1'b0;
@@ -285,7 +285,7 @@ module decoder #(
                         reg_out2_sel_o  = {1'b0, rs2};
                         alu_op_o        = instr_i[14:12];
                         alu_op_qual_o   = instr_i[30];
-                        alu_op_ext_o    = instr_i[25];
+                        alu_op_ext_o    = {1'b0, instr_i[25]};
                         reg_in_source_o = 2'b00; // write ALU result to RF
                         reg_in_en_o     = 1'b1; // write to RF
                         alu_in2_sel_o   = 1'b0; // register out2 in ALU in2
@@ -318,6 +318,20 @@ module decoder #(
                                 eoi_o           = 1'b1;
                             end
                         endcase
+                    end
+
+                    //
+                    // Custom opcodes
+                    //
+
+                    7'b00001011: begin
+                        reg_in_sel_o    = {1'b0, rd};
+                        reg_out1_sel_o  = {1'b0, rs1};
+                        reg_out2_sel_o  = {1'b0, rs2};
+                        alu_op_ext_o    = 2'b10;
+                        reg_in_source_o = 2'b00; // write ALU result to RF
+                        reg_in_en_o     = 1'b1; // write to RF
+                        alu_in2_sel_o   = 1'b0; // register out2 in ALU in2                        
                     end
                 endcase
             end // not irq

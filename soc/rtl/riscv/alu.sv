@@ -2,6 +2,16 @@
 // Copyright (c) 2022 Daniel Cliche
 // SPDX-License-Identifier: MIT
 
+function logic signed [31:0] fix_mul(logic signed [31:0] x, logic signed [31:0] y);
+    logic signed [63:0] x2, y2, mul2;
+    begin
+        x2 = {{32{x[31]}}, x};
+        y2 = {{32{y[31]}}, y};
+        mul2 = (x2 * y2) >>> 14;
+        fix_mul = mul2[31:0];
+    end
+endfunction
+
 module alu(
     input  wire logic        clk,
     input  wire logic        reset_i,
@@ -10,8 +20,8 @@ module alu(
     input  wire logic [31:0] in1_i,
     input  wire logic [31:0] in2_i,
     input  wire logic [2:0]  op_i,
-    input                    op_qual_i, // operation qualification (+/-,logical/arithmetic)
-    input                    op_ext_i,  // multiplier extension
+    input  wire logic        op_qual_i,      // operation qualification (+/-,logical/arithmetic)
+    input  wire logic [1:0]  op_ext_i,       // multiplier or graphite extension
     output      logic [31:0] out_o,
     output      logic        busy_o
     );
@@ -64,7 +74,7 @@ module alu(
                 case (state)
                     IDLE: begin
                         if (start_i) begin
-                            if (op_ext_i == 1'b0) begin
+                            if (op_ext_i == 2'b00) begin
                                 case (op_i)
                                     3'b000: out_o <= op_qual_i ? in1_i - in2_i : in1_i + in2_i;                        // ADD/SUB
                                     3'b010: out_o <= ($signed(in1_i) < $signed(in2_i)) ? 32'b1 : 32'b0;                // SLT
@@ -75,7 +85,7 @@ module alu(
                                     3'b001: out_o <= in1_i << in2_i[4:0];                                              // SLL
                                     3'b101: out_o <= $signed({op_qual_i ? in1_i[31] : 1'b0, in1_i}) >>> in2_i[4:0];    // SRL/SRA
                                 endcase
-                            end else begin
+                            end else if (op_ext_i == 2'b01) begin
                                 // extended operations
                                 case (op_i)
                                     3'b000,
@@ -99,6 +109,9 @@ module alu(
                                     $display("Unknown operation %d", op_i);
     `endif
                                 endcase
+                            end else if (op_ext_i == 2'b10) begin
+                                // Graphite operations
+                                out_o <= fix_mul(in1_i, in2_i);
                             end
                         end // if start
                     end

@@ -43,7 +43,7 @@ module processor #(
 
     logic [2:0]  alu_op;
     logic        alu_op_qual;
-    logic        alu_op_ext;
+    logic [1:0]  alu_op_ext;
     logic [31:0] alu_out;
     logic        alu_start;
     logic        alu_busy;

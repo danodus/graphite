@@ -3,7 +3,7 @@ PROGRAM = ../../src/examples/test_video/program.hex
 VERILATOR = verilator
 
 LDFLAGS := -LDFLAGS "$(shell sdl2-config --libs)"
-CFLAGS := -CFLAGS "$(shell sdl2-config --cflags)"
+CFLAGS := -CFLAGS "-std=c++11 $(shell sdl2-config --cflags)"
 
 SRC = bram32bit.v \
 	prom.v \
