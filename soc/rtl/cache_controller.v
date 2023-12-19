@@ -74,26 +74,32 @@ module cache_controller(
     wire wr = |wmask;
     
     reg [(1<<`WAYS)-1:0]cache_dirty[0:(1<<`SETS)-1];
-    initial $readmemh("cache_init0.mem", cache_dirty);
 
     reg [`WAYS-1:0]cache_lru0[0:(1<<`SETS)-1];
     reg [`WAYS-1:0]cache_lru1[0:(1<<`SETS)-1];
     reg [`WAYS-1:0]cache_lru2[0:(1<<`SETS)-1];
     reg [`WAYS-1:0]cache_lru3[0:(1<<`SETS)-1];
-    initial $readmemh("cache_init0.mem", cache_lru0);
-    initial $readmemh("cache_init1.mem", cache_lru1);
-    initial $readmemh("cache_init2.mem", cache_lru2);
-    initial $readmemh("cache_init3.mem", cache_lru3);
-         
+
     // MSB is cache valid
     reg [1+17-`SETS:0]cache_addr0[0:(1<<`SETS)-1];
     reg [1+17-`SETS:0]cache_addr1[0:(1<<`SETS)-1];
     reg [1+17-`SETS:0]cache_addr2[0:(1<<`SETS)-1];
     reg [1+17-`SETS:0]cache_addr3[0:(1<<`SETS)-1];
-    initial $readmemh("cache_init0.mem", cache_addr0);
-    initial $readmemh("cache_init1.mem", cache_addr1);
-    initial $readmemh("cache_init2.mem", cache_addr2);
-    initial $readmemh("cache_init3.mem", cache_addr3);
+
+    integer i;
+    initial begin
+        for(i = 0; i < 1 << `SETS; i = i + 1) begin
+            cache_dirty[i] = `WAYS'd0;
+            cache_lru0[i]  = `WAYS'd0;
+            cache_lru1[i]  = `WAYS'd1;
+            cache_lru2[i]  = `WAYS'd2;
+            cache_lru3[i]  = `WAYS'd3;
+            cache_addr0[i] = 19-`SETS'd0;
+            cache_addr1[i] = 19-`SETS'd1;
+            cache_addr2[i] = 19-`SETS'd2;
+            cache_addr3[i] = 19-`SETS'd3;
+        end
+    end
     
     reg [2:0]STATE = 0;
     reg [6:0]lowaddr = 0; //cache mem address
