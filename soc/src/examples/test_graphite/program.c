@@ -377,7 +377,8 @@ void main(void)
         uint32_t t1 = MEM_READ(TIMER);
 
         uint32_t t1_clear = MEM_READ(TIMER);
-        clear(0x00F333);
+        if (rasterizer_ena)
+            clear(0x00F333);
         uint32_t t2_clear = MEM_READ(TIMER);
 
         uint32_t t1_xform = MEM_READ(TIMER);
@@ -409,7 +410,7 @@ void main(void)
         uint32_t t2 = MEM_READ(TIMER);
 
         if (print_stats)
-            printf("xform: %d ms, clear: %d ms, draw: %d ms, total: %d ms, nb triangles: %d\r\n", t2_xform - t1_xform, t2_clear - t1_clear, t2_draw - t1_draw, t2 - t1, nb_triangles);
+            printf("xform: %d ms, clear: %d ms, draw: %d ms, total: %d ms, nb triangles: %d, tri/sec: %d\r\n", t2_xform - t1_xform, t2_clear - t1_clear, t2_draw - t1_draw, t2 - t1, nb_triangles, nb_triangles * 1000 / (t2 - t1));
     }
 
     dispose_img();
