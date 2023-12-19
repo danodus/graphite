@@ -1,5 +1,5 @@
 // graphite.h
-// Copyright (c) 2021-2022 Daniel Cliche
+// Copyright (c) 2021-2023 Daniel Cliche
 // SPDX-License-Identifier: MIT
 
 #ifndef GRAPHITE_H
@@ -143,10 +143,10 @@ mat4x4 matrix_point_at(vec3d* pos, vec3d* target, vec3d* up);
 mat4x4 matrix_quick_inverse(mat4x4* m);
 
 void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx32 thickness, texture_t* texture,
-                bool clamp_s, bool clamp_t);
+                bool clamp_s, bool clamp_t, bool perspective_correct);
 
 void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
                 mat4x4* mat_projection, mat4x4* mat_view, bool is_lighting_ena, bool is_wireframe, texture_t* texture,
-                bool clamp_s, bool clamp_t);
+                bool clamp_s, bool clamp_t, bool perspective_correct);
 
 #endif

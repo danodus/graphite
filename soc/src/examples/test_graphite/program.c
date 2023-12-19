@@ -96,165 +96,165 @@ void send_command(struct Command *cmd)
     MEM_WRITE(GRAPHITE, (cmd->opcode << 24) | cmd->param);
 }
 
-void xd_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1, fx32 y1,
-                      fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2, fx32 z2, fx32 u2,
-                      fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex, bool clamp_s, bool clamp_t,
-                      bool depth_test)
+void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t,
+                      bool depth_test, bool perspective_correct)                      
 {
     nb_triangles++;
     if (!rasterizer_ena)
         return;
 
-    struct Command c;
+    struct Command cmd;
 
-    c.opcode = OP_SET_X0;
-    c.param = PARAM(x0) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(x0) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_X0;
+    cmd.param = PARAM(p[0].x) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(p[0].x) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_Y0;
-    c.param = PARAM(y0) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(y0) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_Y0;
+    cmd.param = PARAM(p[0].y) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(p[0].y) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_Z0;
-    c.param = PARAM(z0) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(z0) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_Z0;
+    cmd.param = PARAM(t[0].w) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(t[0].w) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_X1;
-    c.param = PARAM(x1) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(x1) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_X1;
+    cmd.param = PARAM(p[1].x) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(p[1].x) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_Y1;
-    c.param = PARAM(y1) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(y1) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_Y1;
+    cmd.param = PARAM(p[1].y) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(p[1].y) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_Z1;
-    c.param = PARAM(z1) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(z1) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_Z1;
+    cmd.param = PARAM(t[1].w) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(t[1].w) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_X2;
-    c.param = PARAM(x2) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(x2) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_X2;
+    cmd.param = PARAM(p[2].x) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(p[2].x) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_Y2;
-    c.param = PARAM(y2) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(y2) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_Y2;
+    cmd.param = PARAM(p[2].y) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(p[2].y) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_Z2;
-    c.param = PARAM(z2) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(z2) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_Z2;
+    cmd.param = PARAM(t[2].w) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(p[2].z) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_S0;
-    c.param = PARAM(u0) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(u0) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_S0;
+    cmd.param = PARAM(t[0].u) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(t[0].u) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_T0;
-    c.param = PARAM(v0) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(v0) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_T0;
+    cmd.param = PARAM(t[0].v) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(t[0].v) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_S1;
-    c.param = PARAM(u1) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(u1) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_S1;
+    cmd.param = PARAM(t[1].u) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(t[1].u) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_T1;
-    c.param = PARAM(v1) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(v1) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_T1;
+    cmd.param = PARAM(t[1].v) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(t[1].v) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_S2;
-    c.param = PARAM(u2) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(u2) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_S2;
+    cmd.param = PARAM(t[2].u) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(t[2].u) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_T2;
-    c.param = PARAM(v2) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(v2) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_T2;
+    cmd.param = PARAM(t[2].v) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(t[2].v) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_R0;
-    c.param = PARAM(r0) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(r0) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_R0;
+    cmd.param = PARAM(c[0].x) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(c[0].x) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_G0;
-    c.param = PARAM(g0) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(g0) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_G0;
+    cmd.param = PARAM(c[0].y) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(c[0].y) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_B0;
-    c.param = PARAM(b0) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(b0) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_B0;
+    cmd.param = PARAM(c[0].z) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(c[0].z) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_R1;
-    c.param = PARAM(r1) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(r1) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_R1;
+    cmd.param = PARAM(c[1].x) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(c[1].x) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_G1;
-    c.param = PARAM(g1) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(g1) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_G1;
+    cmd.param = PARAM(c[1].y) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(c[1].y) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_B1;
-    c.param = PARAM(b1) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(b1) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_B1;
+    cmd.param = PARAM(c[1].z) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(c[1].z) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_R2;
-    c.param = PARAM(r2) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(r2) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_R2;
+    cmd.param = PARAM(c[2].x) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(c[2].x) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_G2;
-    c.param = PARAM(g2) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(g2) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_G2;
+    cmd.param = PARAM(c[2].y) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(c[2].y) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_SET_B2;
-    c.param = PARAM(b2) & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (PARAM(b2) >> 16);
-    send_command(&c);
+    cmd.opcode = OP_SET_B2;
+    cmd.param = PARAM(c[2].z) & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (PARAM(c[2].z) >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_DRAW;
-    c.param = (depth_test ? 0b1000 : 0b0000) | (clamp_s ? 0b0100 : 0b0000) | (clamp_t ? 0b0010 : 0b0000) |
-              ((tex != NULL) ? 0b0001 : 0b0000);
-    send_command(&c);
+    cmd.opcode = OP_DRAW;
+
+    cmd.param = (depth_test ? 0b01000 : 0b00000) | (clamp_s ? 0b00100 : 0b00000) | (clamp_t ? 0b00010 : 0b00000) |
+              ((tex != NULL) ? 0b00001 : 0b00000) | (perspective_correct ? 0b10000 : 0xb00000);
+
+    send_command(&cmd);
 }
 
 void clear(unsigned int color)
@@ -274,19 +274,19 @@ void clear(unsigned int color)
 void write_texture() {
     uint32_t tex_addr = 3 * FB_WIDTH * FB_HEIGHT;
 
-    struct Command c;
-    c.opcode = OP_SET_TEX_ADDR;
-    c.param = tex_addr & 0xFFFF;
-    send_command(&c);
-    c.param = 0x10000 | (tex_addr >> 16);
-    send_command(&c);
+    struct Command cmd;
+    cmd.opcode = OP_SET_TEX_ADDR;
+    cmd.param = tex_addr & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (tex_addr >> 16);
+    send_command(&cmd);
 
-    c.opcode = OP_WRITE_TEX;
+    cmd.opcode = OP_WRITE_TEX;
     const uint16_t* p = img;
     for (int t = 0; t < 32; ++t)
         for (int s = 0; s < 32; ++s) {
-            c.param = *p;
-             send_command(&c);
+            cmd.param = *p;
+             send_command(&cmd);
             p++;
         }
 }
@@ -304,7 +304,7 @@ void main(void)
 {
     printf("[q]: quit, [s]: stats, [SPACE]: rotation,\r\n"
         "[t]: texture, [l]: lighting, [w]: wireframe, [m]: teapot/cube,\r\n"
-        "[u]: clamp s, [v] clamp t, [r] rasterizer ena\r\n");
+        "[u]: clamp s, [v] clamp t, [r] rasterizer ena, [p]: perspective correct\r\n");
 
     float theta = 0.5f;
 
@@ -334,6 +334,7 @@ void main(void)
     bool is_wireframe = false;
     bool clamp_s = false;
     bool clamp_t = false;
+    bool perspective_correct = true;
 
     clear(0xF333);
 
@@ -368,6 +369,8 @@ void main(void)
                 clamp_t = !clamp_t;
             } else if (c == 'r') {
                 rasterizer_ena = !rasterizer_ena;
+            } else if (c == 'p') {
+                perspective_correct = !perspective_correct;
             } 
         }        
 
@@ -392,7 +395,7 @@ void main(void)
         uint32_t t1_draw = MEM_READ(TIMER);
         texture_t dummy_texture;
         nb_triangles = 0;
-        draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, model, &mat_world, &mat_proj, &mat_view, is_lighting_ena, is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t);
+        draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, model, &mat_world, &mat_proj, &mat_view, is_lighting_ena, is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t, perspective_correct);
         uint32_t t2_draw = MEM_READ(TIMER);
 
         swap();

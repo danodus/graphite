@@ -11,7 +11,7 @@ static int screen_scale = 3;
 
 static SDL_Renderer* renderer;
 
-bool g_rasterizer_barycentric = false;
+bool g_rasterizer_barycentric = true;
 
 void draw_pixel(int x, int y, int color) {
     float r = (float)((color >> 8) & 0xF) / 15.0f;
@@ -22,16 +22,13 @@ void draw_pixel(int x, int y, int color) {
     SDL_RenderDrawPoint(renderer, x, y);
 }
 
-void xd_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0,
-                      fx32 x1, fx32 y1, fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1,
-                      fx32 x2, fx32 y2, fx32 z2, fx32 u2, fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2,
-                      texture_t *texture, bool clamp_s, bool clamp_t, bool depth_test) {
+void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t,
+                      bool depth_test, bool perspective_correct)
+{
     if (g_rasterizer_barycentric) {
-        sw_draw_triangle_barycentric(x0, y0, z0, u0, v0, r0, g0, b0, a0, x1, y1, z1, u1, v1, r1, g1, b1, a1, x2, y2, z2, u2, v2, r2, g2,
-                        b2, a2, texture ? true : false, clamp_s, clamp_t, depth_test, true);
+        sw_draw_triangle_barycentric(p[0].x, p[0].y, t[0].w, t[0].u, t[0].v, c[0].x, c[0].y, c[0].z, c[0].w, p[1].x, p[1].y, t[1].w, t[1].u, t[1].v, c[1].x, c[1].y, c[1].z, c[1].w, p[2].x, p[2].y, t[2].w, t[2].u, t[2].v, c[2].x, c[2].y, c[2].z, c[2].w, (tex != NULL) ? true : false, clamp_s, clamp_t, depth_test, perspective_correct);
     } else {
-        sw_draw_triangle_standard(x0, y0, z0, u0, v0, r0, g0, b0, a0, x1, y1, z1, u1, v1, r1, g1, b1, a1, x2, y2, z2, u2, v2, r2, g2,
-                        b2, a2, texture ? true : false, clamp_s, clamp_t, depth_test, true);
+        sw_draw_triangle_standard(p[0].x, p[0].y, t[0].w, t[0].u, t[0].v, c[0].x, c[0].y, c[0].z, c[0].w, p[1].x, p[1].y, t[1].w, t[1].u, t[1].v, c[1].x, c[1].y, c[1].z, c[1].w, p[2].x, p[2].y, t[2].w, t[2].u, t[2].v, c[2].x, c[2].y, c[2].z, c[2].w, (tex != NULL) ? true : false, clamp_s, clamp_t, depth_test, perspective_correct);
     }
 }
 
@@ -69,6 +66,7 @@ int main() {
     bool is_textured = true;
     bool clamp_s = false;
     bool clamp_t = false;
+    bool perspective_correct = true;
 
     unsigned int time = SDL_GetTicks();
 
@@ -121,13 +119,13 @@ int main() {
 
         for(fx32 x = FX(0.0); x < FX(120.0f); x+=FX(10.0f)) {
             v1.x = x, v1.y = FX(140.0f), v1.z = FX(1.0f), v1.w = FX(1.0f);
-            draw_line(v0, v1, (vec2d){FX(0.0f), FX(0.0f), FX(0.0f)}, (vec2d){FX(0.0f), FX(0.0f), FX(0.0f)}, c0, c0, FX(1.0f), NULL, true, true);
+            draw_line(v0, v1, (vec2d){FX(0.0f), FX(0.0f), FX(0.0f)}, (vec2d){FX(0.0f), FX(0.0f), FX(0.0f)}, c0, c0, FX(1.0f), NULL, true, true, perspective_correct);
         }
 
         // Draw model
         texture_t dummy_texture;
         draw_model(screen_width, screen_height, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, is_lighting,
-                   is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t);
+                   is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t, perspective_correct);
 
         SDL_RenderPresent(renderer);
 
@@ -189,7 +187,10 @@ int main() {
                         break;
                     case SDL_SCANCODE_V:
                         clamp_t = !clamp_t;
-                        break;                                                                      
+                        break;
+                    case SDL_SCANCODE_P:
+                        perspective_correct = !perspective_correct;
+                        break;                                                                                        
                     case SDL_SCANCODE_SPACE:
                         is_anim = !is_anim;
                         break;

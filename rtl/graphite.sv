@@ -79,7 +79,7 @@ module graphite #(
     // Draw triangle
     //
 
-    logic is_textured, is_clamp_s, is_clamp_t, is_depth_test;
+    logic is_textured, is_clamp_s, is_clamp_t, is_depth_test, is_perspective_correct;
 
     logic signed [31:0] p0, p1;
     logic signed [31:0] w0, w1, w2;
@@ -329,10 +329,11 @@ module graphite #(
                     end
                     OP_DRAW: begin
                         // Draw triangle
-                        is_textured     <= cmd_axis_tdata_i[0];
-                        is_clamp_t      <= cmd_axis_tdata_i[1];
-                        is_clamp_s      <= cmd_axis_tdata_i[2];
-                        is_depth_test   <= cmd_axis_tdata_i[3];
+                        is_textured            <= cmd_axis_tdata_i[0];
+                        is_clamp_t             <= cmd_axis_tdata_i[1];
+                        is_clamp_s             <= cmd_axis_tdata_i[2];
+                        is_depth_test          <= cmd_axis_tdata_i[3];
+                        is_perspective_correct <= cmd_axis_tdata_i[4];
                         vram_mask_o     <= 4'hF;
                         min_x <= min3(12'(vv00 >> 14), 12'(vv10 >> 14), 12'(vv20 >> 14));
                         min_y <= min3(12'(vv01 >> 14), 12'(vv11 >> 14), 12'(vv21 >> 14));
@@ -614,13 +615,7 @@ module graphite #(
             end
 
             DRAW_TRIANGLE32: begin
-                // Perspective correction
                 // z = w0 * vv02 + w1 * vv12 + w2 * vv22
-                // r = r * 1/z
-                // g = g * 1/z
-                // b = b * 1/z
-                // s = s * 1/z
-                // t = t * 1/z
                 dsp_mul_p0[0] <= w0;
                 dsp_mul_p1[0] <= vv02;
                 dsp_mul_p0[1] <= w1;
@@ -679,9 +674,19 @@ module graphite #(
             end
 
             DRAW_TRIANGLE41: begin
-                reciprocal_x <= z << 12;
-                reciprocal_start <= 1'b1;
-                state <= DRAW_TRIANGLE42;
+                if (is_perspective_correct) begin
+                    // Perspective correction
+                    // r = r * 1/z
+                    // g = g * 1/z
+                    // b = b * 1/z
+                    // s = s * 1/z
+                    // t = t * 1/z
+                    reciprocal_x <= z << 12;
+                    reciprocal_start <= 1'b1;
+                    state <= DRAW_TRIANGLE42;
+                end else begin
+                    state <= DRAW_TRIANGLE48;
+                end
             end
 
             DRAW_TRIANGLE42: begin

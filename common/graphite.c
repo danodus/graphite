@@ -1,5 +1,5 @@
 // graphite.c
-// Copyright (c) 2021-2022 Daniel Cliche
+// Copyright (c) 2021-2023 Daniel Cliche
 // SPDX-License-Identifier: MIT
 
 // Ref.: One Lone Coder's 3D Graphics Engine tutorial available on YouTube
@@ -16,10 +16,8 @@
 
 #define MAX_NB_TRIANGLES    16      // maximum number of triangles produced by the clipping
 
-void xd_draw_triangle(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0, fx32 x1, fx32 y1,
-                      fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1, fx32 x2, fx32 y2, fx32 z2, fx32 u2,
-                      fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2, texture_t* tex, bool clamp_s, bool clamp_t,
-                      bool depth_test);
+void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t,
+                      bool depth_test, bool perspective_correct);
 
 vec3d matrix_multiply_vector(mat4x4* m, vec3d* i) {
     vec3d r = {MUL(i->x, m->m[0][0]) + MUL(i->y, m->m[1][0]) + MUL(i->z, m->m[2][0]) + m->m[3][0],
@@ -450,7 +448,7 @@ static fx32 clamp(fx32 x) {
 }
 
 void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx32 thickness, texture_t* texture,
-                bool clamp_s, bool clamp_t) {
+                bool clamp_s, bool clamp_t, bool perspective_correct) {
     // skip if zero thickness or length
     if (thickness == FX(0.0f) || (v0.x == v1.x && v0.y == v1.y)) return;
 
@@ -470,17 +468,50 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
     vec3d vv2 = vector_add(&v1, &miter);
     vec3d vv3 = vector_sub(&v1, &miter);
 
-    xd_draw_triangle(vv0.x, vv0.y, vv0.z, uv0.u, uv0.v, c0.x, c0.y, c0.z, c0.w, vv2.x, vv2.y, vv2.z, uv1.u,
-                     uv1.v, c1.x, c1.y, c1.z, c1.w, vv3.x, vv3.y, vv3.z, uv1.u, uv1.v, c1.x, c1.y, c1.z, c1.w,
-                     texture, clamp_s, clamp_t, false);
-    xd_draw_triangle(vv1.x, vv1.y, vv1.z, uv0.u, uv0.v, c0.x, c0.y, c0.z, c0.w, vv0.x, vv0.y, vv0.z, uv0.u,
-                     uv0.v, c0.x, c0.y, c0.z, c0.w, vv3.x, vv3.y, vv3.z, uv1.u, uv1.v, c1.x, c1.y, c1.z, c1.w,
-                     texture, clamp_s, clamp_t, false);
+    vec3d pp0[3] = {
+        {vv0.x, vv0.y, vv0.z, FX(0.0)},
+        {vv2.x, vv2.y, vv2.z, FX(0.0)},
+        {vv3.x, vv3.y, vv3.z, FX(0.0)}
+    };
+
+    vec2d tt0[3] = {
+        {uv0.u, uv0.v, uv0.w},
+        {uv1.u, uv1.v, uv1.w},
+        {uv1.u, uv1.v, uv1.w}
+    };
+
+    vec3d cc0[3] = {
+        {c0.x, c0.y, c0.z, c0.w},
+        {c1.x, c1.y, c1.z, c1.w},
+        {c1.x, c1.y, c1.z, c1.w}
+    };
+
+    xd_draw_triangle(pp0, tt0, cc0, texture, clamp_s, clamp_t, false, perspective_correct);
+
+    vec3d pp1[3] = {
+        {vv1.x, vv1.y, vv1.z, FX(0.0)},
+        {vv0.x, vv0.y, vv0.z, FX(0.0)},
+        {vv3.x, vv3.y, vv3.z, FX(0.0)}
+    };
+
+    vec2d tt1[3] = {
+        {uv0.u, uv0.v, uv0.w},
+        {uv0.u, uv0.v, uv0.w},
+        {uv1.u, uv1.v, uv1.w}
+    };
+
+    vec3d cc1[3] = {
+        {c0.x, c0.y, c0.z, c0.w},
+        {c0.x, c0.y, c0.z, c0.w},
+        {c1.x, c1.y, c1.z, c1.w}
+    };    
+
+    xd_draw_triangle(pp1, tt1, cc1, texture, clamp_s, clamp_t, false, perspective_correct);
 }
 
 void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
                 mat4x4* mat_proj, mat4x4* mat_view, bool is_lighting_ena, bool is_wireframe, texture_t* texture,
-                bool clamp_s, bool clamp_t) {
+                bool clamp_s, bool clamp_t, bool perspective_correct) {
     size_t triangle_to_raster_index = 0;
 
     // draw faces
@@ -589,33 +620,35 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 tri_projected.c[1] = clipped[n].c[1];
                 tri_projected.c[2] = clipped[n].c[2];
 
-                tri_projected.t[0].u = DIV(tri_projected.t[0].u, tri_projected.p[0].w);
-                tri_projected.t[1].u = DIV(tri_projected.t[1].u, tri_projected.p[1].w);
-                tri_projected.t[2].u = DIV(tri_projected.t[2].u, tri_projected.p[2].w);
+                if (perspective_correct) {
+                    tri_projected.t[0].u = DIV(tri_projected.t[0].u, tri_projected.p[0].w);
+                    tri_projected.t[1].u = DIV(tri_projected.t[1].u, tri_projected.p[1].w);
+                    tri_projected.t[2].u = DIV(tri_projected.t[2].u, tri_projected.p[2].w);
 
-                tri_projected.t[0].v = DIV(tri_projected.t[0].v, tri_projected.p[0].w);
-                tri_projected.t[1].v = DIV(tri_projected.t[1].v, tri_projected.p[1].w);
-                tri_projected.t[2].v = DIV(tri_projected.t[2].v, tri_projected.p[2].w);
+                    tri_projected.t[0].v = DIV(tri_projected.t[0].v, tri_projected.p[0].w);
+                    tri_projected.t[1].v = DIV(tri_projected.t[1].v, tri_projected.p[1].w);
+                    tri_projected.t[2].v = DIV(tri_projected.t[2].v, tri_projected.p[2].w);
+
+                    tri_projected.c[0].x = DIV(tri_projected.c[0].x, tri_projected.p[0].w);
+                    tri_projected.c[1].x = DIV(tri_projected.c[1].x, tri_projected.p[1].w);
+                    tri_projected.c[2].x = DIV(tri_projected.c[2].x, tri_projected.p[2].w);
+
+                    tri_projected.c[0].y = DIV(tri_projected.c[0].y, tri_projected.p[0].w);
+                    tri_projected.c[1].y = DIV(tri_projected.c[1].y, tri_projected.p[1].w);
+                    tri_projected.c[2].y = DIV(tri_projected.c[2].y, tri_projected.p[2].w);
+
+                    tri_projected.c[0].z = DIV(tri_projected.c[0].z, tri_projected.p[0].w);
+                    tri_projected.c[1].z = DIV(tri_projected.c[1].z, tri_projected.p[1].w);
+                    tri_projected.c[2].z = DIV(tri_projected.c[2].z, tri_projected.p[2].w);
+
+                    tri_projected.c[0].w = DIV(tri_projected.c[0].w, tri_projected.p[0].w);
+                    tri_projected.c[1].w = DIV(tri_projected.c[1].w, tri_projected.p[1].w);
+                    tri_projected.c[2].w = DIV(tri_projected.c[2].w, tri_projected.p[2].w);
+                }
 
                 tri_projected.t[0].w = DIV(FX(1.0f), tri_projected.p[0].w);
                 tri_projected.t[1].w = DIV(FX(1.0f), tri_projected.p[1].w);
                 tri_projected.t[2].w = DIV(FX(1.0f), tri_projected.p[2].w);
-
-                tri_projected.c[0].x = DIV(tri_projected.c[0].x, tri_projected.p[0].w);
-                tri_projected.c[1].x = DIV(tri_projected.c[1].x, tri_projected.p[1].w);
-                tri_projected.c[2].x = DIV(tri_projected.c[2].x, tri_projected.p[2].w);
-
-                tri_projected.c[0].y = DIV(tri_projected.c[0].y, tri_projected.p[0].w);
-                tri_projected.c[1].y = DIV(tri_projected.c[1].y, tri_projected.p[1].w);
-                tri_projected.c[2].y = DIV(tri_projected.c[2].y, tri_projected.p[2].w);
-
-                tri_projected.c[0].z = DIV(tri_projected.c[0].z, tri_projected.p[0].w);
-                tri_projected.c[1].z = DIV(tri_projected.c[1].z, tri_projected.p[1].w);
-                tri_projected.c[2].z = DIV(tri_projected.c[2].z, tri_projected.p[2].w);
-
-                tri_projected.c[0].w = DIV(tri_projected.c[0].w, tri_projected.p[0].w);
-                tri_projected.c[1].w = DIV(tri_projected.c[1].w, tri_projected.p[1].w);
-                tri_projected.c[2].w = DIV(tri_projected.c[2].w, tri_projected.p[2].w);
 
                 // scale into view
                 tri_projected.p[0] = vector_div(&tri_projected.p[0], tri_projected.p[0].w);
@@ -734,29 +767,26 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
 
             // rasterize triangle
             if (is_wireframe) {
-                draw_line((vec3d){t->p[0].x, t->p[0].y, t->t[0].w, FX(0.0f)},
-                          (vec3d){t->p[1].x, t->p[1].y, t->t[1].w, FX(0.0f)},
-                          (vec2d){t->t[0].u, t->t[0].v, FX(0.0f)},
-                          (vec2d){t->t[1].u, t->t[1].v, FX(0.0f)},
+                draw_line((vec3d){t->p[0].x, t->p[0].y, FX(0.0f), FX(0.0f)},
+                          (vec3d){t->p[1].x, t->p[1].y, FX(0.0f), FX(0.0f)},
+                          (vec2d){t->t[0].u, t->t[0].v, t->t[0].w},
+                          (vec2d){t->t[1].u, t->t[1].v, t->t[1].w},
                           (vec3d){t->c[0].x, t->c[0].y, t->c[0].z, t->c[0].w},
-                          (vec3d){t->c[1].x, t->c[1].y, t->c[1].z, t->c[1].w}, FX(1.0f), texture, clamp_s, clamp_t);
-                draw_line((vec3d){t->p[1].x, t->p[1].y, t->t[1].w, FX(0.0f)},
-                          (vec3d){t->p[2].x, t->p[2].y, t->t[2].w, FX(0.0f)},
-                          (vec2d){t->t[1].u, t->t[1].v, FX(0.0f)},
-                          (vec2d){t->t[2].u, t->t[2].v, FX(0.0f)},
+                          (vec3d){t->c[1].x, t->c[1].y, t->c[1].z, t->c[1].w}, FX(1.0f), texture, clamp_s, clamp_t, perspective_correct);
+                draw_line((vec3d){t->p[1].x, t->p[1].y, FX(0.0f), FX(0.0f)},
+                          (vec3d){t->p[2].x, t->p[2].y, FX(0.0f), FX(0.0f)},
+                          (vec2d){t->t[1].u, t->t[1].v, t->t[1].w},
+                          (vec2d){t->t[2].u, t->t[2].v, t->t[2].w},
                           (vec3d){t->c[1].x, t->c[1].y, t->c[1].z, t->c[1].w},
-                          (vec3d){t->c[2].x, t->c[2].y, t->c[2].z, t->c[2].w}, FX(1.0f), texture, clamp_s, clamp_t);
-                draw_line((vec3d){t->p[2].x, t->p[2].y, t->t[2].w, FX(0.0f)},
-                          (vec3d){t->p[0].x, t->p[0].y, t->t[0].w, FX(0.0f)},
-                          (vec2d){t->t[2].u, t->t[2].v, FX(0.0f)},
-                          (vec2d){t->t[0].u, t->t[0].v, FX(0.0f)},
+                          (vec3d){t->c[2].x, t->c[2].y, t->c[2].z, t->c[2].w}, FX(1.0f), texture, clamp_s, clamp_t, perspective_correct);
+                draw_line((vec3d){t->p[2].x, t->p[2].y, FX(0.0f), FX(0.0f)},
+                          (vec3d){t->p[0].x, t->p[0].y, FX(0.0f), FX(0.0f)},
+                          (vec2d){t->t[2].u, t->t[2].v, t->t[2].w},
+                          (vec2d){t->t[0].u, t->t[0].v, t->t[0].w},
                           (vec3d){t->c[2].x, t->c[2].y, t->c[2].z, t->c[2].w},
-                          (vec3d){t->c[0].x, t->c[0].y, t->c[0].z, t->c[0].w}, FX(1.0f), texture, clamp_s, clamp_t);
+                          (vec3d){t->c[0].x, t->c[0].y, t->c[0].z, t->c[0].w}, FX(1.0f), texture, clamp_s, clamp_t, perspective_correct);
             } else {
-                xd_draw_triangle(t->p[0].x, t->p[0].y, t->t[0].w, t->t[0].u, t->t[0].v, t->c[0].x, t->c[0].y, t->c[0].z,
-                                 t->c[0].w, t->p[1].x, t->p[1].y, t->t[1].w, t->t[1].u, t->t[1].v, t->c[1].x, t->c[1].y,
-                                 t->c[1].z, t->c[1].w, t->p[2].x, t->p[2].y, t->t[2].w, t->t[2].u, t->t[2].v, t->c[2].x,
-                                 t->c[2].y, t->c[2].z, t->c[2].w, texture, clamp_s, clamp_t, true);
+                xd_draw_triangle(t->p, t->t, t->c, texture, clamp_s, clamp_t, true, perspective_correct);
             }
         }
     }

@@ -24,10 +24,10 @@ void sw_fragment_shader(int fb_width, int x, int y, fx32 z, fx32 u, fx32 v, fx32
         // Perspective correction
         fx32 inv_z = reciprocal(z);
         inv_z = DIV(inv_z, FX(RECIPROCAL_NUMERATOR));
-        u = MUL(u, inv_z);
-        v = MUL(v, inv_z);
 
         if (persp_correct) {
+            u = MUL(u, inv_z);
+            v = MUL(v, inv_z);
             r = MUL(r, inv_z);
             g = MUL(g, inv_z);
             b = MUL(b, inv_z);
