@@ -620,40 +620,46 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 tri_projected.c[1] = clipped[n].c[1];
                 tri_projected.c[2] = clipped[n].c[2];
 
+                fx32 recip_w[3] = {
+                    DIV(FX(1.0f), tri_projected.p[0].w),
+                    DIV(FX(1.0f), tri_projected.p[1].w),
+                    DIV(FX(1.0f), tri_projected.p[2].w)
+                };
+
                 if (perspective_correct) {
-                    tri_projected.t[0].u = DIV(tri_projected.t[0].u, tri_projected.p[0].w);
-                    tri_projected.t[1].u = DIV(tri_projected.t[1].u, tri_projected.p[1].w);
-                    tri_projected.t[2].u = DIV(tri_projected.t[2].u, tri_projected.p[2].w);
+                    tri_projected.t[0].u = MUL(tri_projected.t[0].u, recip_w[0]);
+                    tri_projected.t[1].u = MUL(tri_projected.t[1].u, recip_w[1]);
+                    tri_projected.t[2].u = MUL(tri_projected.t[2].u, recip_w[2]);
 
-                    tri_projected.t[0].v = DIV(tri_projected.t[0].v, tri_projected.p[0].w);
-                    tri_projected.t[1].v = DIV(tri_projected.t[1].v, tri_projected.p[1].w);
-                    tri_projected.t[2].v = DIV(tri_projected.t[2].v, tri_projected.p[2].w);
+                    tri_projected.t[0].v = MUL(tri_projected.t[0].v, recip_w[0]);
+                    tri_projected.t[1].v = MUL(tri_projected.t[1].v, recip_w[1]);
+                    tri_projected.t[2].v = MUL(tri_projected.t[2].v, recip_w[2]);
 
-                    tri_projected.c[0].x = DIV(tri_projected.c[0].x, tri_projected.p[0].w);
-                    tri_projected.c[1].x = DIV(tri_projected.c[1].x, tri_projected.p[1].w);
-                    tri_projected.c[2].x = DIV(tri_projected.c[2].x, tri_projected.p[2].w);
+                    tri_projected.c[0].x = MUL(tri_projected.c[0].x, recip_w[0]);
+                    tri_projected.c[1].x = MUL(tri_projected.c[1].x, recip_w[1]);
+                    tri_projected.c[2].x = MUL(tri_projected.c[2].x, recip_w[2]);
 
-                    tri_projected.c[0].y = DIV(tri_projected.c[0].y, tri_projected.p[0].w);
-                    tri_projected.c[1].y = DIV(tri_projected.c[1].y, tri_projected.p[1].w);
-                    tri_projected.c[2].y = DIV(tri_projected.c[2].y, tri_projected.p[2].w);
+                    tri_projected.c[0].y = MUL(tri_projected.c[0].y, recip_w[0]);
+                    tri_projected.c[1].y = MUL(tri_projected.c[1].y, recip_w[1]);
+                    tri_projected.c[2].y = MUL(tri_projected.c[2].y, recip_w[2]);
 
-                    tri_projected.c[0].z = DIV(tri_projected.c[0].z, tri_projected.p[0].w);
-                    tri_projected.c[1].z = DIV(tri_projected.c[1].z, tri_projected.p[1].w);
-                    tri_projected.c[2].z = DIV(tri_projected.c[2].z, tri_projected.p[2].w);
+                    tri_projected.c[0].z = MUL(tri_projected.c[0].z, recip_w[0]);
+                    tri_projected.c[1].z = MUL(tri_projected.c[1].z, recip_w[1]);
+                    tri_projected.c[2].z = MUL(tri_projected.c[2].z, recip_w[2]);
 
-                    tri_projected.c[0].w = DIV(tri_projected.c[0].w, tri_projected.p[0].w);
-                    tri_projected.c[1].w = DIV(tri_projected.c[1].w, tri_projected.p[1].w);
-                    tri_projected.c[2].w = DIV(tri_projected.c[2].w, tri_projected.p[2].w);
+                    tri_projected.c[0].w = MUL(tri_projected.c[0].w, recip_w[0]);
+                    tri_projected.c[1].w = MUL(tri_projected.c[1].w, recip_w[1]);
+                    tri_projected.c[2].w = MUL(tri_projected.c[2].w, recip_w[2]);
                 }
 
-                tri_projected.t[0].w = DIV(FX(1.0f), tri_projected.p[0].w);
-                tri_projected.t[1].w = DIV(FX(1.0f), tri_projected.p[1].w);
-                tri_projected.t[2].w = DIV(FX(1.0f), tri_projected.p[2].w);
+                tri_projected.t[0].w = recip_w[0];
+                tri_projected.t[1].w = recip_w[1];
+                tri_projected.t[2].w = recip_w[2];
 
                 // scale into view
-                tri_projected.p[0] = vector_div(&tri_projected.p[0], tri_projected.p[0].w);
-                tri_projected.p[1] = vector_div(&tri_projected.p[1], tri_projected.p[1].w);
-                tri_projected.p[2] = vector_div(&tri_projected.p[2], tri_projected.p[2].w);
+                tri_projected.p[0] = vector_mul(&tri_projected.p[0], recip_w[0]);
+                tri_projected.p[1] = vector_mul(&tri_projected.p[1], recip_w[1]);
+                tri_projected.p[2] = vector_mul(&tri_projected.p[2], recip_w[2]);
 
                 // offset vertices into visible normalized space
                 vec3d vec_offset_view = {FX(1.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
@@ -661,8 +667,8 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 tri_projected.p[1] = vector_add(&tri_projected.p[1], &vec_offset_view);
                 tri_projected.p[2] = vector_add(&tri_projected.p[2], &vec_offset_view);
 
-                fx32 w = FX(0.5f * (float)viewport_width);
-                fx32 h = FX(0.5f * (float)viewport_height);
+                fx32 w = FX(viewport_width / 2);
+                fx32 h = FX(viewport_height / 2);
                 tri_projected.p[0].x = MUL(tri_projected.p[0].x, w);
                 tri_projected.p[0].y = MUL(tri_projected.p[0].y, h);
                 tri_projected.p[1].x = MUL(tri_projected.p[1].x, w);
