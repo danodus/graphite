@@ -51,10 +51,11 @@ module ulx3s_v31_top(
 
 `ifdef FAST_CPU
     localparam cpu_clock_hz = 100_000_000;
-`else
-    localparam cpu_clock_hz = 50_000_000;
-`endif
     localparam sdram_clock_hz = 100_000_000;
+`else
+    localparam cpu_clock_hz = 40_000_000;
+    localparam sdram_clock_hz = 80_000_000;
+`endif
     localparam pixel_clock_hz = 25_000_000;
 
     assign wifi_gpio0 = btn[0];

@@ -5,7 +5,7 @@ import time
 delay_word = 0
 delay_block = 0
 
-fast_cpu = 1
+fast_cpu = 0
 baudrate = fast_cpu and 230400 or 115200
 
 def send(ser, bytes, delay):

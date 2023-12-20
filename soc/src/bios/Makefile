@@ -11,7 +11,7 @@ CC = ${RISCV_TOOLCHAIN_PATH}${RISCV_TOOLCHAIN_PREFIX}gcc
 RISCV_CC_OPT ?= -march=rv32im -mabi=ilp32
 
 PROGRAM_SOURCE = start.S program.c
-CC_OPT = -DFAST_CPU=1
+CC_OPT = -DFAST_CPU=0
 
 SERIAL ?= /dev/tty.usbserial-ibNy7k1v1
 
