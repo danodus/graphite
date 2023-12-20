@@ -44,7 +44,7 @@
 
 `timescale 1ns / 1ps
 `define WAYS	2	// 2^ways
-`define SETS	4	// 2^sets
+`define SETS	5	// 2^sets
 
 module cache_controller(
      input [25:0] addr,
@@ -136,7 +136,7 @@ module cache_controller(
 
         bram32bit
         #(
-          .addr_width(12)
+          .addr_width(13)
         )
         bram32bit_inst
         (

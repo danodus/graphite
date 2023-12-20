@@ -3,7 +3,7 @@
 
 module bram32bit
 #(
-	parameter addr_width = 12
+	parameter addr_width = 13
 )
 (
 	input			clk_a,
@@ -23,20 +23,20 @@ module bram32bit
         wire wr_a = |we_a;
         wire wr_b = |we_b;
 
-	wire [31:0] doa[0:3], dob[0:3];
-	assign data_out_a = doa[addr_a[11:10]];
-	assign data_out_b = dob[addr_b[11:10]];
+	wire [31:0] doa[0:7], dob[0:7];
+	assign data_out_a = doa[addr_a[12:10]];
+	assign data_out_b = dob[addr_b[12:10]];
 
 	generate
 	  genvar i, j;
-	  for(i = 0; i < 4; i = i + 1) // 4*1024 addr
+	  for(i = 0; i < 8; i = i + 1) // 8*1024 addr
 	    for(j = 0; j < 2; j = j + 1) // 2*16 data
 	      DP16KD
 	      #(
 		.DATA_WIDTH_A(18),
 		.DATA_WIDTH_B(18),
-		.CSDECODE_A(i==0 ? "0b000" : i==1 ? "0b001" : i==2 ? "0b010" : "0b011"),
-		.CSDECODE_B(i==0 ? "0b000" : i==1 ? "0b001" : i==2 ? "0b010" : "0b011"),
+		.CSDECODE_A(i==0 ? "0b000" : i==1 ? "0b001" : i==2 ? "0b010" : i==3 ? "0b011" : i==4 ? "0b100" : i==5 ? "0b101" : i==6 ? "0b110" : "0b111"),
+		.CSDECODE_B(i==0 ? "0b000" : i==1 ? "0b001" : i==2 ? "0b010" : i==3 ? "0b011" : i==4 ? "0b100" : i==5 ? "0b101" : i==6 ? "0b110" : "0b111"),
 		// WRITEMODE and REGMODE can be commented out and it still works
 		//.WRITEMODE_A("WRITETHROUGH"),
 		//.WRITEMODE_B("WRITETHROUGH"),
@@ -64,8 +64,8 @@ module bram32bit
 		.DOB9(dob[i][8+j*16]), .DOB10(dob[i][ 9+j*16]), .DOB11(dob[i][10+j*16]), .DOB12(dob[i][11+j*16]), .DOB13(dob[i][12+j*16]), .DOB14(dob[i][13+j*16]), .DOB15(dob[i][14+j*16]), .DOB16(dob[i][15+j*16]), .DOB17(),
 		.WEA(wr_a), .CEA(clken_a), .OCEA(clken_a),
 		.WEB(wr_b), .CEB(clken_b), .OCEB(clken_b),
-		.CSA2(1'b0), .CSA1(addr_a[11]), .CSA0(addr_a[10]),
-		.CSB2(1'b0), .CSB1(addr_b[11]), .CSB0(addr_b[10]),
+		.CSA2(addr_a[12]), .CSA1(addr_a[11]), .CSA0(addr_a[10]),
+		.CSB2(addr_b[12]), .CSB1(addr_b[11]), .CSB0(addr_b[10]),
 		.RSTA(1'b0), .RSTB(1'b0)
 	      );
 	endgenerate
