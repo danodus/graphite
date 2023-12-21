@@ -21,7 +21,7 @@ module rv32_control_unit (
     output logic rs1_read_out,
     output logic rs2_read_out,
     output logic [2:0] imm_out,
-    output logic [2:0] alu_op_out,
+    output logic [3:0] alu_op_out,
     output logic alu_sub_sra_out,
     output logic [1:0] alu_src1_out,
     output logic [1:0] alu_src2_out,
@@ -46,7 +46,7 @@ module rv32_control_unit (
         rs1_read_out = 0;
         rs2_read_out = 0;
         imm_out = 3'bx;
-        alu_op_out = 3'bx;
+        alu_op_out = 4'bx;
         alu_sub_sra_out = 1'bx;
         alu_src1_out = 2'bx;
         alu_src2_out = 2'bx;
@@ -538,6 +538,16 @@ module rv32_control_unit (
                 csr_src_out = `RV32_CSR_SRC_IMM;
                 rd_write_out = 1;
             end
+            `RV32_INSTR_FXMUL: begin
+                valid_out = 1;
+                rs1_read_out = 1;
+                rs2_read_out = 1;
+                alu_op_out = `RV32_ALU_OP_FXMUL;
+                alu_sub_sra_out = 0;
+                alu_src1_out = `RV32_ALU_SRC1_REG;
+                alu_src2_out = `RV32_ALU_SRC2_REG;
+                rd_write_out = 1;
+            end            
         endcase
     end
 endmodule

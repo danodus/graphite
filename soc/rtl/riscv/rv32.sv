@@ -105,7 +105,7 @@ module rv32 #(
     logic [3:0] decode_exception_cause;
     logic [4:0] decode_rs1;
     logic [4:0] decode_rs2;
-    logic [2:0] decode_alu_op;
+    logic [3:0] decode_alu_op;
     logic decode_alu_sub_sra;
     logic [1:0] decode_alu_src1;
     logic [1:0] decode_alu_src2;

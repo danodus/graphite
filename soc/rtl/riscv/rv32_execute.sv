@@ -42,7 +42,7 @@ module rv32_execute #(
     input [3:0] exception_cause_in,
     input [4:0] rs1_in,
     input [4:0] rs2_in,
-    input [2:0] alu_op_in,
+    input [3:0] alu_op_in,
     input alu_sub_sra_in,
     input [1:0] alu_src1_in,
     input [1:0] alu_src2_in,

@@ -80,10 +80,8 @@ int receive_program()
 
 void main(void)
 {
-#if FAST_CPU
     // Fast bitrate
     MEM_WRITE(UART_STATUS, 0x1);
-#endif
 
     if (receive_program())
         start_prog();

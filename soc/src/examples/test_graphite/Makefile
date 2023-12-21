@@ -16,7 +16,7 @@ SERIAL ?= /dev/tty.usbserial-D00039
 
 LDFILE ?= program.ld
 
-EXTRA_CC_ARGS = -DRV_FIXED_POINT_EXTENSION=0
+EXTRA_CC_ARGS = -DRV_FIXED_POINT_EXTENSION=1
 
 all: program.hex
 

@@ -61,7 +61,7 @@ module rv32_decode (
     output logic [3:0] exception_cause_out,
     output logic [4:0] rs1_out,
     output logic [4:0] rs2_out,
-    output logic [2:0] alu_op_out,
+    output logic [3:0] alu_op_out,
     output logic alu_sub_sra_out,
     output logic [1:0] alu_src1_out,
     output logic [1:0] alu_src2_out,
@@ -124,7 +124,7 @@ module rv32_decode (
     logic rs1_read;
     logic rs2_read;
     logic [2:0] imm;
-    logic [2:0] alu_op;
+    logic [3:0] alu_op;
     logic alu_sub_sra;
     logic [1:0] alu_src1;
     logic [1:0] alu_src2;

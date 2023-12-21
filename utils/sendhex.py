@@ -5,8 +5,7 @@ import time
 delay_word = 0
 delay_block = 0
 
-fast_cpu = 0
-baudrate = fast_cpu and 230400 or 115200
+baudrate = 230400
 
 def send(ser, bytes, delay):
     ser.write(bytes)
