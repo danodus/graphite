@@ -485,6 +485,7 @@ int main(int argc, char** argv, char** env) {
     bool anim = false;
     bool wireframe = false;
     bool lighting = false;
+    bool gouraud_shading = false;
     bool textured = true;
     bool clamp_s = false;
     bool clamp_t = false;
@@ -532,9 +533,9 @@ int main(int argc, char** argv, char** env) {
             mat4x4 mat_rot_x = matrix_make_rotation_x(theta);
 
             mat4x4 mat_trans = matrix_make_translation(FX(0.0f), FX(0.0f), FX(2.0f));
-            mat4x4 mat_world;
+            mat4x4 mat_world, mat_normal;
             mat_world = matrix_make_identity();
-            mat_world = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
+            mat_world = mat_normal = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
             mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
 
             if (texture_dirty || dump) {
@@ -545,7 +546,7 @@ int main(int argc, char** argv, char** env) {
             if (current_model) {
                 // Draw cube
                 texture_t dummy_texture;
-                draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, lighting,
+                draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, current_model, &mat_world, gouraud_shading ? &mat_normal : NULL, &mat_proj, &mat_view, lighting,
                            wireframe, textured ? &dummy_texture : NULL, clamp_s, clamp_t, perspective_correct);
 
                 swap();
@@ -600,6 +601,9 @@ int main(int argc, char** argv, char** env) {
                         case SDL_SCANCODE_L:
                             lighting = !lighting;
                             break;
+                        case SDL_SCANCODE_G:
+                            gouraud_shading = !gouraud_shading;
+                            break;                            
                         case SDL_SCANCODE_T:
                             textured = !textured;
                             break;

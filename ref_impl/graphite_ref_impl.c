@@ -63,6 +63,7 @@ int main() {
     bool is_anim = false;
     bool is_wireframe = false;
     bool is_lighting = false;
+    bool is_gouraud_shading = false;
     bool is_textured = true;
     bool clamp_s = false;
     bool clamp_t = false;
@@ -105,11 +106,11 @@ int main() {
         mat4x4 mat_rot_x = matrix_make_rotation_x(theta);
         mat4x4 mat_scale = matrix_make_scale(FX(scale), FX(scale), FX(scale));
         mat4x4 mat_trans = matrix_make_translation(FX(0.0f), FX(0.0f), FX(2.0f));
-        mat4x4 mat_world;
+        mat4x4 mat_world, mat_normal;
         mat_world = matrix_make_identity();
-        mat_world = matrix_multiply_matrix(&mat_world, &mat_scale);
         mat_world = matrix_multiply_matrix(&mat_world, &mat_rot_z);
-        mat_world = matrix_multiply_matrix(&mat_world, &mat_rot_x);
+        mat_world = mat_normal = matrix_multiply_matrix(&mat_world, &mat_rot_x);
+        mat_world = matrix_multiply_matrix(&mat_world, &mat_scale);
         mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
 
         // Draw lines
@@ -124,7 +125,7 @@ int main() {
 
         // Draw model
         texture_t dummy_texture;
-        draw_model(screen_width, screen_height, &vec_camera, current_model, &mat_world, &mat_proj, &mat_view, is_lighting,
+        draw_model(screen_width, screen_height, &vec_camera, current_model, &mat_world, is_gouraud_shading ? &mat_normal : NULL, &mat_proj, &mat_view, is_lighting,
                    is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t, perspective_correct);
 
         SDL_RenderPresent(renderer);
@@ -179,6 +180,9 @@ int main() {
                     case SDL_SCANCODE_L:
                         is_lighting = !is_lighting;
                         break;
+                    case SDL_SCANCODE_G:
+                        is_gouraud_shading = !is_gouraud_shading;
+                        break;                        
                     case SDL_SCANCODE_T:
                         is_textured = !is_textured;
                         break;

@@ -96,16 +96,19 @@ typedef struct {
     vec3d p[3];
     vec2d t[3];
     vec3d c[3];
+    vec3d n[3];
 } triangle_t;
 
 typedef struct {
     size_t nb_vertices;
     size_t nb_texcoords;
     size_t nb_colors;
+    size_t nb_normals;
     size_t nb_faces;
     vec3d* vertices;
     vec2d* texcoords;
     vec3d* colors;
+    vec3d* normals;
     face_t* faces;
 } mesh_t;
 
@@ -146,7 +149,7 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
                 bool clamp_s, bool clamp_t, bool perspective_correct);
 
 void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
-                mat4x4* mat_projection, mat4x4* mat_view, bool is_lighting_ena, bool is_wireframe, texture_t* texture,
+                mat4x4* mat_normal, mat4x4* mat_projection, mat4x4* mat_view, bool is_lighting_ena, bool is_wireframe, texture_t* texture,
                 bool clamp_s, bool clamp_t, bool perspective_correct);
 
 #endif

@@ -101,6 +101,10 @@ int triangle_clip_against_plane(vec3d plane_p, vec3d plane_n, triangle_t* in_tri
     int nb_inside_colors = 0;
     vec3d* outside_colors[3];
     int nb_outside_colors = 0;
+    vec3d* inside_normals[3];
+    int nb_inside_normals = 0;
+    vec3d* outside_normals[3];
+    int nb_outside_normals = 0;
 
     // get signed distance of each point in triangle to plane
     fx32 d0 = dist_point_to_plane(&plane_p, &plane_n, &in_tri->p[0]);
@@ -111,28 +115,34 @@ int triangle_clip_against_plane(vec3d plane_p, vec3d plane_n, triangle_t* in_tri
         inside_points[nb_inside_points++] = &in_tri->p[0];
         inside_texcoords[nb_inside_texcoords++] = &in_tri->t[0];
         inside_colors[nb_inside_colors++] = &in_tri->c[0];
+        inside_normals[nb_inside_normals++] = &in_tri->n[0];
     } else {
         outside_points[nb_outside_points++] = &in_tri->p[0];
         outside_texcoords[nb_outside_texcoords++] = &in_tri->t[0];
         outside_colors[nb_outside_colors++] = &in_tri->c[0];
+        outside_normals[nb_outside_normals++] = &in_tri->n[0];
     }
     if (d1 >= FX(0.0f)) {
         inside_points[nb_inside_points++] = &in_tri->p[1];
         inside_texcoords[nb_inside_texcoords++] = &in_tri->t[1];
         inside_colors[nb_inside_colors++] = &in_tri->c[1];
+        inside_normals[nb_inside_normals++] = &in_tri->n[1];
     } else {
         outside_points[nb_outside_points++] = &in_tri->p[1];
         outside_texcoords[nb_outside_texcoords++] = &in_tri->t[1];
         outside_colors[nb_outside_colors++] = &in_tri->c[1];
+        outside_normals[nb_outside_normals++] = &in_tri->n[1];
     }
     if (d2 >= FX(0.0f)) {
         inside_points[nb_inside_points++] = &in_tri->p[2];
         inside_texcoords[nb_inside_texcoords++] = &in_tri->t[2];
         inside_colors[nb_inside_colors++] = &in_tri->c[2];
+        inside_normals[nb_inside_normals++] = &in_tri->n[2];
     } else {
         outside_points[nb_outside_points++] = &in_tri->p[2];
         outside_texcoords[nb_outside_texcoords] = &in_tri->t[2];
         outside_colors[nb_outside_colors++] = &in_tri->c[2];
+        outside_normals[nb_outside_normals++] = &in_tri->n[2];
     }
 
     // classify triangle points and break the input triangle into smaller output triangles if required
@@ -157,6 +167,7 @@ int triangle_clip_against_plane(vec3d plane_p, vec3d plane_n, triangle_t* in_tri
         out_tri1->p[0] = *inside_points[0];
         out_tri1->t[0] = *inside_texcoords[0];
         out_tri1->c[0] = *inside_colors[0];
+        out_tri1->n[0] = *inside_normals[0];
 
         // but the two new points are at the location where the original sides of the triangle (lines) intersect with
         // the plane
@@ -169,6 +180,10 @@ int triangle_clip_against_plane(vec3d plane_p, vec3d plane_n, triangle_t* in_tri
         out_tri1->c[1].y = MUL(t, outside_colors[0]->y - inside_colors[0]->y) + inside_colors[0]->y;
         out_tri1->c[1].z = MUL(t, outside_colors[0]->z - inside_colors[0]->z) + inside_colors[0]->z;
         out_tri1->c[1].w = MUL(t, outside_colors[0]->w - inside_colors[0]->w) + inside_colors[0]->w;
+        out_tri1->n[1].x = MUL(t, outside_normals[0]->x - inside_normals[0]->x) + inside_normals[0]->x;
+        out_tri1->n[1].y = MUL(t, outside_normals[0]->y - inside_normals[0]->y) + inside_normals[0]->y;
+        out_tri1->n[1].z = MUL(t, outside_normals[0]->z - inside_normals[0]->z) + inside_normals[0]->z;
+        out_tri1->n[1].w = MUL(t, outside_normals[0]->w - inside_normals[0]->w) + inside_normals[0]->w;
 
         out_tri1->p[2] = vector_intersect_plane(&plane_p, &plane_n, inside_points[0], outside_points[1], &t);
         out_tri1->t[2].u = MUL(t, outside_texcoords[1]->u - inside_texcoords[0]->u) + inside_texcoords[0]->u;
@@ -178,6 +193,10 @@ int triangle_clip_against_plane(vec3d plane_p, vec3d plane_n, triangle_t* in_tri
         out_tri1->c[2].y = MUL(t, outside_colors[1]->y - inside_colors[0]->y) + inside_colors[0]->y;
         out_tri1->c[2].z = MUL(t, outside_colors[1]->z - inside_colors[0]->z) + inside_colors[0]->z;
         out_tri1->c[2].w = MUL(t, outside_colors[1]->w - inside_colors[0]->w) + inside_colors[0]->w;
+        out_tri1->n[2].x = MUL(t, outside_normals[1]->x - inside_normals[0]->x) + inside_normals[0]->x;
+        out_tri1->n[2].y = MUL(t, outside_normals[1]->y - inside_normals[0]->y) + inside_normals[0]->y;
+        out_tri1->n[2].z = MUL(t, outside_normals[1]->z - inside_normals[0]->z) + inside_normals[0]->z;
+        out_tri1->n[2].w = MUL(t, outside_normals[1]->w - inside_normals[0]->w) + inside_normals[0]->w;
 
         return 1;  // return the newly formed single triangle
     }
@@ -204,6 +223,10 @@ int triangle_clip_against_plane(vec3d plane_p, vec3d plane_n, triangle_t* in_tri
         out_tri1->c[2].y = MUL(t, outside_colors[0]->y - inside_colors[0]->y) + inside_colors[0]->y;
         out_tri1->c[2].z = MUL(t, outside_colors[0]->z - inside_colors[0]->z) + inside_colors[0]->z;
         out_tri1->c[2].w = MUL(t, outside_colors[0]->w - inside_colors[0]->w) + inside_colors[0]->w;
+        out_tri1->n[2].x = MUL(t, outside_normals[0]->x - inside_normals[0]->x) + inside_normals[0]->x;
+        out_tri1->n[2].y = MUL(t, outside_normals[0]->y - inside_normals[0]->y) + inside_normals[0]->y;
+        out_tri1->n[2].z = MUL(t, outside_normals[0]->z - inside_normals[0]->z) + inside_normals[0]->z;
+        out_tri1->n[2].w = MUL(t, outside_normals[0]->w - inside_normals[0]->w) + inside_normals[0]->w;
 
         // The second triangle is composed of one the the inside points, a new point determined by the intersection
         // of the other side of the triangle and the plane, and the newly created point above
@@ -218,9 +241,14 @@ int triangle_clip_against_plane(vec3d plane_p, vec3d plane_n, triangle_t* in_tri
         out_tri2->c[1].y = MUL(t, outside_colors[0]->y - inside_colors[1]->y) + inside_colors[1]->y;
         out_tri2->c[1].z = MUL(t, outside_colors[0]->z - inside_colors[1]->z) + inside_colors[1]->z;
         out_tri2->c[1].w = MUL(t, outside_colors[0]->w - inside_colors[1]->w) + inside_colors[1]->w;
+        out_tri2->n[1].x = MUL(t, outside_normals[0]->x - inside_normals[1]->x) + inside_normals[1]->x;
+        out_tri2->n[1].y = MUL(t, outside_normals[0]->y - inside_normals[1]->y) + inside_normals[1]->y;
+        out_tri2->n[1].z = MUL(t, outside_normals[0]->z - inside_normals[1]->z) + inside_normals[1]->z;
+        out_tri2->n[1].w = MUL(t, outside_normals[0]->w - inside_normals[1]->w) + inside_normals[1]->w;
         out_tri2->p[2] = out_tri1->p[2];
         out_tri2->t[2] = out_tri1->t[2];
         out_tri2->c[2] = out_tri1->c[2];
+        out_tri2->n[2] = out_tri1->n[2];
 
         return 2;  // return two newly formed triangles which form a quad
     }
@@ -510,7 +538,7 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
 }
 
 void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
-                mat4x4* mat_proj, mat4x4* mat_view, bool is_lighting_ena, bool is_wireframe, texture_t* texture,
+                mat4x4* mat_normal, mat4x4* mat_proj, mat4x4* mat_view, bool is_lighting_ena, bool is_wireframe, texture_t* texture,
                 bool clamp_s, bool clamp_t, bool perspective_correct) {
     size_t triangle_to_raster_index = 0;
 
@@ -539,6 +567,15 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
             tri.c[1] = (vec3d){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
             tri.c[2] = (vec3d){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
         }
+        if (model->mesh.normals) {
+            tri.n[0] = model->mesh.normals[face->indices[0]];
+            tri.n[1] = model->mesh.normals[face->indices[1]];
+            tri.n[2] = model->mesh.normals[face->indices[2]];
+        } else {
+            tri.n[0] = (vec3d){FX(0.0f), FX(0.0f), FX(0.0f), FX(0.0f)};
+            tri.n[1] = (vec3d){FX(0.0f), FX(0.0f), FX(0.0f), FX(0.0f)};
+            tri.n[2] = (vec3d){FX(0.0f), FX(0.0f), FX(0.0f), FX(0.0f)};
+        }
 
         triangle_t tri_viewed, tri_projected, tri_transformed;
 
@@ -551,6 +588,11 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
         tri_transformed.c[0] = tri.c[0];
         tri_transformed.c[1] = tri.c[1];
         tri_transformed.c[2] = tri.c[2];
+        if (mat_normal != NULL) {
+            tri_transformed.n[0] = matrix_multiply_vector(mat_normal, &tri.n[0]);
+            tri_transformed.n[1] = matrix_multiply_vector(mat_normal, &tri.n[1]);
+            tri_transformed.n[2] = matrix_multiply_vector(mat_normal, &tri.n[2]);
+        }
 
         // calculate the normal
         vec3d normal, line1, line2;
@@ -576,17 +618,37 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 vec3d light_direction = {FX(0.0f), FX(0.0f), FX(-1.0f), FX(1.0f)};
                 light_direction = vector_normalize(&light_direction);
 
-                // how "aligned" are light direction and triangle surface normal?
-                vec3d n = vector_mul(&normal, FXI(16)); // to fix precision issue with small triangles in fixed point
-                n = vector_normalize(&n);
-                dp = vector_dot_product(&light_direction, &n);
+                if ((model->mesh.nb_normals > 0) && (mat_normal != NULL)) {
 
-                if (dp < FX(0.0f)) dp = FX(0.0f);
+                    //
+                    // Gouraud shading
+                    //
 
-                // note: alpha is currently forced to 1 here
-                tri_transformed.c[0] = vector_mul(&tri_transformed.c[0], dp);
-                tri_transformed.c[1] = vector_mul(&tri_transformed.c[1], dp);
-                tri_transformed.c[2] = vector_mul(&tri_transformed.c[2], dp);
+                    for (int i = 0; i < 3; ++i) {
+                        vec3d n = tri_transformed.n[i];
+                        dp = vector_dot_product(&light_direction, &n);
+                        if (dp < FX(0.0f)) dp = FX(0.0f);
+                        tri_transformed.c[i] = vector_mul(&tri_transformed.c[i], dp);
+                    }
+
+                } else {
+
+                    //
+                    // Flat shading
+                    //
+
+                    // how "aligned" are light direction and triangle surface normal?
+                    vec3d n = vector_mul(&normal, FXI(16)); // to fix precision issue with small triangles in fixed point
+                    n = vector_normalize(&n);
+                    dp = vector_dot_product(&light_direction, &n);
+
+                    if (dp < FX(0.0f)) dp = FX(0.0f);
+
+                    // note: alpha is currently forced to 1 here
+                    tri_transformed.c[0] = vector_mul(&tri_transformed.c[0], dp);
+                    tri_transformed.c[1] = vector_mul(&tri_transformed.c[1], dp);
+                    tri_transformed.c[2] = vector_mul(&tri_transformed.c[2], dp);
+                }
             }
 
             // convert world space to view space

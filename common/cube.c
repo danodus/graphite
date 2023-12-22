@@ -62,10 +62,12 @@ model_t* load_cube() {
     g_model.mesh.nb_vertices = sizeof(vertices) / sizeof(vec3d);
     g_model.mesh.nb_texcoords = sizeof(texcoords) / sizeof(vec2d);
     g_model.mesh.nb_colors = sizeof(colors) / sizeof(vec3d);
+    g_model.mesh.nb_normals = 0;
     g_model.mesh.faces = faces;
     g_model.mesh.vertices = vertices;
     g_model.mesh.texcoords = texcoords;
     g_model.mesh.colors = colors;
+    g_model.mesh.normals = NULL;
     g_model.triangles_to_raster = g_triangles_to_raster;
 
     return &g_model;

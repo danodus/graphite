@@ -5,6 +5,7 @@ vertices = []
 texcoords = []
 colors = []
 faces = []
+normals = []
 
 
 def puts(s):
@@ -26,13 +27,14 @@ def process_line(line):
                 [float(words[4]), float(words[5]), float(words[6]), alpha])
     elif words[0] == "vt":
         texcoords.append([float(words[1]), float(words[2])])
+    elif words[0] == "vn":
+        normals.append([float(words[1]), float(words[2]), float(words[3])])
     elif words[0] == "f":
         w1 = words[1].split('/')
         w2 = words[2].split('/')
         w3 = words[3].split('/')
         faces.append([int(w1[0])-1, int(w2[0])-1, int(w3[0])-1,
                      int(w1[1])-1, int(w2[1])-1, int(w3[1])-1])
-
 
 def print_vertices(array):
     puts("static vec3d vertices[] = {\n")
@@ -65,6 +67,15 @@ def print_colors(array):
         puts("\n")
     puts("};\n")
 
+def print_normals(array):
+    puts("static vec3d normals[] = {\n")
+    for i, v in enumerate(array):
+        puts("{{FX({}f), FX({}f), FX({}f), FX(0.0f)}}".format(
+            v[0], v[1], v[2]))
+        if (i < len(array) - 1):
+            puts(",")
+        puts("\n")
+    puts("};\n")
 
 def print_faces(array):
     puts("static face_t faces[] = {\n")
@@ -82,6 +93,8 @@ def print_all():
     print_texcoords(texcoords)
     if len(colors) > 0:
         print_colors(colors)
+    if len(normals) > 0:
+        print_normals(normals)
     print_faces(faces)
 
 

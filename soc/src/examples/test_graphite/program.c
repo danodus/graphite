@@ -300,11 +300,16 @@ void swap()
     send_command(&cmd);
 }
 
+void print_help(void)
+{
+    printf("[h]: help, [q]: quit, [s]: stats, [SPACE]: rotation,\r\n"
+        "[t]: texture, [l]: lighting, [g]: gouraud shading, [w]: wireframe, [m]: teapot/cube,\r\n"
+        "[u]: clamp s, [v] clamp t, [r] rasterizer ena, [p]: perspective correct\r\n");
+}
+
 void main(void)
 {
-    printf("[q]: quit, [s]: stats, [SPACE]: rotation,\r\n"
-        "[t]: texture, [l]: lighting, [w]: wireframe, [m]: teapot/cube,\r\n"
-        "[u]: clamp s, [v] clamp t, [r] rasterizer ena, [p]: perspective correct\r\n");
+    print_help();
 
     float theta = 0.5f;
 
@@ -335,6 +340,7 @@ void main(void)
     bool clamp_s = false;
     bool clamp_t = false;
     bool perspective_correct = true;
+    bool gouraud_shading = false;
 
     clear(0xF333);
 
@@ -345,7 +351,9 @@ void main(void)
 
         if (chr_avail()) {
             char c = get_chr();
-            if (c == 'q') {
+            if (c == 'h') {
+                print_help();
+            } else if (c == 'q') {
                 quit = true;
             } else if (c == 's') {
                 print_stats = !print_stats;
@@ -371,7 +379,9 @@ void main(void)
                 rasterizer_ena = !rasterizer_ena;
             } else if (c == 'p') {
                 perspective_correct = !perspective_correct;
-            } 
+            } else if (c == 'g') {
+                gouraud_shading = !gouraud_shading;
+            }
         }        
 
         uint32_t t1 = MEM_READ(TIMER);
@@ -387,16 +397,16 @@ void main(void)
         mat4x4 mat_rot_x = matrix_make_rotation_x(theta);
 
         mat4x4 mat_trans = matrix_make_translation(FX(0.0f), FX(0.0f), FX(5.0f));
-        mat4x4 mat_world;
+        mat4x4 mat_world, mat_normal;
         mat_world = matrix_make_identity();
-        mat_world = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
+        mat_world = mat_normal = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
         mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
         uint32_t t2_xform = MEM_READ(TIMER);
 
         uint32_t t1_draw = MEM_READ(TIMER);
         texture_t dummy_texture;
         nb_triangles = 0;
-        draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, model, &mat_world, &mat_proj, &mat_view, is_lighting_ena, is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t, perspective_correct);
+        draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, model, &mat_world, gouraud_shading ? &mat_normal : NULL, &mat_proj, &mat_view, is_lighting_ena, is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t, perspective_correct);
         uint32_t t2_draw = MEM_READ(TIMER);
 
         swap();

@@ -27,13 +27,14 @@ make run
 - Press SPACE to start/stop the rotation of the model;
 - Press TAB to enable/disable the wireframe mode;
 - Press T to enable/disable texture mapping;
-- Press L to enable/disable lighting.
+- Press L to enable/disable lighting;
+- Press G to enable/disable Gouraud shading.
 
 ## System on Chip
 
 A SoC for the ULX3S is also available with the following features:
-- RISC-V (RV32IM)
-- UART (115200-N-8-1)
+- RISC-V (RV32I + Graphite extension)
+- UART (115200/230400-N-8-1)
 - SDRAM (32MiB shared between CPU and video)
 - Set associative cache (4-way with LRU replacement policy)
 - 640x480 HDMI video output with framebuffer (ARGB4444)
@@ -50,6 +51,8 @@ make prog
 cd ../../src/examples/test_graphite
 make run SERIAL=<serial device>
 ```
+
+Open a serial terminal at 230400 bauds and press 'h' for help.
 
 ## References
 
