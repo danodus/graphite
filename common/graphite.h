@@ -1,5 +1,5 @@
 // graphite.h
-// Copyright (c) 2021-2023 Daniel Cliche
+// Copyright (c) 2021-2024 Daniel Cliche
 // SPDX-License-Identifier: MIT
 
 #ifndef GRAPHITE_H
@@ -124,6 +124,12 @@ typedef struct {
     unsigned char* data;
 } texture_t;
 
+typedef struct {
+    vec3d direction;
+    vec3d ambient_color;
+    vec3d diffuse_color;
+} light_t;
+
 vec3d matrix_multiply_vector(mat4x4* m, vec3d* i);
 vec3d vector_add(vec3d* v1, vec3d* v2);
 vec3d vector_sub(vec3d* v1, vec3d* v2);
@@ -133,6 +139,7 @@ fx32 vector_dot_product(vec3d* v1, vec3d* v2);
 fx32 vector_length(vec3d* v);
 vec3d vector_normalize(vec3d* v);
 vec3d vector_cross_product(vec3d* v1, vec3d* v2);
+vec3d vector_clamp(vec3d* v);
 
 mat4x4 matrix_make_identity();
 mat4x4 matrix_make_projection(int viewport_width, int viewport_height, float fov);
@@ -149,7 +156,7 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
                 bool clamp_s, bool clamp_t, bool perspective_correct);
 
 void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
-                mat4x4* mat_normal, mat4x4* mat_projection, mat4x4* mat_view, bool is_lighting_ena, bool is_wireframe, texture_t* texture,
+                mat4x4* mat_normal, mat4x4* mat_projection, mat4x4* mat_view, light_t* lights, size_t nb_lights, bool is_wireframe, texture_t* texture,
                 bool clamp_s, bool clamp_t, bool perspective_correct);
 
 #endif

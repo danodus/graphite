@@ -1,3 +1,7 @@
+// program.c
+// Copyright (c) 2023-2024 Daniel Cliche
+// SPDX-License-Identifier: MIT
+
 #include <stdint.h>
 #include <graphite.h>
 #include <cube.h>
@@ -335,12 +339,29 @@ void main(void)
     bool print_stats = false;
     bool is_rotating = false;
     bool is_textured = false;
-    bool is_lighting_ena = false;
+    size_t nb_lights = 0;
     bool is_wireframe = false;
     bool clamp_s = false;
     bool clamp_t = false;
     bool perspective_correct = true;
     bool gouraud_shading = false;
+
+    light_t lights[5];
+    lights[0].direction = (vec3d){FX(0.0f), FX(0.0f), FX(1.0f), FX(0.0f)};
+    lights[0].ambient_color = (vec3d){FX(0.1f), FX(0.1f), FX(0.1f), FX(1.0f)};
+    lights[0].diffuse_color = (vec3d){FX(0.5f), FX(0.5f), FX(0.5f), FX(1.0f)};
+    lights[1].direction = (vec3d){FX(1.0f), FX(0.0f), FX(0.0f), FX(0.0f)};
+    lights[1].ambient_color = (vec3d){FX(0.1f), FX(0.0f), FX(0.0f), FX(1.0f)};
+    lights[1].diffuse_color = (vec3d){FX(0.2f), FX(0.0f), FX(0.0f), FX(1.0f)};
+    lights[2].direction = (vec3d){FX(0.0f), FX(1.0f), FX(0.0f), FX(0.0f)};
+    lights[2].ambient_color = (vec3d){FX(0.0f), FX(0.1f), FX(0.0f), FX(1.0f)};
+    lights[2].diffuse_color = (vec3d){FX(0.0f), FX(0.2f), FX(0.0f), FX(1.0f)};
+    lights[3].direction = (vec3d){FX(0.0f), FX(-1.0f), FX(0.0f), FX(0.0f)};
+    lights[3].ambient_color = (vec3d){FX(0.0f), FX(0.0f), FX(0.1f), FX(1.0f)};
+    lights[3].diffuse_color = (vec3d){FX(0.0f), FX(0.0f), FX(0.2f), FX(1.0f)};
+    lights[4].direction = (vec3d){FX(-1.0f), FX(0.0f), FX(0.0f), FX(0.0f)};
+    lights[4].ambient_color = (vec3d){FX(0.1f), FX(0.1f), FX(0.0f), FX(1.0f)};
+    lights[4].diffuse_color = (vec3d){FX(0.2f), FX(0.2f), FX(0.0f), FX(1.0f)};      
 
     clear(0xF333);
 
@@ -362,7 +383,7 @@ void main(void)
             } else if (c == 't') {
                 is_textured = !is_textured;
             } else if (c == 'l') {
-                is_lighting_ena = !is_lighting_ena;
+                nb_lights = (nb_lights + 1) % 6;
             } else if (c == 'w') {
                 is_wireframe = !is_wireframe;
             } else if (c == 'm') {
@@ -406,7 +427,7 @@ void main(void)
         uint32_t t1_draw = MEM_READ(TIMER);
         texture_t dummy_texture;
         nb_triangles = 0;
-        draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, model, &mat_world, gouraud_shading ? &mat_normal : NULL, &mat_proj, &mat_view, is_lighting_ena, is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t, perspective_correct);
+        draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, model, &mat_world, gouraud_shading ? &mat_normal : NULL, &mat_proj, &mat_view, lights, nb_lights, is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t, perspective_correct);
         uint32_t t2_draw = MEM_READ(TIMER);
 
         swap();

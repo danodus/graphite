@@ -27,7 +27,7 @@ make run
 - Press SPACE to start/stop the rotation of the model;
 - Press TAB to enable/disable the wireframe mode;
 - Press T to enable/disable texture mapping;
-- Press L to enable/disable lighting;
+- Press L to increase the number of directional lights;
 - Press G to enable/disable Gouraud shading.
 
 ## System on Chip

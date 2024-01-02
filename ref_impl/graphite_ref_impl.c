@@ -1,3 +1,7 @@
+// graphite_ref_impl.c
+// Copyright (c) 2021-2024 Daniel Cliche
+// SPDX-License-Identifier: MIT
+
 #include <SDL.h>
 #include <cube.h>
 #include <stdbool.h>
@@ -62,12 +66,29 @@ int main() {
 
     bool is_anim = false;
     bool is_wireframe = false;
-    bool is_lighting = false;
+    size_t nb_lights = 0;
     bool is_gouraud_shading = false;
     bool is_textured = true;
     bool clamp_s = false;
     bool clamp_t = false;
     bool perspective_correct = true;
+
+    light_t lights[5];
+    lights[0].direction = (vec3d){FX(0.0f), FX(0.0f), FX(1.0f), FX(0.0f)};
+    lights[0].ambient_color = (vec3d){FX(0.1f), FX(0.1f), FX(0.1f), FX(1.0f)};
+    lights[0].diffuse_color = (vec3d){FX(0.5f), FX(0.5f), FX(0.5f), FX(1.0f)};
+    lights[1].direction = (vec3d){FX(1.0f), FX(0.0f), FX(0.0f), FX(0.0f)};
+    lights[1].ambient_color = (vec3d){FX(0.1f), FX(0.0f), FX(0.0f), FX(1.0f)};
+    lights[1].diffuse_color = (vec3d){FX(0.2f), FX(0.0f), FX(0.0f), FX(1.0f)};
+    lights[2].direction = (vec3d){FX(0.0f), FX(1.0f), FX(0.0f), FX(0.0f)};
+    lights[2].ambient_color = (vec3d){FX(0.0f), FX(0.1f), FX(0.0f), FX(1.0f)};
+    lights[2].diffuse_color = (vec3d){FX(0.0f), FX(0.2f), FX(0.0f), FX(1.0f)};
+    lights[3].direction = (vec3d){FX(0.0f), FX(-1.0f), FX(0.0f), FX(0.0f)};
+    lights[3].ambient_color = (vec3d){FX(0.0f), FX(0.0f), FX(0.1f), FX(1.0f)};
+    lights[3].diffuse_color = (vec3d){FX(0.0f), FX(0.0f), FX(0.2f), FX(1.0f)};
+    lights[4].direction = (vec3d){FX(-1.0f), FX(0.0f), FX(0.0f), FX(0.0f)};
+    lights[4].ambient_color = (vec3d){FX(0.1f), FX(0.1f), FX(0.0f), FX(1.0f)};
+    lights[4].diffuse_color = (vec3d){FX(0.2f), FX(0.2f), FX(0.0f), FX(1.0f)};    
 
     unsigned int time = SDL_GetTicks();
 
@@ -125,7 +146,7 @@ int main() {
 
         // Draw model
         texture_t dummy_texture;
-        draw_model(screen_width, screen_height, &vec_camera, current_model, &mat_world, is_gouraud_shading ? &mat_normal : NULL, &mat_proj, &mat_view, is_lighting,
+        draw_model(screen_width, screen_height, &vec_camera, current_model, &mat_world, is_gouraud_shading ? &mat_normal : NULL, &mat_proj, &mat_view, lights, nb_lights,
                    is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t, perspective_correct);
 
         SDL_RenderPresent(renderer);
@@ -178,7 +199,7 @@ int main() {
                         is_wireframe = !is_wireframe;
                         break;
                     case SDL_SCANCODE_L:
-                        is_lighting = !is_lighting;
+                        nb_lights = (nb_lights + 1) % 6;
                         break;
                     case SDL_SCANCODE_G:
                         is_gouraud_shading = !is_gouraud_shading;

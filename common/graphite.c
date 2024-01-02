@@ -1,5 +1,5 @@
 // graphite.c
-// Copyright (c) 2021-2023 Daniel Cliche
+// Copyright (c) 2021-2024 Daniel Cliche
 // SPDX-License-Identifier: MIT
 
 // Ref.: One Lone Coder's 3D Graphics Engine tutorial available on YouTube
@@ -66,6 +66,17 @@ vec3d vector_normalize(vec3d* v) {
 vec3d vector_cross_product(vec3d* v1, vec3d* v2) {
     vec3d r = {MUL(v1->y, v2->z) - MUL(v1->z, v2->y), MUL(v1->z, v2->x) - MUL(v1->x, v2->z),
                MUL(v1->x, v2->y) - MUL(v1->y, v2->x), FX(1.0f)};
+    return r;
+}
+
+vec3d vector_clamp(vec3d* v) {
+    vec3d r = *v;
+    if (r.x > FX(1.0f))
+        r.x = FX(1.0f);
+    if (r.y > FX(1.0f))
+        r.y = FX(1.0f);
+    if (r.z > FX(1.0f))
+        r.z = FX(1.0f);
     return r;
 }
 
@@ -538,7 +549,7 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
 }
 
 void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
-                mat4x4* mat_normal, mat4x4* mat_proj, mat4x4* mat_view, bool is_lighting_ena, bool is_wireframe, texture_t* texture,
+                mat4x4* mat_normal, mat4x4* mat_proj, mat4x4* mat_view, light_t* lights, size_t nb_lights, bool is_wireframe, texture_t* texture,
                 bool clamp_s, bool clamp_t, bool perspective_correct) {
     size_t triangle_to_raster_index = 0;
 
@@ -612,11 +623,17 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
 
         // if ray is aligned with normal, then triangle is visible
         if (vector_dot_product(&normal, &vec_camera_ray) < FX(0.0f)) {
-            fx32 dp = FX(1.0f);
-            if (is_lighting_ena) {
-                // illumination
-                vec3d light_direction = {FX(0.0f), FX(0.0f), FX(-1.0f), FX(1.0f)};
-                light_direction = vector_normalize(&light_direction);
+    
+            // illumination
+            vec3d color[3] = {
+                {FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)},
+                {FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)},
+                {FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)}
+            };
+
+            for (size_t light_index = 0; light_index < nb_lights; ++light_index) {
+                vec3d light_direction = lights[light_index].direction;
+                fx32 diffuse_intensity[3];
 
                 if ((model->mesh.nb_normals > 0) && (mat_normal != NULL)) {
 
@@ -624,11 +641,11 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                     // Gouraud shading
                     //
 
-                    for (int i = 0; i < 3; ++i) {
-                        vec3d n = tri_transformed.n[i];
-                        dp = vector_dot_product(&light_direction, &n);
+                    for (int j = 0; j < 3; ++j) {
+                        vec3d n = tri_transformed.n[j];
+                        fx32 dp = -vector_dot_product(&light_direction, &n);
                         if (dp < FX(0.0f)) dp = FX(0.0f);
-                        tri_transformed.c[i] = vector_mul(&tri_transformed.c[i], dp);
+                        diffuse_intensity[j] = dp;
                     }
 
                 } else {
@@ -640,14 +657,32 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                     // how "aligned" are light direction and triangle surface normal?
                     vec3d n = vector_mul(&normal, FXI(16)); // to fix precision issue with small triangles in fixed point
                     n = vector_normalize(&n);
-                    dp = vector_dot_product(&light_direction, &n);
+                    fx32 dp = -vector_dot_product(&light_direction, &n);
 
                     if (dp < FX(0.0f)) dp = FX(0.0f);
 
                     // note: alpha is currently forced to 1 here
-                    tri_transformed.c[0] = vector_mul(&tri_transformed.c[0], dp);
-                    tri_transformed.c[1] = vector_mul(&tri_transformed.c[1], dp);
-                    tri_transformed.c[2] = vector_mul(&tri_transformed.c[2], dp);
+                    diffuse_intensity[0] = dp;
+                    diffuse_intensity[1] = dp;
+                    diffuse_intensity[2] = dp;
+                }
+
+                // apply light color
+                vec3d ambient_color = lights[light_index].ambient_color;
+                for (int j = 0; j < 3; ++j) {
+                    vec3d diffuse_color = lights[light_index].diffuse_color;
+                    diffuse_color = vector_mul(&diffuse_color, diffuse_intensity[j]);
+                    color[j] = vector_add(&color[j], &ambient_color);
+                    color[j] = vector_add(&color[j], &diffuse_color);
+                }
+            } // for each light
+
+            if (nb_lights > 0) {
+                for (int j = 0; j < 3; ++j) {
+                    color[j] = vector_clamp(&color[j]);
+                    tri_transformed.c[j].x = MUL(tri_transformed.c[j].x, color[j].x);
+                    tri_transformed.c[j].y = MUL(tri_transformed.c[j].y, color[j].y);
+                    tri_transformed.c[j].z = MUL(tri_transformed.c[j].z, color[j].z);
                 }
             }
 
@@ -722,6 +757,11 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 tri_projected.p[0] = vector_mul(&tri_projected.p[0], recip_w[0]);
                 tri_projected.p[1] = vector_mul(&tri_projected.p[1], recip_w[1]);
                 tri_projected.p[2] = vector_mul(&tri_projected.p[2], recip_w[2]);
+
+                // Invert the y values to account for flipped screen y coordinate
+                tri_projected.p[0].y = -tri_projected.p[0].y;
+                tri_projected.p[1].y = -tri_projected.p[1].y;
+                tri_projected.p[2].y = -tri_projected.p[2].y;
 
                 // offset vertices into visible normalized space
                 vec3d vec_offset_view = {FX(1.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
