@@ -7,19 +7,10 @@
 module ulx3s_v31_top(
     // System clock and reset
     input  wire logic clk_25mhz, // main clock input from external clock source
-    output      logic wifi_en,
-    output      logic wifi_gpio0,
-    inout       logic wifi_gpio21,
-    inout       logic wifi_gpio22,
-    inout       logic wifi_gpio26,
-    inout       logic wifi_gpio27,
 
     // On-board user buttons and status LEDs
     input  wire logic [6:0] btn,
     output      logic [7:0] led,
-
-    // User GPIO (56 I/O pins) Header
-    inout       logic [27:0] gp, gn,  // GPIO Header pins available as one data block
 
     // USB Slave (FT231x) interface 
     output      logic ftdi_rxd,
@@ -44,9 +35,12 @@ module ulx3s_v31_top(
     inout logic       sd_clk, sd_cmd,
     inout logic [3:0] sd_d,
 
-    // PS2 interface
-    output wire logic usb_fpga_pu_dp, usb_fpga_pu_dn,
-    inout       logic usb_fpga_bd_dp, usb_fpga_bd_dn // enable internal pullups at constraints file
+    // USB
+    input  wire logic        usb_fpga_dp,     // D differential in
+    inout  wire logic        usb_fpga_bd_dp,  // D+
+    inout  wire logic        usb_fpga_bd_dn,  // D-
+    inout  wire logic        usb_fpga_pu_dp,  // 1 = 1.5K up, 0 = 15K down, z = float
+    inout  wire logic        usb_fpga_pu_dn   // 1 = 1.5K up, 0 = 15K down, z = float
 );
 
 `ifdef VIDEO_480P
@@ -67,12 +61,7 @@ module ulx3s_v31_top(
 
     localparam sdram_clock_hz = 100_000_000;
 
-    assign wifi_gpio0 = btn[0];
-
     assign sdram_cke = 1'b1; // SDRAM clock enable
-
-    assign usb_fpga_pu_dp = 1'b1; 	// pull USB D+ to +3.3V through 1.5K resistor
-    assign usb_fpga_pu_dn = 1'b1; 	// pull USB D- to +3.3V through 1.5K resistor
 
     logic pll_video_locked;
     logic [3:0] clocks_video;
@@ -99,7 +88,10 @@ module ulx3s_v31_top(
         .in_hz( 25*1000000),
         .out0_hz(sdram_clock_hz),
         .out1_hz(sdram_clock_hz), .out1_deg(180),
-        .out2_hz(cpu_clock_hz)
+        .out2_hz(cpu_clock_hz),
+        .out0_tol_hz(1000000),
+        .out1_tol_hz(1000000),
+        .out2_tol_hz(1000000)
     )
     ecp5pll_system_inst
     (
@@ -144,12 +136,12 @@ module ulx3s_v31_top(
         .vga_r_o(vga_r),
         .vga_g_o(vga_g),
         .vga_b_o(vga_b),
-        // PS/2 keyboard
-        .ps2clka_i(gn[1]),  // keyboard clock
-        .ps2data_i(gn[3]),  // keyboard data
-        // PS/2 mouse
-        .ps2clkb_io(gn[0]), // mouse clock
-        .ps2datb_io(gn[2]), // mouse data
+        // USB
+        .usb_fpga_dp(usb_fpga_dp),
+        .usb_fpga_bd_dp(usb_fpga_bd_dp),
+        .usb_fpga_bd_dn(usb_fpga_bd_dn),
+        .usb_fpga_pu_dp(usb_fpga_pu_dp),
+        .usb_fpga_pu_dn(usb_fpga_pu_dn),
         // SDRAM
         .sdram_cas_n_o(sdram_casn),
         .sdram_ras_n_o(sdram_rasn),
@@ -160,9 +152,6 @@ module ulx3s_v31_top(
         .sdram_data_io(sdram_d),
         .sdram_dqm_o(sdram_dqm)
     );
-
-    assign gp[22] = 1'b1; // US3 PULLUP
-    assign gn[22] = 1'b1; // US3 PULLUP
 
     // VGA to digital video converter
     hdmi_interface hdmi_interface_instance(
