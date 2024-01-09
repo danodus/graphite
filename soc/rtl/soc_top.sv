@@ -54,12 +54,12 @@ module soc_top #(
     output      logic [7:0]  vga_r_o,
     output      logic [7:0]  vga_g_o,
     output      logic [7:0]  vga_b_o,
-    // PS/2 keyboard
-    input  wire logic        ps2clka_i,
-    input  wire logic        ps2data_i,
-    // PS/2 mouse
-    inout       logic        ps2clkb_io,
-    inout       logic        ps2datb_io,
+    // USB
+    input  wire logic        usb_fpga_dp,     // D differential in
+    inout  wire logic        usb_fpga_bd_dp,  // D+
+    inout  wire logic        usb_fpga_bd_dn,  // D-
+    inout  wire logic        usb_fpga_pu_dp,  // 1 = 1.5K up, 0 = 15K down, z = float
+    inout  wire logic        usb_fpga_pu_dn,  // 1 = 1.5K up, 0 = 15K down, z = float
     // SDRAM
     output      logic        sdram_cas_n_o,
     output      logic        sdram_ras_n_o,
@@ -78,8 +78,8 @@ module soc_top #(
     // 3  RS-232 status / RS-232 control
     // 4  SPI data / SPI data (start)
     // 5  SPI status / SPI control
-    // 6  PS2 keyboard / --
-    // 7  mouse / --
+    // 6  reserved
+    // 7  reserved
     // 8  graphite
     // 9  -- / H resolution, V resolution
     
@@ -137,7 +137,7 @@ module soc_top #(
     );
 
     logic [31:0] adr;
-    logic [3:0]  iowadr; // word address
+    logic [4:0]  iowadr; // word address
     logic [31:0] inbus, inbus0;  // data to RISC core
     logic [31:0] inbusvid;
     logic [31:0] outbus;  // data from RISC core
@@ -148,12 +148,6 @@ module soc_top #(
     logic rdyTx, rdyRx, uartDequeue;
     logic startTx;
     logic doneRx;
-    logic [7:0] dataKbd;
-    logic rdyKbd;
-    logic doneKbd;
-    logic rdyMs;
-    logic doneMs;
-    logic [26:0] dataMs;
     logic limit;  // of cnt0
 
     logic [16:0] cnt0 = 0;
@@ -164,7 +158,7 @@ module soc_top #(
     logic [3:0] spiCtrl;
     logic [19:0] vidadr = 0;
 
-    assign iowadr = adr[5:2];
+    assign iowadr = adr[6:2];
     assign ioenb = (adr[31:28] == 4'hE);
     logic mreq = !ioenb && !pm_sel;
 
@@ -309,17 +303,71 @@ module soc_top #(
 `endif
     )video(.clk(clk_cpu), .ce(qready), .pclk(clk_pixel), .req(dspreq),
     .viddata(inbusvid), .de(de), .RGB(RGB565), .hsync(vga_hsync), .vsync(vga_vsync));
-    ps2kbd ps2kbd(.clk(clk_cpu), .rst(rst_n), .done(doneKbd), .rdy(rdyKbd), .shift(),
-    .data(dataKbd), .PS2C(ps2clka_i), .PS2D(ps2data_i));
-    ps2mouse
-    #(.c_z_ena(1))
-    ps2mouse
-    (
-    .clk(clk_cpu), .ps2m_reset(~rst_n), .ps2m_clk(ps2clkb_io), .ps2m_dat(ps2datb_io),
-    .done(doneMs), .rdy(rdyMs), .data(dataMs)   
+
+    // USB host PHY + SIE hardware
+    logic [31:0] sie_di;
+
+    logic utmi_txvalid, utmi_txready, utmi_rxvalid, utmi_rxactive, utmi_rxerror;
+    logic utmi_termselect, utmi_dppulldown, utmi_dmpulldown;
+    logic [1:0] utmi_linestate, utmi_op_mode, utmi_xcvrselect;
+    logic [7:0] utmi_data_out, utmi_data_in;
+
+    PHY utmi_phy (
+        .clk_i(clk_cpu),
+        .rst_i(~rst_n),
+
+        .utmi_data_out_i(utmi_data_out),
+        .utmi_txvalid_i(utmi_txvalid),
+        .utmi_txready_o(utmi_txready),
+
+        .utmi_data_in_o(utmi_data_in),
+        .utmi_rxvalid_o(utmi_rxvalid),
+        .utmi_rxactive_o(utmi_rxactive),
+        .utmi_rxerror_o(utmi_rxerror),
+        .utmi_linestate_o(utmi_linestate),
+
+        .utmi_op_mode_i(utmi_op_mode),
+        .utmi_xcvrselect_i(utmi_xcvrselect),
+        .utmi_termselect_i(utmi_termselect),
+        .utmi_dppulldown_i(utmi_dppulldown),
+        .utmi_dmpulldown_i(utmi_dmpulldown),
+
+        .usb_fpga_dif(usb_fpga_dp),
+        .usb_fpga_dp(usb_fpga_bd_dp),
+        .usb_fpga_dn(usb_fpga_bd_dn),
+        .usb_fpga_pu_dp(usb_fpga_pu_dp),
+        .usb_fpga_pu_dn(usb_fpga_pu_dn)
     );
 
-    logic [31:0]    fb_addr;
+    REGS usb_regs (
+        .clk_i(clk_cpu),
+        .rst_i(~rst_n),
+        .led_o(),
+
+        .m_sel(ioenb & adr[6]),
+        .m_addr(adr[5:2]),
+        .m_data_i(outbus),
+        .m_data_o(sie_di),
+        .m_rd(rd),
+        .m_wr(wr),
+        .m_intr_o(),
+
+        .utmi_data_in_i(utmi_data_in),
+        .utmi_rxvalid_i(utmi_rxvalid),
+        .utmi_rxactive_i(utmi_rxactive),
+        .utmi_rxerror_i(utmi_rxerror),
+        .utmi_linestate_i(utmi_linestate),
+
+        .utmi_data_out_o(utmi_data_out),
+        .utmi_txvalid_o(utmi_txvalid),
+        .utmi_txready_i(utmi_txready),
+
+        .utmi_op_mode_o(utmi_op_mode),
+        .utmi_xcvrselect_o(utmi_xcvrselect),
+        .utmi_termselect_o(utmi_termselect),
+        .utmi_dppulldown_o(utmi_dppulldown),
+        .utmi_dmpulldown_o(utmi_dmpulldown)
+    );    
 
     // Graphite
     logic           graphite_cmd_axis_tvalid;
@@ -371,15 +419,12 @@ module soc_top #(
         (iowadr == 3) ? {30'b0, rdyTx, rdyRx} :
         (iowadr == 4) ? spiRx :
         (iowadr == 5) ? {31'b0, spiRdy} :
-        (iowadr == 6) ? {3'b0, rdyKbd, 28'd0} :
-        (iowadr == 7) ? {24'b0, dataKbd} :
+        (iowadr == 6) ? {32'b0} :
+        (iowadr == 7) ? {32'b0} :
         (iowadr == 8) ? {31'b0, graphite_cmd_axis_tready} :
         (iowadr == 9) ? {16'(H_RES), 16'(V_RES)} :
-        (iowadr == 10) ? {3'b0, rdyMs, 28'd0} :
-        (iowadr == 11) ? {5'b0, dataMs} :
         (iowadr == 12) ? fb_addr :
-        (iowadr == 13) ? {31'b0, vga_vsync} :
-        32'd0);
+        (iowadr >= 16 && iowadr < 32) ? sie_di : 32'd0);
 
     assign dataTx = outbus[7:0];
     assign startTx = wr & ioenb & (iowadr == 2);
