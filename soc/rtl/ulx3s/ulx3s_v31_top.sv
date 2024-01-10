@@ -63,42 +63,15 @@ module ulx3s_v31_top(
 
     assign sdram_cke = 1'b1; // SDRAM clock enable
 
+    logic clk_pixel, clk_shift;
     logic pll_video_locked;
-    logic [3:0] clocks_video;
-    ecp5pll
-    #(
-        .in_hz(25_000_000),
-        .out0_hz(5*pixel_clock_hz),
-        .out1_hz(pixel_clock_hz)
-    )
-    ecp5pll_video_inst
-    (
-        .clk_i(clk_25mhz),
-        .clk_o(clocks_video),
+    pll_video pll_video(
+        .clkin(clk_25mhz),
+        .clkout0(clk_shift),
+        .clkout1(clk_pixel),
         .locked(pll_video_locked)
     );
-    logic clk_pixel, clk_shift;
-    assign clk_shift = clocks_video[0]; // 125 MHz
-    assign clk_pixel = clocks_video[1]; // 25 MHz
 
-    logic [3:0] clocks_system;
-    logic pll_system_locked;
-    ecp5pll
-    #(
-        .in_hz( 25*1000000),
-        .out0_hz(sdram_clock_hz),
-        .out1_hz(sdram_clock_hz), .out1_deg(180),
-        .out2_hz(cpu_clock_hz),
-        .out0_tol_hz(1000000),
-        .out1_tol_hz(1000000),
-        .out2_tol_hz(1000000)
-    )
-    ecp5pll_system_inst
-    (
-        .clk_i(clk_25mhz),
-        .clk_o(clocks_system),
-        .locked(pll_system_locked)
-    );
     logic clk_cpu, clk_sdram;
     assign clk_sdram = clocks_system[0];
     assign sdram_clk = clocks_system[1];
@@ -108,7 +81,7 @@ module ulx3s_v31_top(
     logic [7:0] vga_r, vga_g, vga_b;
 
     logic pll_locked;
-    assign pll_locked = pll_system_locked & pll_video_locked;
+    assign pll_locked = pll_cpu_locked & pll_sdram_locked & pll_video_locked;
 
     soc_top #(
         .FREQ_HZ(cpu_clock_hz),

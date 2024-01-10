@@ -15,6 +15,9 @@ TOP_MODULE_FILE = $(TOP_MODULE).sv
 
 SRC = \
   $(TOP_MODULE_FILE) \
+  pll_cpu.v \
+  pll_sdram.v \
+  pll_video.v \
   ../soc_top.sv \
   ../prom.v \
   ../cache_controller.v \
@@ -34,7 +37,6 @@ SRC = \
   ../lattice/bram32bit.v \
   ../bram_true2p_2clk.v \
   ../vqueue.v \
-  ../lattice/ecp5pll.sv \
   ../dvi/hdmi_interface.v \
   ../../../rtl/graphite.sv \
   ../../../rtl/reciprocal.sv \
