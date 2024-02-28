@@ -2,7 +2,7 @@ IVERILOG = iverilog
 PYTHON = python3
 
 RISCV_TOOLCHAIN_PATH =
-RISCV_TOOLCHAIN_PREFIX = riscv64-unknown-elf-
+RISCV_TOOLCHAIN_PREFIX = riscv-none-elf-
 
 AS = ${RISCV_TOOLCHAIN_PATH}${RISCV_TOOLCHAIN_PREFIX}as
 OBJCOPY = ${RISCV_TOOLCHAIN_PATH}${RISCV_TOOLCHAIN_PREFIX}objcopy
@@ -27,7 +27,7 @@ program.lst: program.elf
 	${OBJDUMP} --disassemble program.elf > program.lst
 
 program.hex: program.bin
-	hexdump -v -e '1/4 "%08x\n"' program.bin > program.hex
+	${PYTHON} ../../../../utils/makehex.py program.bin > program.hex
 
 program.bin: program.elf program.lst
 	${OBJCOPY} -O binary program.elf program.bin
