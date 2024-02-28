@@ -4,6 +4,10 @@ Graphite is a FPGA based open source system with 2D/3D graphics acceleration.
 
 ![Utah Teapot](doc/teapot.gif)
 
+## Documentation
+
+The documentation is available here: https://danodus.github.io/graphite/
+
 ## Features
 
 The system has the following features:
