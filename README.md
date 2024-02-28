@@ -2,6 +2,8 @@
 
 Graphite is a FPGA based open source system with 2D/3D graphics acceleration.
 
+![Utah Teapot](doc/teapot.gif)
+
 ## Features
 
 The system has the following features:
@@ -49,11 +51,8 @@ make run PROGRAM=../../src/examples/test_video/program.hex
 
 ## Graphics Accelerator Simulation
 
-![Utah Teapot](doc/teapot.png)
-
 ```bash
-git clone https://github.com/danodus/graphite.git
-cd graphite/rtl/sim
+cd rtl/sim
 make run
 ```
 
@@ -68,5 +67,5 @@ make run
 
 ## Acknowledgements
 
-The SoC is based on the Oberon project for the ULX3S available here: https://github.com/emard/oberon.
-The CPU is based on icicle v1 available here: https://github.com/grahamedgecombe/icicle/tree/v1
+- The SoC is based on the Oberon project for the ULX3S available here: https://github.com/emard/oberon.
+- The CPU is based on icicle v1 available here: https://github.com/grahamedgecombe/icicle/tree/v1
