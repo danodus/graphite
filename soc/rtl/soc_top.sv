@@ -80,7 +80,16 @@ module soc_top #(
     // 6  PS2 keyboard / --
     // 7  mouse / --
     // 8  graphite
+    // 9  -- / H resolution, V resolution
     
+`ifdef VIDEO_720P
+    localparam H_RES = 1280;
+    localparam V_RES = 720;
+`else
+    localparam H_RES = 640;
+    localparam V_RES = 480;
+`endif
+
     logic rst_n = 1'b0;
     logic vga_hsync, vga_vsync;
     logic de;
@@ -100,8 +109,13 @@ module soc_top #(
     assign vga_r_o = RGB[11:8];
     assign vga_g_o = RGB[7:4];
     assign vga_b_o = RGB[3:0];
+`ifdef VIDEO_720P    
+    assign vga_hsync_o = vga_hsync;
+    assign vga_vsync_o = vga_vsync;
+`else
     assign vga_hsync_o = ~vga_hsync;
     assign vga_vsync_o = ~vga_vsync;
+`endif
     assign vga_blank_o = ~de;
 
     logic [31:0] adr;
@@ -167,7 +181,27 @@ module soc_top #(
     spi #(.FREQ_HZ(FREQ_HZ)) spi(.clk(clk_cpu), .rst(rst_n), .start(spiStart), .dataTx(outbus),
     .fast(spiCtrl[2]), .dataRx(spiRx), .rdy(spiRdy),
         .SCLK(SCLK[0]), .MOSI(MOSI[0]), .MISO(MISO[0] & MISO[1]));
-    video video(.clk(clk_cpu), .ce(qready), .pclk(clk_pixel), .req(dspreq),
+    video #(
+        .H_RES(H_RES),  // horizontal resolution (pixels)
+        .V_RES(V_RES),  // vertical resolution (lines)
+`ifdef VIDEO_720P
+        .CORDW(11),   // signed coordinate width (bits)
+        .H_FP(110),   // horizontal front porch
+        .H_SYNC(40),  // horizontal sync
+        .H_BP(220),   // horizontal back porch
+        .V_FP(5),     // vertical front porch
+        .V_SYNC(5),   // vertical sync
+        .V_BP(20)     // vertical back porch
+`else
+        .CORDW(11),   // signed coordinate width (bits)
+        .H_FP(16),    // horizontal front porch
+        .H_SYNC(96),  // horizontal sync
+        .H_BP(48),    // horizontal back porch
+        .V_FP(10),    // vertical front porch
+        .V_SYNC(2),   // vertical sync
+        .V_BP(33)     // vertical back porch
+`endif
+    )video(.clk(clk_cpu), .ce(qready), .pclk(clk_pixel), .req(dspreq),
     .viddata(inbusvid), .de(de), .RGB(RGB), .hsync(vga_hsync), .vsync(vga_vsync));
     ps2kbd ps2kbd(.clk(clk_cpu), .rst(rst_n), .done(doneKbd), .rdy(rdyKbd), .shift(),
     .data(dataKbd), .PS2C(ps2clka_i), .PS2D(ps2data_i));
@@ -198,8 +232,8 @@ module soc_top #(
     logic [31:0] graphite_front_addr;
 
     graphite #(
-        .FB_WIDTH(640),
-        .FB_HEIGHT(480)
+        .FB_WIDTH(H_RES),
+        .FB_HEIGHT(V_RES)
     ) graphite(
         .clk(clk_cpu),
         .reset_i(~rst_n),
@@ -233,7 +267,8 @@ module soc_top #(
         (iowadr == 5) ? {31'b0, spiRdy} :
         (iowadr == 6) ? {3'b0, rdyKbd, dataMs} :
         (iowadr == 7) ? {24'b0, dataKbd} :
-        (iowadr == 8) ? {31'b0, graphite_cmd_axis_tready} : 32'd0);
+        (iowadr == 8) ? {31'b0, graphite_cmd_axis_tready} :
+        (iowadr == 9) ? {16'(H_RES), 16'(V_RES)} : 32'd0);
 
     assign dataTx = outbus[7:0];
     assign startTx = wr & ioenb & (iowadr == 2);
@@ -380,8 +415,13 @@ module soc_top #(
     logic        vd1 = 1'b0;
     logic        almost_empty;
     vqueue #(
+`ifdef VIDEO_720P
+       .almost_empty(256),
+       .addr_width(10)
+`else
        .almost_empty(128),
        .addr_width(8)
+`endif
     ) vqueue_inst(
       .WrClock(clk_sdram), // input wr_clk
       .RdClock(clk_pixel), // input rd_clk
@@ -408,7 +448,7 @@ module soc_top #(
         if(nop) case(sys_cmd_ack)
             2'b10: begin
                 crw <= 1'b0;	// VGA read
-                if(vidadr == 19'd19199) vidadr <= 19'd0; // 640*480*2/32-1
+                if(vidadr == 19'(H_RES*V_RES*2/32-1)) vidadr <= 19'd0;
                 else vidadr <= vidadr + 1'b1;
             end
             2'b01, 2'b11: crw <= 1'b1;	// cache read/write			

@@ -17,8 +17,9 @@ int SDL_Init(
 }
 
 int SDL_GetCurrentDisplayMode(int displayIndex, SDL_DisplayMode * mode) {
-    mode->w = 640;
-    mode->h = 480;
+    unsigned int res = MEM_READ(RES);
+    mode->w = res >> 16;
+    mode->h = res & 0xffff;
     return 0;
 }
 
@@ -35,8 +36,12 @@ SDL_Window * SDL_CreateWindow(
     int h,
     Uint32 flags
 ) {
+    unsigned int res = MEM_READ(RES);
+    unsigned int hres = res >> 16;
+    unsigned int vres = res & 0xffff;
+
     // clear the framebuffer
-    for (unsigned int i = 0; i < 640*480*2; i += 4)
+    for (unsigned int i = 0; i < hres*vres*2; i += 4)
         MEM_WRITE(BASE_VIDEO + i, 0x00000000);
 
     SDL_Window * window = (SDL_Window *) malloc(sizeof(SDL_Window));

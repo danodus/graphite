@@ -49,14 +49,26 @@ module ulx3s_v31_top(
     inout       logic usb_fpga_bd_dp, usb_fpga_bd_dn // enable internal pullups at constraints file
 );
 
+`ifdef VIDEO_720P
+    localparam sdram_clock_hz = 100_000_000;
+    localparam pixel_clock_hz = 75_000_000;
+
+`else // VIDEO_720P
+
 `ifdef FAST_CPU
-    localparam cpu_clock_hz = 80_000_000;
     localparam sdram_clock_hz = 100_000_000;
 `else
-    localparam cpu_clock_hz = 40_000_000;
     localparam sdram_clock_hz = 80_000_000;
 `endif
     localparam pixel_clock_hz = 25_000_000;
+
+`endif // VIDEO_720P
+
+`ifdef FAST_CPU
+    localparam cpu_clock_hz = 80_000_000;
+`else
+    localparam cpu_clock_hz = 40_000_000;
+`endif
 
     assign wifi_gpio0 = btn[0];
 

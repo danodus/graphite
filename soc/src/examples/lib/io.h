@@ -13,6 +13,8 @@
 #define SPI_STATUS      (BASE_IO + 20)
 #define KEYBOARD_STATUS (BASE_IO + 24)
 #define KEYBOARD_DATA   (BASE_IO + 28)
+#define GRAPHITE        (BASE_IO + 32)
+#define RES             (BASE_IO + 36)
 
 #define MEM_WRITE(_addr_, _value_) (*((volatile unsigned int *)(_addr_)) = _value_)
 #define MEM_READ(_addr_) *((volatile unsigned int *)(_addr_))

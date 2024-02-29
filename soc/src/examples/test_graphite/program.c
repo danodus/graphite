@@ -10,15 +10,7 @@
 #include <stdio.h>
 #include <io.h>
 
-#define BASE_IO 0xE0000000
 #define BASE_VIDEO 0x1000000
-
-#define TIMER (BASE_IO + 0)
-#define LED (BASE_IO + 4)
-#define GRAPHITE (BASE_IO + 32)
-
-#define FB_WIDTH 640
-#define FB_HEIGHT 480
 
 #define TEXTURE_WIDTH 32
 #define TEXTURE_HEIGHT 32
@@ -62,6 +54,8 @@ struct Command {
     uint32_t opcode : 8;
     uint32_t param : 24;
 };
+
+int fb_width, fb_height;
 
 uint16_t *img = NULL;
 
@@ -276,7 +270,7 @@ void clear(unsigned int color)
 }
 
 void write_texture() {
-    uint32_t tex_addr = 3 * FB_WIDTH * FB_HEIGHT;
+    uint32_t tex_addr = 3 * fb_width * fb_height;
 
     struct Command cmd;
     cmd.opcode = OP_SET_TEX_ADDR;
@@ -313,11 +307,15 @@ void print_help(void)
 
 void main(void)
 {
+    unsigned int res = MEM_READ(RES);
+    fb_width = res >> 16;
+    fb_height = res & 0xffff;
+
     print_help();
 
     float theta = 0.5f;
 
-    mat4x4 mat_proj = matrix_make_projection(FB_WIDTH, FB_HEIGHT, 60.0f);
+    mat4x4 mat_proj = matrix_make_projection(fb_width, fb_height, 60.0f);
 
     // camera
     vec3d  vec_camera = {FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
@@ -427,7 +425,7 @@ void main(void)
         uint32_t t1_draw = MEM_READ(TIMER);
         texture_t dummy_texture;
         nb_triangles = 0;
-        draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, model, &mat_world, gouraud_shading ? &mat_normal : NULL, &mat_proj, &mat_view, lights, nb_lights, is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t, perspective_correct);
+        draw_model(fb_width, fb_height, &vec_camera, model, &mat_world, gouraud_shading ? &mat_normal : NULL, &mat_proj, &mat_view, lights, nb_lights, is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t, perspective_correct);
         uint32_t t2_draw = MEM_READ(TIMER);
 
         swap();

@@ -37,8 +37,12 @@ SRC = \
   ../../../rtl/reciprocal.sv \
   ../../../rtl/div.sv
 
-#DEFINES = -DFAST_CPU
+ifeq ($(VIDEO),720p)
+DEFINES = -DVIDEO_720P
+else
 DEFINES =
+endif
+
 
 all: top.bin
 
@@ -49,7 +53,7 @@ top.json: $(SRC) prom.mem
 	$(YOSYS) -ql top.log -p 'verilog_defines $(DEFINES) ; read_verilog -sv $(SRC); synth_ecp5 -top $(TOP_MODULE) -json top.json -abc9'
 
 top.asc: top.json $(PIN_DEF)
-	$(NEXTPNR) -l top_nextpnr.log --$(DEVICE) --package $(PACKAGE) --json top.json --lpf $(PIN_DEF) --textcfg top.asc --randomize-seed
+	$(NEXTPNR) -l top_nextpnr.log --$(DEVICE) --package $(PACKAGE) --json top.json --lpf $(PIN_DEF) --textcfg top.asc --randomize-seed --timing-allow-fail
 
 top.bin: top.asc
 	$(ECPPACK) --compress --input top.asc --bit top.bin

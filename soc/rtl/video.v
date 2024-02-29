@@ -23,8 +23,17 @@ CONNECTION WITH THE DEALINGS IN OR USE OR PERFORMANCE OF THE SOFTWARE.*/
 // OberonStation (externally-clocked) ver PR 7.8.15/03.10.15
 // Modified for SDRAM - Nicolae Dumitrache 2016
 
-module video
-(
+module video #(
+    parameter CORDW=11,   // signed coordinate width (bits)
+    parameter H_RES=640,  // horizontal resolution (pixels)
+    parameter V_RES=480,  // vertical resolution (lines)
+    parameter H_FP=16,    // horizontal front porch
+    parameter H_SYNC=96,  // horizontal sync
+    parameter H_BP=48,    // horizontal back porch
+    parameter V_FP=10,    // vertical front porch
+    parameter V_SYNC=2,   // vertical sync
+    parameter V_BP=33     // vertical back porch
+) (
     input clk, pclk, ce,
     input [31:0] viddata,
     output reg req = 1'b1,  // SRAM read request
@@ -33,10 +42,13 @@ module video
     output [11:0] RGB
 );
 
+  localparam H_TOTAL = H_RES + H_FP + H_SYNC + H_BP;
+  localparam V_TOTAL = V_RES + V_FP + V_SYNC + V_BP;
+
 initial req = 1'b1;
 
-reg [10:0] hcnt;
-reg [9:0] vcnt;
+reg [CORDW-1:0] hcnt;
+reg [CORDW-1:0] vcnt;
 reg hword;  // from hcnt, but latched in the clk domain
 reg [31:0] vidbuf, pixbuf;
 reg hblank;
@@ -45,10 +57,10 @@ wire [15:0] vid;
 
 assign de = !(hblank|vblank);
 
-assign hend = (hcnt == 799), vend = (vcnt == 524);
-assign vblank = (vcnt >= 480);
-assign hsync = (hcnt >= 640+16) & (hcnt < 640+16+96);
-assign vsync = (vcnt >= 480+10) & (vcnt < 480+10+2);
+assign hend = (hcnt == H_TOTAL-1), vend = (vcnt == V_TOTAL-1);
+assign vblank = (vcnt >= V_RES);
+assign hsync = (hcnt >= H_RES+H_FP) & (hcnt < H_RES+H_FP+H_BP);
+assign vsync = (vcnt >= V_RES+V_FP) & (vcnt < V_RES+V_FP+V_BP);
 assign xfer = hcnt[0];  // data delay > hcnt cycle + req cycle
 assign vid = (~hblank & ~vblank) ? pixbuf[15:0] : 16'd0;
 assign RGB = {vid[11:8], vid[7:4], vid[3:0]};
@@ -56,13 +68,13 @@ assign RGB = {vid[11:8], vid[7:4], vid[3:0]};
 always @(posedge pclk) if(ce) begin  // pixel clock domain
   hcnt <= hend ? 0 : hcnt+1;
   vcnt <= hend ? (vend ? 0 : (vcnt+1)) : vcnt;
-  hblank <= xfer ? (hcnt >= 640) : hblank;
+  hblank <= xfer ? (hcnt >= H_RES) : hblank;
   pixbuf <= xfer ? vidbuf : {16'd0, pixbuf[31:16]};
 end
 
 always @(posedge pclk) if(ce) begin  // CPU (SRAM) clock domain
   hword <= hcnt[0];
-  req <= ~vblank & (hcnt < 640) & hword;  // i.e. adr changed
+  req <= ~vblank & (hcnt < H_RES) & hword;  // i.e. adr changed
   vidbuf <= req ? viddata : vidbuf;
 end
 

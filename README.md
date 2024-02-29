@@ -16,7 +16,7 @@ The system has the following features:
 - UART (115200/230400-N-8-1)
 - SDRAM (32MiB shared between CPU and video)
 - Set associative cache (4-way with LRU replacement policy)
-- 640x480 HDMI video output with framebuffer (ARGB4444)
+- 640x480/720p HDMI video output with framebuffer (ARGB4444)
 - 2D/3D graphics accelerator (textured triangles)
 - PS/2 keyboard
 - PS/2 mouse
@@ -43,6 +43,12 @@ make run SERIAL=<serial device>
 ```
 
 Open a serial terminal at 230400 bauds and press 'h' for help.
+
+For 1280x720 60Hz:
+```bash
+cd soc/rtl/ulx3s
+make VIDEO=720p prog
+```
 
 ## System Simulation
 
