@@ -1,6 +1,7 @@
 module vqueue
 #(
   parameter almost_empty = 8, // when less than this numer of elements left
+  parameter almost_empty2 = 16, // when less than this numer of elements left
   parameter addr_width = 5 // queue length: 2**n elements
 )
 (
@@ -15,6 +16,7 @@ module vqueue
   output Empty,
   output Full, // unused
   output AlmostEmpty,
+  output AlmostEmpty2,
   output AlmostFull // unused
 );
   reg [addr_width-1:0] wraddr, rdaddr;
@@ -30,6 +32,7 @@ module vqueue
   assign addr_diff = wraddr - rdaddr;
   assign Empty = addr_diff == 0 ? 1'b1 : 1'b0;
   assign AlmostEmpty = addr_diff < almost_empty ? 1'b1 : 1'b0;
+  assign AlmostEmpty2 = addr_diff < almost_empty2 ? 1'b1 : 1'b0;
 
   always @(posedge RdClock)
   begin

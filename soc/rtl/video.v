@@ -36,7 +36,7 @@ module video #(
 ) (
     input clk, pclk, ce,
     input [31:0] viddata,
-    output reg req = 1'b1,  // SRAM read request
+    output reg req,  // SRAM read request
     output hsync, vsync,  // to display
     output de,
     output [11:0] RGB
@@ -44,8 +44,6 @@ module video #(
 
   localparam H_TOTAL = H_RES + H_FP + H_SYNC + H_BP;
   localparam V_TOTAL = V_RES + V_FP + V_SYNC + V_BP;
-
-initial req = 1'b1;
 
 reg [CORDW-1:0] hcnt;
 reg [CORDW-1:0] vcnt;
@@ -76,6 +74,8 @@ always @(posedge pclk) if(ce) begin  // CPU (SRAM) clock domain
   hword <= hcnt[0];
   req <= ~vblank & (hcnt < H_RES) & hword;  // i.e. adr changed
   vidbuf <= req ? viddata : vidbuf;
+end else begin
+  req <= 0;
 end
 
 endmodule

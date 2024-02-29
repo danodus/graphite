@@ -427,16 +427,19 @@ module soc_top #(
     
     logic [15:0] video_din;
     logic        vd1 = 1'b0;
-    logic        almost_empty;
+    logic        almost_empty, almost_empty2;
     vqueue #(
 `ifdef VIDEO_720P
-       .almost_empty(256),
+       .almost_empty(128),
+       .almost_empty2(512),
        .addr_width(10)
 `elsif VIDEO_1080P
-       .almost_empty(256),
+       .almost_empty(128),
+       .almost_empty2(512),
        .addr_width(10)
 `else
-       .almost_empty(128),
+       .almost_empty(64),
+       .almost_empty2(128),
        .addr_width(8)
 `endif
     ) vqueue_inst(
@@ -450,6 +453,7 @@ module soc_top #(
       .Empty(empty), // output empty
       .AlmostFull(),
       .AlmostEmpty(almost_empty), // output prog_empty
+      .AlmostEmpty2(almost_empty2),
       .Reset(),
       .RPReset()
     );
@@ -457,7 +461,7 @@ module soc_top #(
     logic nop;
     always_ff @(posedge clk_sdram) begin
         nop <= sys_cmd_ack == 2'b00;
-        if(rst_n && almost_empty) cntrl0_user_command_register <= 2'b10;		// read 32 bytes VGA
+        if(rst_n && almost_empty2) cntrl0_user_command_register <= 2'b10;		// read 32 bytes VGA
         else if(ddr_wr) cntrl0_user_command_register <= 2'b01;		// write 256 bytes cache
         else if(ddr_rd) cntrl0_user_command_register <= 2'b11;		// read 256 bytes cache
         else cntrl0_user_command_register <= 2'b00;
@@ -479,7 +483,7 @@ module soc_top #(
     
     always_ff @(posedge clk_pixel) begin
         auto_flush <= {auto_flush[0], vga_vsync};
-        qready <= rst_n && !empty;
+        qready <= rst_n && !almost_empty;
     end
 
 endmodule
