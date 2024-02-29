@@ -16,7 +16,7 @@ The system has the following features:
 - UART (115200/230400-N-8-1)
 - SDRAM (32MiB shared between CPU and video)
 - Set associative cache (4-way with LRU replacement policy)
-- 640x480/720p HDMI video output with framebuffer (ARGB4444)
+- 480p (60Hz), 720p (60Hz) or 1080p (30Hz) HDMI video output with framebuffer (ARGB4444)
 - 2D/3D graphics accelerator (textured triangles)
 - PS/2 keyboard
 - PS/2 mouse
@@ -48,6 +48,12 @@ For 1280x720 60Hz:
 ```bash
 cd soc/rtl/ulx3s
 make VIDEO=720p prog
+```
+
+For 1920x1080 30Hz:
+```bash
+cd soc/rtl/ulx3s
+make VIDEO=1080p prog
 ```
 
 ## System Simulation

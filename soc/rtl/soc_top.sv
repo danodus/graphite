@@ -85,6 +85,9 @@ module soc_top #(
 `ifdef VIDEO_720P
     localparam H_RES = 1280;
     localparam V_RES = 720;
+`elsif VIDEO_1080P
+    localparam H_RES = 1920;
+    localparam V_RES = 1080;
 `else
     localparam H_RES = 640;
     localparam V_RES = 480;
@@ -110,6 +113,9 @@ module soc_top #(
     assign vga_g_o = RGB[7:4];
     assign vga_b_o = RGB[3:0];
 `ifdef VIDEO_720P    
+    assign vga_hsync_o = vga_hsync;
+    assign vga_vsync_o = vga_vsync;
+`elsif VIDEO_1080P
     assign vga_hsync_o = vga_hsync;
     assign vga_vsync_o = vga_vsync;
 `else
@@ -192,6 +198,14 @@ module soc_top #(
         .V_FP(5),     // vertical front porch
         .V_SYNC(5),   // vertical sync
         .V_BP(20)     // vertical back porch
+`elsif VIDEO_1080P
+        .CORDW(12),   // signed coordinate width (bits)
+        .H_FP(88),    // horizontal front porch
+        .H_SYNC(44),  // horizontal sync
+        .H_BP(148),   // horizontal back porch
+        .V_FP(4),     // vertical front porch
+        .V_SYNC(5),   // vertical sync
+        .V_BP(36)     // vertical back porch
 `else
         .CORDW(11),   // signed coordinate width (bits)
         .H_FP(16),    // horizontal front porch
@@ -416,6 +430,9 @@ module soc_top #(
     logic        almost_empty;
     vqueue #(
 `ifdef VIDEO_720P
+       .almost_empty(256),
+       .addr_width(10)
+`elsif VIDEO_1080P
        .almost_empty(256),
        .addr_width(10)
 `else

@@ -37,12 +37,19 @@ SRC = \
   ../../../rtl/reciprocal.sv \
   ../../../rtl/div.sv
 
-ifeq ($(VIDEO),720p)
-DEFINES = -DVIDEO_720P
-else
 DEFINES =
+
+ifeq ($(VIDEO),720p)
+DEFINES += -DVIDEO_720P
 endif
 
+ifeq ($(VIDEO),1080p)
+DEFINES += -DVIDEO_1080P
+endif
+
+ifeq ($(CPU_SPEED),fast)
+DEFINES += -DFAST_CPU
+endif
 
 all: top.bin
 

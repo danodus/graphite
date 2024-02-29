@@ -53,8 +53,11 @@ module ulx3s_v31_top(
     localparam sdram_clock_hz = 100_000_000;
     localparam pixel_clock_hz = 75_000_000;
 
-`else // VIDEO_720P
+`elsif VIDEO_1080P
+    localparam sdram_clock_hz = 100_000_000;
+    localparam pixel_clock_hz = 75_000_000;
 
+`else
 `ifdef FAST_CPU
     localparam sdram_clock_hz = 100_000_000;
 `else
@@ -62,7 +65,7 @@ module ulx3s_v31_top(
 `endif
     localparam pixel_clock_hz = 25_000_000;
 
-`endif // VIDEO_720P
+`endif
 
 `ifdef FAST_CPU
     localparam cpu_clock_hz = 80_000_000;
