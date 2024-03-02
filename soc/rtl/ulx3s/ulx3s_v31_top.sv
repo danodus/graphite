@@ -49,22 +49,14 @@ module ulx3s_v31_top(
     inout       logic usb_fpga_bd_dp, usb_fpga_bd_dn // enable internal pullups at constraints file
 );
 
-`ifdef VIDEO_720P
-    localparam sdram_clock_hz = 100_000_000;
-    localparam pixel_clock_hz = 75_000_000;
-
+`ifdef VIDEO_480P
+    localparam pixel_clock_hz = 34_000_000; // DMT: 33.75MHz
+`elsif VIDEO_720P
+    localparam pixel_clock_hz = 75_000_000; // DMT: 74.25MHz
 `elsif VIDEO_1080P
-    localparam sdram_clock_hz = 100_000_000;
-    localparam pixel_clock_hz = 75_000_000;
-
-`else
-`ifdef FAST_CPU
-    localparam sdram_clock_hz = 100_000_000;
-`else
-    localparam sdram_clock_hz = 80_000_000;
-`endif
-    localparam pixel_clock_hz = 25_000_000;
-
+    localparam pixel_clock_hz = 75_000_000; // DMT: 74.25MHz
+`else // VGA
+    localparam pixel_clock_hz = 25_000_000; // DMT: 25MHz
 `endif
 
 `ifdef FAST_CPU
@@ -72,6 +64,8 @@ module ulx3s_v31_top(
 `else
     localparam cpu_clock_hz = 40_000_000;
 `endif
+
+    localparam sdram_clock_hz = 100_000_000;
 
     assign wifi_gpio0 = btn[0];
 
@@ -114,9 +108,9 @@ module ulx3s_v31_top(
         .locked(pll_system_locked)
     );
     logic clk_cpu, clk_sdram;
-    assign clk_sdram = clocks_system[0]; // 100/50 MHz sdram controller
-    assign sdram_clk = clocks_system[1]; // 100/50 MHz 180 deg SDRAM chip
-    assign clk_cpu = clocks_system[2];   // 100/50 MHz
+    assign clk_sdram = clocks_system[0];
+    assign sdram_clk = clocks_system[1];
+    assign clk_cpu = clocks_system[2];
 
     logic vga_hsync, vga_vsync, vga_blank;
     logic [3:0] vga_r, vga_g, vga_b;

@@ -82,15 +82,26 @@ module soc_top #(
     // 8  graphite
     // 9  -- / H resolution, V resolution
     
-`ifdef VIDEO_720P
+`ifdef VIDEO_480P
+    localparam H_RES = 848;
+    localparam V_RES = 480;
+    localparam H_POL = 1;
+    localparam V_POL = 1;
+`elsif VIDEO_720P
     localparam H_RES = 1280;
     localparam V_RES = 720;
+    localparam H_POL = 1;
+    localparam V_POL = 1;
 `elsif VIDEO_1080P
     localparam H_RES = 1920;
     localparam V_RES = 1080;
-`else
+    localparam H_POL = 1;
+    localparam V_POL = 1;
+`else // VGA
     localparam H_RES = 640;
     localparam V_RES = 480;
+    localparam H_POL = 0;
+    localparam V_POL = 0;
 `endif
 
     logic rst_n = 1'b0;
@@ -112,16 +123,9 @@ module soc_top #(
     assign vga_r_o = RGB[11:8];
     assign vga_g_o = RGB[7:4];
     assign vga_b_o = RGB[3:0];
-`ifdef VIDEO_720P    
-    assign vga_hsync_o = vga_hsync;
-    assign vga_vsync_o = vga_vsync;
-`elsif VIDEO_1080P
-    assign vga_hsync_o = vga_hsync;
-    assign vga_vsync_o = vga_vsync;
-`else
-    assign vga_hsync_o = ~vga_hsync;
-    assign vga_vsync_o = ~vga_vsync;
-`endif
+
+    assign vga_hsync_o = H_POL ? vga_hsync : ~vga_hsync;
+    assign vga_vsync_o = V_POL ? vga_vsync : ~vga_vsync;
     assign vga_blank_o = ~de;
 
     logic [31:0] adr;
@@ -190,7 +194,15 @@ module soc_top #(
     video #(
         .H_RES(H_RES),  // horizontal resolution (pixels)
         .V_RES(V_RES),  // vertical resolution (lines)
-`ifdef VIDEO_720P
+`ifdef VIDEO_480P
+        .CORDW(11),   // signed coordinate width (bits)
+        .H_FP(16),    // horizontal front porch
+        .H_SYNC(112), // horizontal sync
+        .H_BP(112),   // horizontal back porch
+        .V_FP(6),     // vertical front porch
+        .V_SYNC(8),   // vertical sync
+        .V_BP(23)     // vertical back porch
+`elsif VIDEO_720P
         .CORDW(11),   // signed coordinate width (bits)
         .H_FP(110),   // horizontal front porch
         .H_SYNC(40),  // horizontal sync
@@ -429,19 +441,9 @@ module soc_top #(
     logic        vd1 = 1'b0;
     logic        almost_empty, almost_empty2;
     vqueue #(
-`ifdef VIDEO_720P
        .almost_empty(128),
        .almost_empty2(512),
        .addr_width(10)
-`elsif VIDEO_1080P
-       .almost_empty(128),
-       .almost_empty2(512),
-       .addr_width(10)
-`else
-       .almost_empty(64),
-       .almost_empty2(128),
-       .addr_width(8)
-`endif
     ) vqueue_inst(
       .WrClock(clk_sdram), // input wr_clk
       .RdClock(clk_pixel), // input rd_clk

@@ -39,6 +39,10 @@ SRC = \
 
 DEFINES =
 
+ifeq ($(VIDEO),480p)
+DEFINES += -DVIDEO_480P
+endif
+
 ifeq ($(VIDEO),720p)
 DEFINES += -DVIDEO_720P
 endif

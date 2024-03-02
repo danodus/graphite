@@ -16,7 +16,7 @@ The system has the following features:
 - UART (115200/230400-N-8-1)
 - SDRAM (32MiB shared between CPU and video)
 - Set associative cache (4-way with LRU replacement policy)
-- 480p (60Hz), 720p (60Hz) or 1080p (30Hz) HDMI video output with framebuffer (ARGB4444)
+- VGA (60 Hz), 480p (60Hz), 720p (60Hz) or 1080p (30Hz) HDMI video output with framebuffer (ARGB4444)
 - 2D/3D graphics accelerator (textured triangles)
 - PS/2 keyboard
 - PS/2 mouse
@@ -31,30 +31,34 @@ The system has the following features:
 
 (*) Extract and add the `bin` directory to the path.
 
+Note: Tested with `oss-cad-suite-darwin-arm64-20240201` and `xpack-riscv-none-elf-gcc-13.2.0-2-darwin-arm64`.
+
 ## Getting Started on ULX3S
 
 ```bash
 cd soc/src/bios
 make
 cd ../../rtl/ulx3s
-make prog
+make clean;make VIDEO=<video mode> CPU_SPEED=<cpu speed> prog
 cd ../../src/examples/test_graphite
 make run SERIAL=<serial device>
 ```
 
 Open a serial terminal at 230400 bauds and press 'h' for help.
 
-For 1280x720 60Hz:
-```bash
-cd soc/rtl/ulx3s
-make VIDEO=720p prog
-```
+The following video modes are available:
+| Video Mode     | Description    |
+| -------------- | ---------------|
+| vga (default)  | 640x480 60Hz   |
+| 480p           | 848x480 60Hz   |
+| 720p           | 1280x720 60Hz  |
+| 1080p          | 1920x1080 30Hz |
 
-For 1920x1080 30Hz:
-```bash
-cd soc/rtl/ulx3s
-make VIDEO=1080p prog
-```
+The following CPU speeds are available:
+| CPU Speed      | Description |
+| -------------- | ----------- |
+| slow (default) | 40MHz       |
+| fast           | 80MHz       |
 
 ## System Simulation
 
@@ -83,5 +87,5 @@ make run
 
 ## Acknowledgements
 
-- The SoC is based on the Oberon project for the ULX3S available here: https://github.com/emard/oberon.
+- The SoC is based on the Oberon project for the ULX3S available here: https://github.com/emard/oberon
 - The CPU is based on icicle v1 available here: https://github.com/grahamedgecombe/icicle/tree/v1
