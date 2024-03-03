@@ -17,7 +17,6 @@ SRC = \
   $(TOP_MODULE_FILE) \
   pll_cpu.v \
   pll_sdram.v \
-  pll_video.v \
   ../soc_top.sv \
   ../prom.v \
   ../cache_controller.v \
@@ -34,6 +33,7 @@ SRC = \
   ../riscv/rv32.sv \
   ../video.v \
   ../lattice/bram32bit.v \
+  ../lattice/ecp5pll.sv \
   ../bram_true2p_2clk.v \
   ../vqueue.v \
   ../dvi/hdmi_interface.v \
