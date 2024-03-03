@@ -53,29 +53,44 @@ module ulx3s_v31_top(
     localparam pixel_clock_hz = 25_000_000; // DMT: 25MHz
 `endif
 
-`ifdef FAST_CPU
-    localparam cpu_clock_hz = 50_000_000;
-`else
-    localparam cpu_clock_hz = 40_000_000;
-`endif
-
-    localparam sdram_clock_hz = 100_000_000;
-
     assign sdram_cke = 1'b1; // SDRAM clock enable
 
-    logic clk_pixel, clk_shift;
     logic pll_video_locked;
-    pll_video pll_video(
-        .clkin(clk_25mhz),
-        .clkout0(clk_shift),
-        .clkout1(clk_pixel),
+    logic [3:0] clocks_video;
+    ecp5pll
+    #(
+        .in_hz(25_000_000),
+        .out0_hz(5*pixel_clock_hz),
+        .out1_hz(pixel_clock_hz)
+    )
+    ecp5pll_video_inst
+    (
+        .clk_i(clk_25mhz),
+        .clk_o(clocks_video),
         .locked(pll_video_locked)
     );
+    logic clk_pixel, clk_shift;
+    assign clk_shift = clocks_video[0]; // 125 MHz
+    assign clk_pixel = clocks_video[1]; // 25 MHz
 
-    logic clk_cpu, clk_sdram;
-    assign clk_sdram = clocks_system[0];
-    assign sdram_clk = clocks_system[1];
-    assign clk_cpu = clocks_system[2];
+    logic clk_sdram;
+    logic pll_sdram_locked;
+
+    pll_sdram pll_sdram(
+        .clkin(clk_25mhz),
+        .clkout0(clk_sdram),
+        .locked(pll_sdram_locked)
+    );
+
+    assign sdram_clk = ~clk_sdram;
+
+    logic clk_cpu;
+    logic pll_cpu_locked;
+    pll_cpu pll_cpu(
+        .clkin(clk_25mhz),
+        .clkout0(clk_cpu),
+        .locked(pll_cpu_locked)
+    );
 
     logic vga_hsync, vga_vsync, vga_blank;
     logic [7:0] vga_r, vga_g, vga_b;
@@ -84,8 +99,8 @@ module ulx3s_v31_top(
     assign pll_locked = pll_cpu_locked & pll_sdram_locked & pll_video_locked;
 
     soc_top #(
-        .FREQ_HZ(cpu_clock_hz),
-        .BAUD_RATE(2_000_000)
+        .FREQ_HZ(48_000_000),
+        .BAUD_RATE(1_000_000)
     ) soc_top(
         .clk_cpu(clk_cpu),
         .clk_sdram(clk_sdram),

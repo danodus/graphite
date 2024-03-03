@@ -339,7 +339,7 @@ module PHY (
                       end
 
         S_EOP_STUFF:  begin // output final stuff bit if needed
-                      state = S_TX_EOP0;
+                      state <= S_TX_EOP0;
                       if (tx_toggle) begin tx_dp <= ~tx_dp; tx_dn <= ~tx_dn; end
                       end
 

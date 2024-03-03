@@ -18,8 +18,7 @@ The system has the following features:
 - Set associative cache (4-way with LRU replacement policy)
 - VGA (60 Hz), 480p (60Hz), 720p (60Hz) or 1080p (30Hz) HDMI video output with framebuffer (RGB565)
 - 2D/3D graphics accelerator (textured triangles)
-- PS/2 keyboard
-- PS/2 mouse
+- USB host for keyboard and mouse
 - SD Card with hardware SPI
 
 ## Requirements
@@ -40,7 +39,7 @@ Note: Tested with `oss-cad-suite-darwin-arm64-20240810` and `xpack-riscv-none-el
 cd soc/src/bios
 make
 cd ../../rtl/ulx3s
-make clean;make VIDEO=<video mode> CPU_SPEED=<cpu speed> prog
+make clean;make VIDEO=<video mode> prog
 cd ../../src/examples/test_graphite
 make run SERIAL=<serial device>
 picocom -b 2000000 <serial device>
@@ -55,12 +54,6 @@ The following video modes are available:
 | 480p           | 848x480 60Hz   |
 | 720p           | 1280x720 60Hz  |
 | 1080p          | 1920x1080 30Hz |
-
-The following CPU speeds are available:
-| CPU Speed      | Description |
-| -------------- | ----------- |
-| slow (default) | 40MHz       |
-| fast           | 50MHz       |
 
 ## System Simulation
 
@@ -91,3 +84,4 @@ make run
 
 - The SoC is based on the Oberon project for the ULX3S available here: https://github.com/emard/oberon
 - The CPU is based on icicle v1 available here: https://github.com/grahamedgecombe/icicle/tree/v1
+- The USB host is based on usb_host available here: https://gitlab.com/pnru/usb_host

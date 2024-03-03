@@ -59,12 +59,12 @@ module top (
         .vga_r_o(vga_r),
         .vga_g_o(vga_g),
         .vga_b_o(vga_b),
-        // PS/2 keyboard
-        .ps2clka_i(),
-        .ps2data_i(),
-        // PS/2 mouse
-        .ps2clkb_io(),
-        .ps2datb_io(),
+        // USB
+        .usb_fpga_dp(),
+        .usb_fpga_bd_dp(),
+        .usb_fpga_bd_dn(),
+        .usb_fpga_pu_dp(),
+        .usb_fpga_pu_dn(),
         // SDRAM
         .sdram_cas_n_o(sdram_cas_n_o),
         .sdram_ras_n_o(sdram_ras_n_o),
