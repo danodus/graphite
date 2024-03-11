@@ -46,10 +46,24 @@ unsigned int read_word()
     for (int i = 0; i < 4; ++i) {
         word <<= 8;
         while(!(MEM_READ(UART_STATUS) & 1));
+        MEM_WRITE(UART_STATUS, 1);  // Dequeue
+        MEM_WRITE(UART_STATUS, 1);  // Dequeue
         unsigned int c = MEM_READ(UART_DATA);
         word |= c;
     }
     return word;
+}
+
+void echo()
+{
+    for (;;) {
+        while(!(MEM_READ(UART_STATUS) & 1));
+        MEM_WRITE(UART_STATUS, 1);  // Dequeue
+        MEM_WRITE(UART_STATUS, 1);  // Dequeue
+        unsigned int c = MEM_READ(UART_DATA);
+        while(!(MEM_READ(UART_STATUS) & 2));
+        MEM_WRITE(UART_DATA, c);
+    }
 }
 
 int receive_program()

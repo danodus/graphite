@@ -13,7 +13,7 @@ The documentation is available here: https://danodus.github.io/graphite/
 The system has the following features:
 
 - RISC-V (RV32I + Graphite extension)
-- UART (115200/230400-N-8-1)
+- UART (1000000/2000000-N-8-1)
 - SDRAM (32MiB shared between CPU and video)
 - Set associative cache (4-way with LRU replacement policy)
 - VGA (60 Hz), 480p (60Hz), 720p (60Hz) or 1080p (30Hz) HDMI video output with framebuffer (ARGB4444)
@@ -27,6 +27,7 @@ The system has the following features:
 - OSS CAD Suite (https://github.com/YosysHQ/oss-cad-suite-build) (*)
 - xPack RISC-V Embedded GCC (https://github.com/xpack-dev-tools/riscv-none-elf-gcc-xpack/releases) (*)
 - Python3 with the following PIP3 packages installed: `pyserial`
+- picocom
 - SDL2 (for simulation only)
 
 (*) Extract and add the `bin` directory to the path.
@@ -42,9 +43,10 @@ cd ../../rtl/ulx3s
 make clean;make VIDEO=<video mode> CPU_SPEED=<cpu speed> prog
 cd ../../src/examples/test_graphite
 make run SERIAL=<serial device>
+picocom -b 2000000 <serial device>
 ```
 
-Open a serial terminal at 230400 bauds and press 'h' for help.
+and press 'h' for help.
 
 The following video modes are available:
 | Video Mode     | Description    |

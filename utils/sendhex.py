@@ -5,7 +5,7 @@ import time
 delay_word = 0
 delay_block = 0
 
-baudrate = 230400
+baudrate = 2000000
 
 def send(ser, bytes, delay):
     ser.write(bytes)
@@ -45,6 +45,7 @@ def main(argv):
                 d = delay_block
             send(ser, bytearray.fromhex(line), d)
             cnt = cnt + 4
+        ser.flush()
         time.sleep(2)
         ser.close()
     exit(0)

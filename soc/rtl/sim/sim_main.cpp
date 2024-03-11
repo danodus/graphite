@@ -138,6 +138,8 @@ int main(int argc, char **argv, char **env)
         bool write_sdram = false;
         bool read_sdram = false;
 
+        bool manual_reset = false;
+
         while (!contextp->gotFinish() && !quit)
         {
             bool toggle_clk = !(clk_counter & 0x1);
@@ -241,15 +243,15 @@ int main(int argc, char **argv, char **env)
                     }
                 }
 
-                if (contextp->time() > 1 && contextp->time() < 10)
-                {
-                    top->reset_i = 1; // Assert reset
+                if (manual_reset) {
+                    top->reset_i = 1;
+                } else {
+                    if (contextp->time() > 1 && contextp->time() < 10) {
+                        top->reset_i = 1; // Assert reset
+                    } else {
+                        top->reset_i = 0; // Deassert reset
+                    }
                 }
-                else
-                {
-                    top->reset_i = 0; // Deassert reset
-                }
-
 
                 // Update video display
                 if (was_vsync && top->vga_vsync)
@@ -297,6 +299,10 @@ int main(int argc, char **argv, char **env)
                     {
                         switch (e.key.keysym.sym)
                         {
+                        case SDLK_F1:
+                            std::cout << "Reset released\n";
+                            manual_reset = false;
+                            break;
                         case SDLK_F12:
                             quit = true;
                             restart_model = true;
@@ -317,6 +323,10 @@ int main(int argc, char **argv, char **env)
                         {
                             switch (e.key.keysym.sym)
                             {
+                            case SDLK_F1:
+                                std::cout << "Reset pressed\n";
+                                manual_reset = true;
+                                break;                                
                             case SDLK_F12:
                                 std::cout << "Reset context\n";
                                 break;

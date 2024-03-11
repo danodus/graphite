@@ -9,6 +9,7 @@ SRC = bram32bit.v \
 	prom.v \
 	uart_tx.v \
 	uart_rx.v \
+	fifo.sv \
 	bram_true2p_2clk.v \
 	ps2kbd.v \
 	ps2mouse.v \

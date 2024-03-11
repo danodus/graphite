@@ -33,6 +33,8 @@ char get_chr()
 {
     while (1) {
         if (MEM_READ(UART_STATUS) & 1) {
+            MEM_WRITE(UART_STATUS, 1);  // Dequeue
+            MEM_WRITE(UART_STATUS, 1);  // Dequeue
             unsigned int c = MEM_READ(UART_DATA);
             return (char)c;
         }

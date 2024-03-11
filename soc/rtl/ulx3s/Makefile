@@ -23,6 +23,7 @@ SRC = \
   ../ps2mouse.v \
   ../uart_rx.v \
   ../uart_tx.v \
+  ../fifo.sv \
   ../spi.v \
   ../riscv/processor.sv \
   ../riscv/bus_arbiter.sv \

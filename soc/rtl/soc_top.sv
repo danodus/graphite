@@ -136,9 +136,12 @@ module soc_top #(
     logic rd, wr, ioenb, dspreq;
     logic [3:0]  wmask;
 
-    logic [7:0] dataTx, dataRx, dataKbd;
-    logic rdyRx, startTx, rdyTx, rdyKbd;
+    logic [7:0] dataTx, dataRx;
+    logic rdyTx, rdyRx, uartDequeue;
+    logic startTx;
     logic doneRx;
+    logic [7:0] dataKbd;
+    logic rdyKbd;
     logic doneKbd;
     logic [27:0] dataMs;
     logic bitrate;  // for RS232
@@ -184,10 +187,78 @@ module soc_top #(
         .ack_i(1'b1)
     );
 
+    //
+    // UART
+    //
+
+    logic uart_tx_strobe;
+    logic [7:0] uart_tx_data;
+    logic [7:0] uart_rx_data;
+    logic uart_valid;
+    logic uart_wr;
+
+    logic uart_enq;
+    logic uart_deq;
+    logic uart_fifo_empty;
+
+    assign rdyRx = ~uart_fifo_empty;
+
+    fifo #(
+        .ADDR_LEN(14),
+        .DATA_WIDTH(8)
+    ) uart_fifo(
+        .clk(clk_cpu),
+        .reset_i(~rst_n),
+        .reader_q_o(uart_code),
+        .reader_deq_i(uart_deq),
+        .reader_empty_o(uart_fifo_empty),
+        .reader_alm_empty_o(),
+
+        .writer_d_i(uart_rx_data),
+        .writer_enq_i(uart_enq),
+        .writer_full_o(),
+        .writer_alm_full_o()
+    );
+
     uart_rx #(.FREQ_HZ(FREQ_HZ), .BAUD_RATE(BAUD_RATE)) uart_rx(.clk(clk_cpu), .rst(rst_n), .RxD(rx_i), .fsel(bitrate), .done(doneRx),
-    .data(dataRx), .rdy(rdyRx));
-    uart_tx #(.FREQ_HZ(FREQ_HZ), .BAUD_RATE(BAUD_RATE)) uart_tx(.clk(clk_cpu), .rst(rst_n), .start(startTx), .fsel(bitrate),
-    .data(dataTx), .TxD(tx_o), .rdy(rdyTx));
+    .data(uart_rx_data), .rdy(uart_valid));
+    uart_tx #(.FREQ_HZ(FREQ_HZ), .BAUD_RATE(BAUD_RATE)) uart_tx(.clk(clk_cpu), .rst(rst_n), .start(uart_wr), .fsel(bitrate),
+    .data(uart_tx_data), .TxD(tx_o), .rdy(rdyTx));
+
+    logic [7:0] uart_code;
+    always_ff @(posedge clk_cpu) begin
+        if (~rst_n) begin
+            uart_enq     <= 1'b0;
+            uart_deq     <= 1'b0;
+            uart_tx_data <= 8'd0;
+            uart_wr      <= 1'b0;
+            doneRx       <= 1'b0;
+        end begin
+            doneRx <= 1'b0;
+            uart_enq <= 1'b0;
+            if (uart_deq) begin
+                uart_deq <= 1'b0;
+                dataRx <= uart_code; 
+            end
+            if (uartDequeue) begin
+                if (!uart_fifo_empty) begin
+                    uart_deq <= 1'b1;
+                end
+            end
+            if (uart_valid) begin
+                doneRx <= 1'b1;
+                uart_enq <= 1'b1;
+            end
+        end
+
+        if (startTx) begin
+            uart_tx_data <= dataTx;
+            uart_wr <= 1'b1;
+        end else begin
+            uart_wr <= 1'b0;
+        end
+    end
+
     spi #(.FREQ_HZ(FREQ_HZ)) spi(.clk(clk_cpu), .rst(rst_n), .start(spiStart), .dataTx(outbus),
     .fast(spiCtrl[2]), .dataRx(spiRx), .rdy(spiRdy),
         .SCLK(SCLK[0]), .MOSI(MOSI[0]), .MISO(MISO[0] & MISO[1]));
@@ -298,16 +369,11 @@ module soc_top #(
 
     assign dataTx = outbus[7:0];
     assign startTx = wr & ioenb & (iowadr == 2);
+    assign uartDequeue = wr & ioenb & (iowadr == 3);
     assign limit = (cnt0 == FREQ_HZ / 1000 - 1);
     assign spiStart = wr & ioenb & (iowadr == 4);
     assign SS = ~spiCtrl[1:0];  //active low slave select
     assign MOSI[1] = MOSI[0], SCLK[1] = SCLK[0];
-
-    always @(posedge clk_cpu) begin
-        doneRx <= 1'b0;
-        if (rd & ioenb & (iowadr == 2))
-            doneRx <= 1'b1;
-    end
 
     always @(posedge clk_cpu) begin
         doneKbd <= 1'b0;
