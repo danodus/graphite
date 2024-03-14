@@ -75,6 +75,9 @@ module graphite #(
 
     assign front_addr_o = front_address;
 
+    logic [2:0] texture_width_scale;
+    logic [2:0] texture_height_scale;
+
     //
     // Draw triangle
     //
@@ -334,6 +337,8 @@ module graphite #(
                         is_clamp_s             <= cmd_axis_tdata_i[2];
                         is_depth_test          <= cmd_axis_tdata_i[3];
                         is_perspective_correct <= cmd_axis_tdata_i[4];
+                        texture_width_scale    <= cmd_axis_tdata_i[7:5];
+                        texture_height_scale   <= cmd_axis_tdata_i[10:8];
                         vram_mask_o     <= 4'hF;
                         min_x <= min3(12'(vv00 >> 14), 12'(vv10 >> 14), 12'(vv20 >> 14));
                         min_y <= min3(12'(vv01 >> 14), 12'(vv11 >> 14), 12'(vv21 >> 14));
@@ -725,15 +730,15 @@ module graphite #(
 
             DRAW_TRIANGLE49: begin
                 // t0 = rmul(mul((TEXTURE_HEIGHT - 1) << 14, clamp(t)), TEXTURE_WIDTH << 14)
-                dsp_mul_p0[0] <= ((TEXTURE_HEIGHT - 1) << 14);
+                dsp_mul_p0[0] <= (((TEXTURE_HEIGHT << texture_height_scale) - 1) << 14);
                 dsp_mul_p1[0] <= (is_clamp_t ? clamp(t) : wrap(t));
                 state <= DRAW_TRIANGLE50;
             end
 
             DRAW_TRIANGLE50: begin
-                t0 <= mul(dsp_mul_z[0] & 32'hFFFFC000, TEXTURE_WIDTH << 14);
+                t0 <= mul(dsp_mul_z[0] & 32'hFFFFC000, (TEXTURE_WIDTH << texture_width_scale) << 14);
                 // t1 = mul((TEXTURE_WIDTH - 1) << 14, clamp(s))
-                dsp_mul_p0[0] <= ((TEXTURE_WIDTH - 1) << 14);
+                dsp_mul_p0[0] <= (((TEXTURE_WIDTH << texture_width_scale) - 1) << 14);
                 dsp_mul_p1[0] <= (is_clamp_s ? clamp(s) : wrap(s));
                 state <= DRAW_TRIANGLE51;
             end
@@ -831,6 +836,8 @@ module graphite #(
             texture_address     <= 3 * FB_WIDTH * FB_HEIGHT;
             state               <= WAIT_COMMAND;
             reciprocal_start    <= 1'b0;
+            texture_width_scale <= 3'd0;
+            texture_height_scale <= 3'd0;
         end
     end
 

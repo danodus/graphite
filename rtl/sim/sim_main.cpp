@@ -23,6 +23,7 @@
 #define WINDOW_SCALE 3
 #define TEXTURE_WIDTH 32
 #define TEXTURE_HEIGHT 32
+#define VRAM_SIZE   (16*1024*1024)
 
 #define OP_SET_X0 0
 #define OP_SET_Y0 1
@@ -144,7 +145,7 @@ static void swap(fx32* a, fx32* b) {
     *b = c;
 }
 
-void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t,
+void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y,
                       bool depth_test, bool perspective_correct)                      
 {
     struct Command cmd;
@@ -298,6 +299,9 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     cmd.param = (depth_test ? 0b01000 : 0b00000) | (clamp_s ? 0b00100 : 0b00000) | (clamp_t ? 0b00010 : 0b00000) |
               ((tex != NULL) ? 0b00001 : 0b00000) | (perspective_correct ? 0b10000 : 0xb00000);
 
+    cmd.param |= texture_scale_x << 5;
+    cmd.param |= texture_scale_y << 8;
+
     g_commands.push_back(cmd);
 }
 
@@ -340,8 +344,8 @@ void write_texture() {
     cmd.opcode = OP_WRITE_TEX;
     uint16_t* p = tex32x32;
     //uint16_t* p = tex64x64;
-    for (int t = 0; t < TEXTURE_WIDTH; ++t)
-        for (int s = 0; s < TEXTURE_HEIGHT; ++s) {
+    for (int t = 0; t < 32; ++t)
+        for (int s = 0; s < 32; ++s) {
             cmd.param = *p;
             g_commands.push_back(cmd);
             p++;
@@ -366,9 +370,8 @@ int main(int argc, char** argv, char** env) {
 
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-    const size_t vram_size = 3 * FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT;
-    uint16_t* vram_data = new uint16_t[vram_size];
-    for (size_t i = 0; i < vram_size; ++i) vram_data[i] = 0x0000;
+    uint16_t* vram_data = new uint16_t[VRAM_SIZE];
+    for (size_t i = 0; i < VRAM_SIZE; ++i) vram_data[i] = 0x0000;
 
     SDL_Texture* texture =
         SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB4444, SDL_TEXTUREACCESS_STREAMING, FB_WIDTH, FB_HEIGHT);
@@ -480,7 +483,7 @@ int main(int argc, char** argv, char** env) {
                 // Draw cube
                 texture_t dummy_texture;
                 draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, current_model, &mat_world, gouraud_shading ? &mat_normal : NULL, &mat_proj, &mat_view, lights, nb_lights,
-                           wireframe, textured ? &dummy_texture : NULL, clamp_s, clamp_t, perspective_correct);
+                           wireframe, textured ? &dummy_texture : NULL, clamp_s, clamp_t, 0, 0, perspective_correct);
 
                 swap();
             }
@@ -587,7 +590,7 @@ int main(int argc, char** argv, char** env) {
         top->vram_ack_i = 0;
 
         if (top->vram_sel_o) {
-            if (top->vram_addr_o < 3 * FB_WIDTH * FB_HEIGHT + TEXTURE_WIDTH * TEXTURE_HEIGHT) {
+            if (top->vram_addr_o < VRAM_SIZE) {
 
                 if (top->vram_wr_o) {
                     vram_data[top->vram_addr_o] = top->vram_data_out_o;

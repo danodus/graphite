@@ -60,7 +60,7 @@ module ulx3s_v31_top(
 `endif
 
 `ifdef FAST_CPU
-    localparam cpu_clock_hz = 80_000_000;
+    localparam cpu_clock_hz = 40_000_000;
 `else
     localparam cpu_clock_hz = 40_000_000;
 `endif

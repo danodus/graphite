@@ -58,6 +58,7 @@ struct Command {
 int fb_width, fb_height;
 
 extern uint16_t tex32x32[];
+extern uint16_t tex64x64[];
 
 int nb_triangles;
 bool rasterizer_ena = true;
@@ -68,7 +69,7 @@ void send_command(struct Command *cmd)
     MEM_WRITE(GRAPHITE, (cmd->opcode << 24) | cmd->param);
 }
 
-void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t,
+void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y,
                       bool depth_test, bool perspective_correct)                      
 {
     nb_triangles++;
@@ -226,6 +227,9 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     cmd.param = (depth_test ? 0b01000 : 0b00000) | (clamp_s ? 0b00100 : 0b00000) | (clamp_t ? 0b00010 : 0b00000) |
               ((tex != NULL) ? 0b00001 : 0b00000) | (perspective_correct ? 0b10000 : 0xb00000);
 
+    cmd.param |= texture_scale_x << 5;
+    cmd.param |= texture_scale_y << 8;
+
     send_command(&cmd);
 }
 
@@ -243,7 +247,7 @@ void clear(unsigned int color)
     send_command(&cmd);
 }
 
-void write_texture() {
+void write_textures() {
     uint32_t tex_addr = 3 * fb_width * fb_height;
 
     struct Command cmd;
@@ -255,12 +259,33 @@ void write_texture() {
 
     cmd.opcode = OP_WRITE_TEX;
     uint16_t* p = tex32x32;
-    for (int t = 0; t < TEXTURE_HEIGHT; ++t)
-        for (int s = 0; s < TEXTURE_WIDTH; ++s) {
+    for (int t = 0; t < 32; ++t)
+        for (int s = 0; s < 32; ++s) {
             cmd.param = *p;
             send_command(&cmd);
             p++;
         }
+    p = tex64x64;
+    for (int t = 0; t < 64; ++t)
+        for (int s = 0; s < 64; ++s) {
+            cmd.param = *p;
+            send_command(&cmd);
+            p++;
+        }
+}
+
+void set_texture(int texture)
+{
+    uint32_t tex_addr = 3 * fb_width * fb_height;
+    if (texture > 0)
+        tex_addr += TEXTURE_WIDTH * TEXTURE_HEIGHT;
+
+    struct Command cmd;
+    cmd.opcode = OP_SET_TEX_ADDR;
+    cmd.param = tex_addr & 0xFFFF;
+    send_command(&cmd);
+    cmd.param = 0x10000 | (tex_addr >> 16);
+    send_command(&cmd);
 }
 
 void swap()
@@ -276,7 +301,8 @@ void print_help(void)
 {
     printf("[h]: help, [q]: quit, [s]: stats, [SPACE]: rotation,\r\n"
         "[t]: texture, [l]: lighting, [g]: gouraud shading, [w]: wireframe, [m]: teapot/cube,\r\n"
-        "[u]: clamp s, [v] clamp t, [r] rasterizer ena, [p]: perspective correct\r\n");
+        "[u]: clamp s, [v] clamp t, [r] rasterizer ena, [p]: perspective correct\r\n"
+        "[0]: texture 32x32, [1]: texture 64x64\r\n");
 }
 
 void main(void)
@@ -300,7 +326,7 @@ void main(void)
 
     model_t *model = cube_model;
 
-    write_texture();
+    write_textures();
 
     bool quit = false;
     bool print_stats = false;
@@ -312,6 +338,7 @@ void main(void)
     bool clamp_t = false;
     bool perspective_correct = true;
     bool gouraud_shading = false;
+    int texture = 0;
 
     light_t lights[5];
     lights[0].direction = (vec3d){FX(0.0f), FX(0.0f), FX(1.0f), FX(0.0f)};
@@ -369,6 +396,10 @@ void main(void)
                 perspective_correct = !perspective_correct;
             } else if (c == 'g') {
                 gouraud_shading = !gouraud_shading;
+            } else if (c == '0') {
+                texture = 0;
+            } else if (c == '1') {
+                texture = 1;
             }
         }        
 
@@ -392,9 +423,10 @@ void main(void)
         uint32_t t2_xform = MEM_READ(TIMER);
 
         uint32_t t1_draw = MEM_READ(TIMER);
+        set_texture(texture);
         texture_t dummy_texture;
         nb_triangles = 0;
-        draw_model(fb_width, fb_height, &vec_camera, model, &mat_world, gouraud_shading ? &mat_normal : NULL, &mat_proj, &mat_view, lights, nb_lights, is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t, perspective_correct);
+        draw_model(fb_width, fb_height, &vec_camera, model, &mat_world, gouraud_shading ? &mat_normal : NULL, &mat_proj, &mat_view, lights, nb_lights, is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t, texture > 0 ? 1 : 0, texture > 0 ? 1 : 0, perspective_correct);
         uint32_t t2_draw = MEM_READ(TIMER);
 
         swap();
