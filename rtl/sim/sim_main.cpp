@@ -60,6 +60,9 @@
 #define PARAM(x) (_FLOAT_TO_FIXED(x, 14))
 #endif
 
+extern uint16_t tex64x64[];
+extern uint16_t tex32x32[];
+
 // Serial
 
 // Ref.: https://stackoverflow.com/questions/6947413/how-to-open-read-and-write-from-serial-port-in-c
@@ -317,26 +320,6 @@ void swap() {
     g_commands.push_back(cmd);
 }
 
-uint16_t img[TEXTURE_WIDTH * TEXTURE_HEIGHT];
-
-void init_img() {
-    uint16_t *p = img;
-    for (int v = 0; v < TEXTURE_HEIGHT; ++v) {
-        for (int u = 0; u < TEXTURE_WIDTH; ++u) {
-            if (u < TEXTURE_WIDTH / 2 && v < TEXTURE_HEIGHT / 2) {
-                *p = 0xFFFF;
-            } else if (u >= TEXTURE_WIDTH / 2 && v < TEXTURE_HEIGHT / 2) {
-                *p = 0xFF00;
-            } else if (u < TEXTURE_WIDTH / 2 && v >= TEXTURE_HEIGHT / 2) {
-                *p = 0xF0F0;
-            } else {
-                *p = 0xF00F;
-            }
-            ++p;
-        }
-    }
-}
-
 void send_command(const char* s) {
     Command c;
     c.opcode = s[0];
@@ -355,7 +338,8 @@ void write_texture() {
     g_commands.push_back(cmd);
 
     cmd.opcode = OP_WRITE_TEX;
-    const uint16_t* p = img;
+    uint16_t* p = tex32x32;
+    //uint16_t* p = tex64x64;
     for (int t = 0; t < TEXTURE_WIDTH; ++t)
         for (int s = 0; s < TEXTURE_HEIGHT; ++s) {
             cmd.param = *p;
@@ -451,8 +435,6 @@ int main(int argc, char** argv, char** env) {
     bool dump = false;
 
     unsigned int time = SDL_GetTicks();
-
-    init_img();
 
     bool texture_dirty = true;
 

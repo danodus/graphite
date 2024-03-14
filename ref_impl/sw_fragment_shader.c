@@ -7,12 +7,33 @@ typedef struct {
 #define RECIPROCAL_NUMERATOR 256.0f
 static fx32 reciprocal(fx32 x) { return x > 0 ? DIV(FX(RECIPROCAL_NUMERATOR), x) : FX(RECIPROCAL_NUMERATOR); }
 
+/*
 color_t texture_sample_color(bool texture, fx32 u, fx32 v) {
     if (texture) {
         if (u < FX(0.5f) && v < FX(0.5f)) return (color_t){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
         if (u >= FX(0.5f) && v < FX(0.5f)) return (color_t){FX(1.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
         if (u < FX(0.5f) && v >= FX(0.5f)) return (color_t){FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
         return (color_t){FX(0.0f), FX(0.0f), FX(1.0f), FX(1.0f)};
+    }
+    return (color_t){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
+}
+*/
+
+extern uint16_t tex32x32[];
+color_t texture_sample_color(bool texture, fx32 u, fx32 v) {
+    if (texture) {
+        int x = INT(MUL(u, FXI(32)));
+        int y = INT(MUL(v, FXI(32)));
+        int i = y * 32 + x;
+        if (x > 31) x = 31;
+        if (y > 31) y = 31;
+        uint16_t c = tex32x32[y * 32 + x];
+        uint8_t a = (c >> 12) & 0xF;
+        uint8_t r = (c >> 8) & 0xF;
+        uint8_t g = (c >> 4) & 0xF;
+        uint8_t b = c & 0xF;
+
+        return (color_t){DIV(FXI(r), FXI(15)), DIV(FXI(g), FXI(15)), DIV(FXI(b), FXI(15)), DIV(FXI(a), FXI(15))};
     }
     return (color_t){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
 }

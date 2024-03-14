@@ -57,36 +57,10 @@ struct Command {
 
 int fb_width, fb_height;
 
-uint16_t *img = NULL;
+extern uint16_t tex32x32[];
 
 int nb_triangles;
 bool rasterizer_ena = true;
-
-bool init_img() {
-    img = (uint16_t *)malloc(TEXTURE_WIDTH * TEXTURE_HEIGHT * sizeof(uint16_t));
-    if (!img)
-        return false;
-    uint16_t *p = img;
-    for (int v = 0; v < TEXTURE_HEIGHT; ++v) {
-        for (int u = 0; u < TEXTURE_WIDTH; ++u) {
-            if (u < TEXTURE_WIDTH / 2 && v < TEXTURE_HEIGHT / 2) {
-                *p = 0xFFFF;
-            } else if (u >= TEXTURE_WIDTH / 2 && v < TEXTURE_HEIGHT / 2) {
-                *p = 0xFF00;
-            } else if (u < TEXTURE_WIDTH / 2 && v >= TEXTURE_HEIGHT / 2) {
-                *p = 0xF0F0;
-            } else {
-                *p = 0xF00F;
-            }
-            ++p;
-        }
-    }
-    return true;
-}
-
-void dispose_img() {
-    free(img);
-}
 
 void send_command(struct Command *cmd)
 {
@@ -280,11 +254,11 @@ void write_texture() {
     send_command(&cmd);
 
     cmd.opcode = OP_WRITE_TEX;
-    const uint16_t* p = img;
-    for (int t = 0; t < 32; ++t)
-        for (int s = 0; s < 32; ++s) {
+    uint16_t* p = tex32x32;
+    for (int t = 0; t < TEXTURE_HEIGHT; ++t)
+        for (int s = 0; s < TEXTURE_WIDTH; ++s) {
             cmd.param = *p;
-             send_command(&cmd);
+            send_command(&cmd);
             p++;
         }
 }
@@ -325,11 +299,6 @@ void main(void)
     model_t *teapot_model = load_teapot();
 
     model_t *model = cube_model;
-
-    if (!init_img()) {
-        printf("Out of memory\r\n");
-        return;
-    }
 
     write_texture();
 
@@ -441,6 +410,4 @@ void main(void)
         if (print_stats)
             printf("xform: %d ms, clear: %d ms, draw: %d ms, total: %d ms, nb triangles: %d, tri/sec: %d\r\n", t2_xform - t1_xform, t2_clear - t1_clear, t2_draw - t1_draw, t2 - t1, nb_triangles, nb_triangles * 1000 / (t2 - t1));
     }
-
-    dispose_img();
 }
