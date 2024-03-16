@@ -7,7 +7,7 @@
 #include <fat_filelib.h>
 #include <libfixmath/fix16.h>
 
-#include "upng.h"
+#include <upng.h>
 #include "array.h"
 #include "clipping.h"
 #include "display.h"

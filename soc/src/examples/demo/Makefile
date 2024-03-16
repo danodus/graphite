@@ -11,11 +11,13 @@ CC = ${RISCV_TOOLCHAIN_PATH}${RISCV_TOOLCHAIN_PREFIX}gcc
 RISCV_CC_OPT ?= -march=rv32i -mabi=ilp32
 
 FAT32_SOURCE = ../lib/fat/fat_access.c ../lib/fat/fat_cache.c ../lib/fat/fat_filelib.c ../lib/fat/fat_format.c ../lib/fat/fat_misc.c ../lib/fat/fat_string.c ../lib/fat/fat_table.c ../lib/fat/fat_write.c
-LIB_SOURCE = ../lib/io.c ../lib/syscalls.c ../lib/array.c ../lib/SDL2/sdl.c ../lib/sd_card.c $(FAT32_SOURCE) ../lib/libfixmath/*.c ../lib/upng/*.c
-PROGRAM_SOURCE = src/start.S src/*.c
+LIB_SOURCE = $(FAT32_SOURCE) ../lib/io.c ../lib/syscalls.c ../lib/sd_card.c ../lib/upng/upng.c ../lib/array.c
+PROGRAM_SOURCE = start.S program.c ../../../../common/graphite.c ../../../../common/cube.c ../../../../common/teapot.c ../../../../common/tex32x32.c ../../../../common/tex64x64.c
 SERIAL ?= /dev/tty.usbserial-D00039
 
 LDFILE ?= program.ld
+
+EXTRA_CC_ARGS = -DRV_FIXED_POINT_EXTENSION=1
 
 all: program.hex
 
@@ -26,7 +28,7 @@ run: program.hex
 	$(PYTHON) ../../../../utils/sendhex.py $(SERIAL) program.hex
 
 program.lst: program.elf
-	${OBJDUMP} --source program.elf > program.lst
+	${OBJDUMP} --disassemble program.elf > program.lst
 
 program.hex: program.bin
 	${PYTHON} ../../../../utils/makehex.py program.bin > program.hex
@@ -35,6 +37,6 @@ program.bin: program.elf program.lst
 	${OBJCOPY} -O binary program.elf program.bin
 
 program.elf: $(PROGRAM_SOURCE) $(LIB_SOURCE)
-	${CC} $(RISCV_CC_OPT) -std=c99 -nostartfiles -g -O3 -T $(LDFILE) -I ../lib -I ../lib/SDL2 -I ../lib/fat -I ../lib/upng $(PROGRAM_SOURCE) $(LIB_SOURCE) -o program.elf -lm
+	${CC} $(RISCV_CC_OPT) -nostartfiles -O3 -T $(LDFILE) -I ../lib -I ../lib/fat -I ../lib/upng -I ../../../../common $(EXTRA_CC_ARGS) $(PROGRAM_SOURCE) $(LIB_SOURCE) -o program.elf -lm
 
 .PHONY: all clean run

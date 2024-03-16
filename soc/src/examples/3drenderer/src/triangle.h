@@ -5,7 +5,7 @@
 
 #include "vector.h"
 #include "texture.h"
-#include "upng.h"
+#include <upng.h>
 
 typedef struct {
     int a;
