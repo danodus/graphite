@@ -529,7 +529,7 @@ module soc_top #(
     logic nop;
     always_ff @(posedge clk_sdram) begin
         nop <= sys_cmd_ack == 2'b00;
-        if(rst_n && almost_empty2) cntrl0_user_command_register <= 2'b10;		// read 32 bytes VGA
+        if(almost_empty2) cntrl0_user_command_register <= 2'b10;		// read 32 bytes VGA
         else if(ddr_wr) cntrl0_user_command_register <= 2'b01;		// write 256 bytes cache
         else if(ddr_rd) cntrl0_user_command_register <= 2'b11;		// read 256 bytes cache
         else cntrl0_user_command_register <= 2'b00;
@@ -549,9 +549,13 @@ module soc_top #(
         end
     end
     
+    logic video_ready = 1'b0;
+
     always_ff @(posedge clk_pixel) begin
+        if (rst_n)
+            video_ready <= 1'b1;
         auto_flush <= {auto_flush[0], vga_vsync};
-        qready <= rst_n && !almost_empty;
+        qready <= video_ready && !almost_empty;
     end
 
 endmodule

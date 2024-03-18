@@ -52,6 +52,7 @@ reg [31:0] vidbuf, pixbuf;
 reg hblank;
 wire hend, vend, vblank, xfer;
 wire [15:0] vid;
+reg [1:0] init_req_counter;
 
 assign de = !(hblank|vblank);
 
@@ -63,7 +64,7 @@ assign xfer = hcnt[0];  // data delay > hcnt cycle + req cycle
 assign vid = (~hblank & ~vblank) ? pixbuf[15:0] : 16'd0;
 assign RGB = {vid[11:8], vid[7:4], vid[3:0]};
 
-always @(posedge pclk) if(ce) begin  // pixel clock domain
+always @(posedge pclk) if(ce && init_req_counter == 2'd0) begin  // pixel clock domain
   hcnt <= hend ? 0 : hcnt+1;
   vcnt <= hend ? (vend ? 0 : (vcnt+1)) : vcnt;
   hblank <= xfer ? (hcnt >= H_RES) : hblank;
@@ -71,11 +72,17 @@ always @(posedge pclk) if(ce) begin  // pixel clock domain
 end
 
 always @(posedge pclk) if(ce) begin  // CPU (SRAM) clock domain
-  hword <= hcnt[0];
-  req <= ~vblank & (hcnt < H_RES) & hword;  // i.e. adr changed
-  vidbuf <= req ? viddata : vidbuf;
+  if (init_req_counter == 2'd0) begin
+    hword <= hcnt[0];
+    req <= ~vblank & (hcnt < H_RES) & hword;  // i.e. adr changed
+    vidbuf <= req ? viddata : vidbuf;
+  end else begin
+    req <= 1;
+    init_req_counter <= init_req_counter - 1;
+  end
 end else begin
   req <= 0;
+  init_req_counter <= 2'd2;
 end
 
 endmodule
