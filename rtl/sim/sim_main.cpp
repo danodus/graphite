@@ -21,8 +21,6 @@
 #define FB_WIDTH 320
 #define FB_HEIGHT 240
 #define WINDOW_SCALE 3
-#define TEXTURE_WIDTH 32
-#define TEXTURE_HEIGHT 32
 #define VRAM_SIZE   (16*1024*1024)
 
 #define OP_SET_X0 0
@@ -63,6 +61,11 @@
 
 extern uint16_t tex64x64[];
 extern uint16_t tex32x32[];
+extern uint16_t tex32x64[];
+extern uint16_t tex256x2048[];
+uint16_t *tex = tex256x2048;
+#define TEXTURE_WIDTH 256
+#define TEXTURE_HEIGHT 2048
 
 // Serial
 
@@ -342,10 +345,9 @@ void write_texture() {
     g_commands.push_back(cmd);
 
     cmd.opcode = OP_WRITE_TEX;
-    uint16_t* p = tex32x32;
-    //uint16_t* p = tex64x64;
-    for (int t = 0; t < 32; ++t)
-        for (int s = 0; s < 32; ++s) {
+    uint16_t* p = tex;
+    for (int t = 0; t < TEXTURE_HEIGHT; ++t)
+        for (int s = 0; s < TEXTURE_WIDTH; ++s) {
             cmd.param = *p;
             g_commands.push_back(cmd);
             p++;
@@ -483,7 +485,7 @@ int main(int argc, char** argv, char** env) {
                 // Draw cube
                 texture_t dummy_texture;
                 draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, current_model, &mat_world, gouraud_shading ? &mat_normal : NULL, &mat_proj, &mat_view, lights, nb_lights,
-                           wireframe, textured ? &dummy_texture : NULL, clamp_s, clamp_t, 0, 0, perspective_correct);
+                           wireframe, textured ? &dummy_texture : NULL, clamp_s, clamp_t, 3, 6, perspective_correct);
 
                 swap();
             }

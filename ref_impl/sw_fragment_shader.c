@@ -1,5 +1,13 @@
 #include "sw_rasterizer.h"
 
+extern uint16_t tex32x32[];
+extern uint16_t tex32x64[];
+extern uint16_t tex256x2048[];
+
+uint16_t *tex = tex256x2048;
+#define TEXTURE_WIDTH   256
+#define TEXTURE_HEIGHT  2048
+
 typedef struct {
     fx32 r, g, b, a;
 } color_t;
@@ -19,15 +27,14 @@ color_t texture_sample_color(bool texture, fx32 u, fx32 v) {
 }
 */
 
-extern uint16_t tex32x32[];
 color_t texture_sample_color(bool texture, fx32 u, fx32 v) {
     if (texture) {
-        int x = INT(MUL(u, FXI(32)));
-        int y = INT(MUL(v, FXI(32)));
-        int i = y * 32 + x;
-        if (x > 31) x = 31;
-        if (y > 31) y = 31;
-        uint16_t c = tex32x32[y * 32 + x];
+        int x = INT(MUL(u, FXI(TEXTURE_WIDTH)));
+        int y = INT(MUL(v, FXI(TEXTURE_HEIGHT)));
+        int i = y * TEXTURE_WIDTH + x;
+        if (x > TEXTURE_WIDTH) x = TEXTURE_WIDTH;
+        if (y > TEXTURE_HEIGHT) y = TEXTURE_HEIGHT;
+        uint16_t c = tex[y * TEXTURE_WIDTH + x];
         uint8_t a = (c >> 12) & 0xF;
         uint8_t r = (c >> 8) & 0xF;
         uint8_t g = (c >> 4) & 0xF;
