@@ -53,7 +53,7 @@ module graphite #(
            DRAW_TRIANGLE31, DRAW_TRIANGLE32, DRAW_TRIANGLE35,
            DRAW_TRIANGLE36, DRAW_TRIANGLE37, DRAW_TRIANGLE38, DRAW_TRIANGLE39, DRAW_TRIANGLE40, DRAW_TRIANGLE41,
            DRAW_TRIANGLE42, DRAW_TRIANGLE43,
-           DRAW_TRIANGLE48, DRAW_TRIANGLE49, DRAW_TRIANGLE50, DRAW_TRIANGLE51, DRAW_TRIANGLE52, DRAW_TRIANGLE53,
+           DRAW_TRIANGLE48, DRAW_TRIANGLE49, DRAW_TRIANGLE51, DRAW_TRIANGLE52, DRAW_TRIANGLE53,
            DRAW_TRIANGLE54, DRAW_TRIANGLE55, DRAW_TRIANGLE56, DRAW_TRIANGLE57, DRAW_TRIANGLE58, DRAW_TRIANGLE59,
            DRAW_TRIANGLE60
     } state;
@@ -729,24 +729,19 @@ module graphite #(
             end
 
             DRAW_TRIANGLE49: begin
-                // t0 = rmul(mul((TEXTURE_HEIGHT - 1) << 14, clamp(t)), TEXTURE_WIDTH << 14)
+                // y = mul((TEXTURE_HEIGHT - 1) << 14, clamp(t))
                 dsp_mul_p0[0] <= (((TEXTURE_HEIGHT << texture_height_scale) - 1) << 14);
                 dsp_mul_p1[0] <= (is_clamp_t ? clamp(t) : wrap(t));
-                state <= DRAW_TRIANGLE50;
-            end
-
-            DRAW_TRIANGLE50: begin
-                t0 <= mul(dsp_mul_z[0] & 32'hFFFFC000, (TEXTURE_WIDTH << texture_width_scale) << 14);
-                // t1 = mul((TEXTURE_WIDTH - 1) << 14, clamp(s))
-                dsp_mul_p0[0] <= (((TEXTURE_WIDTH << texture_width_scale) - 1) << 14);
-                dsp_mul_p1[0] <= (is_clamp_s ? clamp(s) : wrap(s));
+                // x = mul((TEXTURE_WIDTH - 1) << 14, clamp(s))
+                dsp_mul_p0[1] <= (((TEXTURE_WIDTH << texture_width_scale) - 1) << 14);
+                dsp_mul_p1[1] <= (is_clamp_s ? clamp(s) : wrap(s));
                 state <= DRAW_TRIANGLE51;
             end
 
             DRAW_TRIANGLE51: begin
                 vram_sel_o <= 1'b1;
                 vram_wr_o  <= 1'b0;
-                vram_addr_o <= texture_address + 32'((t0 + dsp_mul_z[0]) >> 14);
+                vram_addr_o <= texture_address + (dsp_mul_z[0] >> 14) * (TEXTURE_WIDTH << texture_width_scale) + (dsp_mul_z[1] >> 14);
                 state <= DRAW_TRIANGLE52;
             end
 
