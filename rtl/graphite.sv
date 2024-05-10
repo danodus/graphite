@@ -31,7 +31,6 @@ module graphite #(
     input  wire logic [31:0]                 cmd_axis_tdata_i,
 
     // VRAM write
-    input  wire logic                        vram_ack_i,
     output      logic                        vram_sel_o,
     output      logic                        vram_wr_o,
     output      logic  [3:0]                 vram_mask_o,
@@ -44,7 +43,7 @@ module graphite #(
     output      logic [31:0]                 front_addr_o
     );
 
-    enum { WAIT_COMMAND, PROCESS_COMMAND, SWAP0, CLEAR_FB0, CLEAR_FB1, CLEAR_DEPTH0, CLEAR_DEPTH1, WRITE_TEX,
+    enum { WAIT_COMMAND, PROCESS_COMMAND, SWAP0, CLEAR_FB0, CLEAR_DEPTH0, WRITE_TEX,
            DRAW_TRIANGLE00, DRAW_TRIANGLE01, DRAW_TRIANGLE02, DRAW_TRIANGLE04, DRAW_TRIANGLE05,
            DRAW_TRIANGLE07,
            DRAW_TRIANGLE12, DRAW_TRIANGLE13, DRAW_TRIANGLE15,
@@ -384,50 +383,26 @@ module graphite #(
             end
 
             CLEAR_FB0: begin
-                if (vram_ack_i) begin
-                    vram_sel_o <= 1'b0;
-                    vram_wr_o  <= 1'b0;
-                    state <= CLEAR_FB1;
-                end
-            end
-
-            CLEAR_FB1: begin
                 if (vram_addr_o < back_address + FB_WIDTH * FB_HEIGHT - 1) begin
                     vram_addr_o <= vram_addr_o + 1;
-                    vram_sel_o  <= 1'b1;
-                    vram_wr_o   <= 1'b1;
-                    state       <= CLEAR_FB0;
                 end else begin
                     state       <= WAIT_COMMAND;
                 end
             end
 
             CLEAR_DEPTH0: begin
-                if (vram_ack_i) begin
-                    vram_sel_o <= 1'b0;
-                    vram_wr_o  <= 1'b0;
-                    state  <= CLEAR_DEPTH1;
-                end
-            end
-
-            CLEAR_DEPTH1: begin
                 if (vram_addr_o < 3 * FB_WIDTH * FB_HEIGHT - 1) begin
                     vram_addr_o <= vram_addr_o + 1;
-                    vram_sel_o  <= 1'b1;
-                    vram_wr_o   <= 1'b1;
-                    state       <= CLEAR_DEPTH0;
                 end else begin
                     state      <= WAIT_COMMAND;
                 end
             end
 
             WRITE_TEX: begin
-                if (vram_ack_i) begin
-                    vram_sel_o <= 1'b0;
-                    vram_wr_o  <= 1'b0;
-                    texture_write_address <= texture_write_address + 1;
-                    state <= WAIT_COMMAND;
-                end
+                vram_sel_o <= 1'b0;
+                vram_wr_o  <= 1'b0;
+                texture_write_address <= texture_write_address + 1;
+                state <= WAIT_COMMAND;
             end
             
             DRAW_TRIANGLE00: begin
@@ -643,11 +618,8 @@ module graphite #(
             end
 
             DRAW_TRIANGLE36: begin
-                // wait memory access
-                if (vram_ack_i) begin
-                    vram_sel_o <= 1'b0;
-                    state <= DRAW_TRIANGLE37;
-                end
+                vram_sel_o <= 1'b0;
+                state <= DRAW_TRIANGLE37;
             end
 
             DRAW_TRIANGLE37: begin
@@ -671,11 +643,8 @@ module graphite #(
             end
 
             DRAW_TRIANGLE40: begin
-                // wait memory access
-                if (vram_ack_i) begin
-                    vram_sel_o <= 1'b0;
-                    state <= DRAW_TRIANGLE41;
-                end
+                vram_sel_o <= 1'b0;
+                state <= DRAW_TRIANGLE41;
             end
 
             DRAW_TRIANGLE41: begin
@@ -746,11 +715,8 @@ module graphite #(
             end
 
             DRAW_TRIANGLE52: begin
-                // wait memory access
-                if (vram_ack_i) begin
-                    state <= DRAW_TRIANGLE53;
-                    vram_sel_o <= 1'b0;
-                end
+                state <= DRAW_TRIANGLE53;
+                vram_sel_o <= 1'b0;
             end
 
             DRAW_TRIANGLE53: begin
@@ -791,12 +757,9 @@ module graphite #(
             end
 
             DRAW_TRIANGLE58: begin
-                // wait memory access
-                if (vram_ack_i) begin
-                    state <= DRAW_TRIANGLE59;
-                    vram_sel_o <= 1'b0;
-                    vram_wr_o  <= 1'b0;
-                end
+                state <= DRAW_TRIANGLE59;
+                vram_sel_o <= 1'b0;
+                vram_wr_o  <= 1'b0;
             end
 
             DRAW_TRIANGLE59: begin

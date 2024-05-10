@@ -320,7 +320,6 @@ module soc_top #(
     logic           graphite_cmd_axis_tready;
     logic [31:0]    graphite_cmd_axis_tdata;
 
-    logic graphite_vram_ack;
     logic graphite_vram_sel;
     logic graphite_vram_wr;
     logic [3:0] graphite_vram_mask;
@@ -342,7 +341,6 @@ module soc_top #(
         .cmd_axis_tdata_i(graphite_cmd_axis_tdata),
 
         // VRAM write
-        .vram_ack_i(1'b1),
         .vram_sel_o(graphite_vram_sel),
         .vram_wr_o(graphite_vram_wr),
         .vram_mask_o(graphite_vram_mask),
