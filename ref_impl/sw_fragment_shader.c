@@ -31,9 +31,8 @@ color_t texture_sample_color(bool texture, fx32 u, fx32 v) {
     if (texture) {
         int x = INT(MUL(u, FXI(TEXTURE_WIDTH)));
         int y = INT(MUL(v, FXI(TEXTURE_HEIGHT)));
-        int i = y * TEXTURE_WIDTH + x;
-        if (x > TEXTURE_WIDTH) x = TEXTURE_WIDTH;
-        if (y > TEXTURE_HEIGHT) y = TEXTURE_HEIGHT;
+        if (x >= TEXTURE_WIDTH) x = TEXTURE_WIDTH - 1;
+        if (y >= TEXTURE_HEIGHT) y = TEXTURE_HEIGHT - 1;
         uint16_t c = tex[y * TEXTURE_WIDTH + x];
         uint8_t a = (c >> 12) & 0xF;
         uint8_t r = (c >> 8) & 0xF;
