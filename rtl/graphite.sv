@@ -41,7 +41,8 @@ module graphite #(
 
     input  wire logic                        vsync_i,
     output      logic                        swap_o,
-    output      logic [31:0]                 front_addr_o
+    output      logic [31:0]                 front_addr_o,
+    output      logic                        clear_o
     );
 
     enum { WAIT_COMMAND, PROCESS_COMMAND, SWAP0, CLEAR_FB0, CLEAR_DEPTH0,
@@ -326,6 +327,7 @@ module graphite #(
                     OP_CLEAR: begin
                         vram_addr_o     <= fb_address + ((cmd_axis_tdata_i[16] == 0) ? back_rel_address : 32'(2 * FB_WIDTH * FB_HEIGHT));
                         vram_data_out_o <= cmd_axis_tdata_i[15:0];
+                        clear_o         <= 1'b1;
                         vram_mask_o     <= 4'hF;
                         vram_sel_o      <= 1'b1;
                         vram_wr_o       <= 1'b1;
@@ -388,6 +390,7 @@ module graphite #(
                 if (vram_addr_o < fb_address + back_rel_address + FB_WIDTH * FB_HEIGHT - 1) begin
                     vram_addr_o <= vram_addr_o + 1;
                 end else begin
+                    clear_o     <= 1'b0;                    
                     state       <= WAIT_COMMAND;
                 end
             end
@@ -396,6 +399,7 @@ module graphite #(
                 if (vram_addr_o < fb_address + 3 * FB_WIDTH * FB_HEIGHT - 1) begin
                     vram_addr_o <= vram_addr_o + 1;
                 end else begin
+                    clear_o    <= 1'b0;                    
                     state      <= WAIT_COMMAND;
                 end
             end
@@ -783,6 +787,7 @@ module graphite #(
             swap_o              <= 1'b0;
             vram_sel_o          <= 1'b0;
             vram_wr_o           <= 1'b0;
+            clear_o             <= 1'b0;
             fb_address          <= FB_ADDRESS;
             front_rel_address   <= 32'h0;
             back_rel_address    <= FB_WIDTH * FB_HEIGHT;

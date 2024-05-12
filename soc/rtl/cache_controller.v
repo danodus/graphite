@@ -62,7 +62,8 @@ module cache_controller(
      output reg ddr_rd = 0,
      output reg ddr_wr = 0,
      output reg [17:0] waddr,
-     input flush
+     input flush,
+     input clear
     );
     
     reg flushreq = 1'b0;
@@ -195,7 +196,11 @@ module cache_controller(
                 ddr_rd <= ~r_flush;
                 if(s_lowaddr5) begin
                     ddr_wr <= 1'b0;
-                    STATE <= 3'b111;
+                    if (clear) begin
+                        STATE <= 3'b100;
+                    end else begin
+                        STATE <= 3'b111;
+                    end
                 end
             end
             3'b111: begin // read cache from ddr

@@ -326,6 +326,7 @@ module soc_top #(
     logic [31:0] graphite_vram_addr;
     logic [15:0] graphite_vram_data_in, graphite_vram_data_out;
     logic [31:0] graphite_front_addr;
+    logic graphite_clear;
 
     graphite #(
         .FB_ADDRESS(32'h1000000 >> 'd1),
@@ -351,7 +352,8 @@ module soc_top #(
 
         .vsync_i(vga_vsync),
         .swap_o(),
-        .front_addr_o(graphite_front_addr)
+        .front_addr_o(graphite_front_addr),
+        .clear_o(graphite_clear)
     );
 
     assign inbus = ~ioenb ? inbus0 :
@@ -499,7 +501,12 @@ module soc_top #(
          .waddr(waddr),
          .cache_write_data(crw && sys_rd_data_valid), // read DDR, write to cache
          .cache_read_data(crw && sys_wr_data_valid),
-         .flush(auto_flush == 2'b01)
+         .flush(auto_flush == 2'b01),
+`ifdef FAST_CLEAR
+         .clear(graphite_clear)
+`else
+         .clear(1'b0)
+`endif
     );
     
     logic [15:0] video_din;
