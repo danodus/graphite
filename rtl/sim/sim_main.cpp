@@ -589,8 +589,6 @@ int main(int argc, char** argv, char** env) {
             }
         }
 
-        top->vram_ack_i = 0;
-
         if (top->vram_sel_o) {
             if (top->vram_addr_o < VRAM_SIZE) {
 
@@ -601,7 +599,6 @@ int main(int argc, char** argv, char** env) {
             } else {
                 top->vram_data_in_i = 0xFF00;
             }
-            top->vram_ack_i = 1;
         }
 
         if (last_show_depth_value != show_depth_value) {
