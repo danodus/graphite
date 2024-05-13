@@ -47,7 +47,6 @@ unsigned int read_word()
         word <<= 8;
         while(!(MEM_READ(UART_STATUS) & 1));
         MEM_WRITE(UART_STATUS, 1);  // Dequeue
-        MEM_WRITE(UART_STATUS, 1);  // Dequeue
         unsigned int c = MEM_READ(UART_DATA);
         word |= c;
     }
@@ -58,7 +57,6 @@ void echo()
 {
     for (;;) {
         while(!(MEM_READ(UART_STATUS) & 1));
-        MEM_WRITE(UART_STATUS, 1);  // Dequeue
         MEM_WRITE(UART_STATUS, 1);  // Dequeue
         unsigned int c = MEM_READ(UART_DATA);
         while(!(MEM_READ(UART_STATUS) & 2));

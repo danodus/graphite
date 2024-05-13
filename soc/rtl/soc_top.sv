@@ -204,7 +204,7 @@ module soc_top #(
     assign rdyRx = ~uart_fifo_empty;
 
     fifo #(
-        .ADDR_LEN(14),
+        .ADDR_LEN(10),
         .DATA_WIDTH(8)
     ) uart_fifo(
         .clk(clk_cpu),
@@ -245,7 +245,7 @@ module soc_top #(
                     uart_deq <= 1'b1;
                 end
             end
-            if (uart_valid) begin
+            if (uart_valid && !doneRx) begin
                 doneRx <= 1'b1;
                 uart_enq <= 1'b1;
             end
