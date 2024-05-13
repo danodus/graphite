@@ -1,5 +1,5 @@
 // graphite.sv
-// Copyright (c) 2021-2022 Daniel Cliche
+// Copyright (c) 2021-2024 Daniel Cliche
 // SPDX-License-Identifier: MIT
 
 // Ref.: https://www.scratchapixel.com/lessons/3d-basic-rendering/rasterization-practical-implementation
@@ -15,6 +15,7 @@ module dsp_mul(
 endmodule
 
 module graphite #(
+    parameter FB_ADDRESS = 32'h0,
     parameter FB_WIDTH = 128,
     parameter FB_HEIGHT = 128,
     parameter TEXTURE_WIDTH = 32,
@@ -43,7 +44,7 @@ module graphite #(
     output      logic [31:0]                 front_addr_o
     );
 
-    enum { WAIT_COMMAND, PROCESS_COMMAND, SWAP0, CLEAR_FB0, CLEAR_DEPTH0, WRITE_TEX,
+    enum { WAIT_COMMAND, PROCESS_COMMAND, SWAP0, CLEAR_FB0, CLEAR_DEPTH0,
            DRAW_TRIANGLE00, DRAW_TRIANGLE01, DRAW_TRIANGLE02, DRAW_TRIANGLE04, DRAW_TRIANGLE05,
            DRAW_TRIANGLE07,
            DRAW_TRIANGLE12, DRAW_TRIANGLE13, DRAW_TRIANGLE15,
@@ -67,12 +68,13 @@ module graphite #(
 
     logic signed [11:0] x, y;
     
-    logic [31:0] front_address, back_address, depth_address, texture_address;
+    logic [31:0] fb_address, texture_address;
+    logic [31:0] front_rel_address, back_rel_address, depth_rel_address;
 
     logic [31:0] texture_write_address;
     logic [31:0] raster_rel_address;
 
-    assign front_addr_o = front_address;
+    assign front_addr_o = fb_address + front_rel_address;
 
     logic [2:0] texture_width_scale;
     logic [2:0] texture_height_scale;
@@ -322,7 +324,7 @@ module graphite #(
                         state <= WAIT_COMMAND;
                     end
                     OP_CLEAR: begin
-                        vram_addr_o     <= (cmd_axis_tdata_i[16] == 0) ? back_address : 32'(2 * FB_WIDTH * FB_HEIGHT);
+                        vram_addr_o     <= fb_address + ((cmd_axis_tdata_i[16] == 0) ? back_rel_address : 32'(2 * FB_WIDTH * FB_HEIGHT));
                         vram_data_out_o <= cmd_axis_tdata_i[15:0];
                         vram_mask_o     <= 4'hF;
                         vram_sel_o      <= 1'b1;
@@ -348,8 +350,8 @@ module graphite #(
                     OP_SWAP: begin
                         if (vsync_i || !cmd_axis_tdata_i[0]) begin
                             swap_o <= 1'b1;
-                            front_address <= back_address;
-                            back_address  <= front_address;
+                            front_rel_address <= back_rel_address;
+                            back_rel_address  <= front_rel_address;
                             state         <= SWAP0;
                         end
                     end
@@ -363,13 +365,13 @@ module graphite #(
                         end
                         state <= WAIT_COMMAND;
                     end
-                    OP_WRITE_TEX: begin
-                        vram_addr_o <= texture_write_address;
-                        vram_data_out_o <= cmd_axis_tdata_i[15:0];
-                        vram_mask_o <= 4'hF;
-                        vram_sel_o <= 1'b1;
-                        vram_wr_o  <= 1'b1;
-                        state <= WRITE_TEX;
+                    OP_SET_FB_ADDR: begin
+                        if (cmd_axis_tdata_i[16]) begin
+                            fb_address[31:16] <= cmd_axis_tdata_i[15:0];
+                        end else begin
+                            fb_address[15:0] <= cmd_axis_tdata_i[15:0];
+                        end
+                        state <= WAIT_COMMAND;
                     end
                     default:
                         state <= WAIT_COMMAND;
@@ -383,7 +385,7 @@ module graphite #(
             end
 
             CLEAR_FB0: begin
-                if (vram_addr_o < back_address + FB_WIDTH * FB_HEIGHT - 1) begin
+                if (vram_addr_o < fb_address + back_rel_address + FB_WIDTH * FB_HEIGHT - 1) begin
                     vram_addr_o <= vram_addr_o + 1;
                 end else begin
                     state       <= WAIT_COMMAND;
@@ -391,18 +393,11 @@ module graphite #(
             end
 
             CLEAR_DEPTH0: begin
-                if (vram_addr_o < 3 * FB_WIDTH * FB_HEIGHT - 1) begin
+                if (vram_addr_o < fb_address + 3 * FB_WIDTH * FB_HEIGHT - 1) begin
                     vram_addr_o <= vram_addr_o + 1;
                 end else begin
                     state      <= WAIT_COMMAND;
                 end
-            end
-
-            WRITE_TEX: begin
-                vram_sel_o <= 1'b0;
-                vram_wr_o  <= 1'b0;
-                texture_write_address <= texture_write_address + 1;
-                state <= WAIT_COMMAND;
             end
             
             DRAW_TRIANGLE00: begin
@@ -607,7 +602,7 @@ module graphite #(
 
             DRAW_TRIANGLE35: begin
                 z <= dsp_mul_z[0] + dsp_mul_z[1] + dsp_mul_z[2];
-                vram_addr_o <= depth_address + 32'(y) * FB_WIDTH + 32'(x);
+                vram_addr_o <= fb_address + depth_rel_address + 32'(y) * FB_WIDTH + 32'(x);
                 if (is_depth_test) begin
                     vram_wr_o <= 1'b0;
                     vram_sel_o <= 1'b1;
@@ -752,7 +747,7 @@ module graphite #(
                 vram_data_out_o[3:0] <= 4'(dsp_mul_z[0] >> 14);
                 vram_sel_o <= 1'b1;
                 vram_wr_o  <= 1'b1;
-                vram_addr_o <= back_address + raster_rel_address;
+                vram_addr_o <= fb_address + back_rel_address + raster_rel_address;
                 state <= DRAW_TRIANGLE58;
             end
 
@@ -788,10 +783,11 @@ module graphite #(
             swap_o              <= 1'b0;
             vram_sel_o          <= 1'b0;
             vram_wr_o           <= 1'b0;
-            front_address       <= 32'h0;
-            back_address        <= FB_WIDTH * FB_HEIGHT;
-            depth_address       <= 2 * FB_WIDTH * FB_HEIGHT;
-            texture_address     <= 3 * FB_WIDTH * FB_HEIGHT;
+            fb_address          <= FB_ADDRESS;
+            front_rel_address   <= 32'h0;
+            back_rel_address    <= FB_WIDTH * FB_HEIGHT;
+            depth_rel_address   <= 2 * FB_WIDTH * FB_HEIGHT;
+            texture_address     <= FB_ADDRESS + 3 * FB_WIDTH * FB_HEIGHT;
             state               <= WAIT_COMMAND;
             reciprocal_start    <= 1'b0;
             texture_width_scale <= 3'd0;

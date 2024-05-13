@@ -43,7 +43,7 @@
 #define OP_DRAW 25
 #define OP_SWAP 26
 #define OP_SET_TEX_ADDR 27
-#define OP_WRITE_TEX 28
+#define OP_SET_FB_ADDR 28
 
 #define MEM_WRITE(_addr_, _value_) (*((volatile unsigned int *)(_addr_)) = _value_)
 #define MEM_READ(_addr_) *((volatile unsigned int *)(_addr_))
@@ -247,38 +247,9 @@ void clear(unsigned int color)
     send_command(&cmd);
 }
 
-void write_textures() {
-    uint32_t tex_addr = 3 * fb_width * fb_height;
-
-    struct Command cmd;
-    cmd.opcode = OP_SET_TEX_ADDR;
-    cmd.param = tex_addr & 0xFFFF;
-    send_command(&cmd);
-    cmd.param = 0x10000 | (tex_addr >> 16);
-    send_command(&cmd);
-
-    cmd.opcode = OP_WRITE_TEX;
-    uint16_t* p = tex32x32;
-    for (int t = 0; t < 32; ++t)
-        for (int s = 0; s < 32; ++s) {
-            cmd.param = *p;
-            send_command(&cmd);
-            p++;
-        }
-    p = tex64x64;
-    for (int t = 0; t < 64; ++t)
-        for (int s = 0; s < 64; ++s) {
-            cmd.param = *p;
-            send_command(&cmd);
-            p++;
-        }
-}
-
 void set_texture(int texture)
 {
-    uint32_t tex_addr = 3 * fb_width * fb_height;
-    if (texture > 0)
-        tex_addr += TEXTURE_WIDTH * TEXTURE_HEIGHT;
+    uint32_t tex_addr = ((uint32_t)(texture ? &tex64x64[0] : &tex32x32[0])) >> 1;
 
     struct Command cmd;
     cmd.opcode = OP_SET_TEX_ADDR;
@@ -324,21 +295,19 @@ void main(void)
     model_t *cube_model = load_cube();
     model_t *teapot_model = load_teapot();
 
-    model_t *model = cube_model;
-
-    write_textures();
+    model_t *model = teapot_model;
 
     bool quit = false;
     bool print_stats = false;
-    bool is_rotating = false;
-    bool is_textured = false;
-    size_t nb_lights = 0;
+    bool is_rotating = true;
+    bool is_textured = true;
+    size_t nb_lights = 4;
     bool is_wireframe = false;
     bool clamp_s = false;
     bool clamp_t = false;
     bool perspective_correct = true;
-    bool gouraud_shading = false;
-    int texture = 0;
+    bool gouraud_shading = true;
+    int texture = 1;
 
     light_t lights[5];
     lights[0].direction = (vec3d){FX(0.0f), FX(0.0f), FX(1.0f), FX(0.0f)};

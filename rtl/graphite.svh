@@ -31,7 +31,7 @@ localparam OP_CLEAR         = 24;
 localparam OP_DRAW          = 25;
 localparam OP_SWAP          = 26;
 localparam OP_SET_TEX_ADDR  = 27;
-localparam OP_WRITE_TEX     = 28;
+localparam OP_SET_FB_ADDR   = 28;
 
 
 

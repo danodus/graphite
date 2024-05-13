@@ -46,7 +46,7 @@
 #define OP_DRAW 25
 #define OP_SWAP 26
 #define OP_SET_TEX_ADDR 27
-#define OP_WRITE_TEX 28
+#define OP_SET_FB_ADDR 28
 
 #define MEM_WRITE(_addr_, _value_) (*((volatile unsigned int *)(_addr_)) = _value_)
 #define MEM_READ(_addr_) *((volatile unsigned int *)(_addr_))
@@ -270,7 +270,7 @@ void clear(unsigned int color)
 }
 
 bool load_texture(const char *path, int *texture_scale_x, int *texture_scale_y) {
-    uint32_t tex_addr = 3 * fb_width * fb_height;
+    uint32_t tex_addr = (0x1000000 >> 1) + 3 * fb_width * fb_height;
 
     upng_t* png_image = upng_new_from_file(path);
     if (png_image != NULL) {
@@ -288,13 +288,12 @@ bool load_texture(const char *path, int *texture_scale_x, int *texture_scale_y) 
     cmd.param = 0x10000 | (tex_addr >> 16);
     send_command(&cmd);
 
-    cmd.opcode = OP_WRITE_TEX;
-
     int texture_width = upng_get_width(png_image);
     int texture_height = upng_get_height(png_image);
 
     uint32_t* texture_buffer = (uint32_t *)upng_get_buffer(png_image);
 
+    uint16_t* vram = 0;
     for (int t = 0; t < texture_height; ++t)
         for (int s = 0; s < texture_width; ++s) {
 
@@ -304,8 +303,7 @@ bool load_texture(const char *path, int *texture_scale_x, int *texture_scale_y) 
             uint16_t cb = tc[2] >> 4;
             uint16_t ca = tc[3] >> 4;
 
-            cmd.param = (ca << 12) | (cr << 8) | (cg << 4) | cb;
-            send_command(&cmd);
+            vram[tex_addr++] = (ca << 12) | (cr << 8) | (cg << 4) | cb;
         }
 
     upng_free(png_image);
@@ -436,13 +434,13 @@ void main(void)
 
     model_t f22_model = {0};
 
-    if (!load_mesh_obj_data(&f22_model.mesh, "/assets/crab.obj")) {
+    if (!load_mesh_obj_data(&f22_model.mesh, "/assets/f22.obj")) {
         fl_shutdown();
         return;
     }
 
     int texture_scale_x, texture_scale_y;
-    if (!load_texture("/assets/crab.png", &texture_scale_x, &texture_scale_y)) {
+    if (!load_texture("/assets/f22.png", &texture_scale_x, &texture_scale_y)) {
         fl_shutdown();
         return;
     }

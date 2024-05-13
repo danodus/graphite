@@ -51,7 +51,7 @@
 #define OP_DRAW 25
 #define OP_SWAP 26
 #define OP_SET_TEX_ADDR 27
-#define OP_WRITE_TEX 28
+#define OP_SET_FB_ADDR 28
 
 #if FIXED_POINT
 #define PARAM(x) (x)
@@ -334,24 +334,9 @@ void send_command(const char* s) {
     g_commands.push_back(c);
 }
 
-void write_texture() {
+void write_texture(uint16_t* vram) {
     uint32_t tex_addr = 3 * FB_WIDTH * FB_HEIGHT;
-
-    Command cmd;
-    cmd.opcode = OP_SET_TEX_ADDR;
-    cmd.param = tex_addr & 0xFFFF;
-    g_commands.push_back(cmd);
-    cmd.param = 0x10000 | (tex_addr >> 16);
-    g_commands.push_back(cmd);
-
-    cmd.opcode = OP_WRITE_TEX;
-    uint16_t* p = tex;
-    for (int t = 0; t < TEXTURE_HEIGHT; ++t)
-        for (int s = 0; s < TEXTURE_WIDTH; ++s) {
-            cmd.param = *p;
-            g_commands.push_back(cmd);
-            p++;
-        }
+    memcpy(vram + tex_addr, tex, TEXTURE_WIDTH*TEXTURE_HEIGHT*2);
 }
 
 int main(int argc, char** argv, char** env) {
@@ -477,7 +462,7 @@ int main(int argc, char** argv, char** env) {
             mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
 
             if (texture_dirty || dump) {
-                write_texture();
+                write_texture(vram_data);
                 texture_dirty = false;
             }
 

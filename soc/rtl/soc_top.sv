@@ -328,6 +328,7 @@ module soc_top #(
     logic [31:0] graphite_front_addr;
 
     graphite #(
+        .FB_ADDRESS(32'h1000000 >> 'd1),
         .FB_WIDTH(H_RES),
         .FB_HEIGHT(V_RES)
     ) graphite(
@@ -467,7 +468,7 @@ module soc_top #(
 
     always_comb begin
         if (process_graphite) begin
-            cache_ctrl_adr = 32'h1000000 + {graphite_vram_addr[30:1], 2'b0};
+            cache_ctrl_adr = {graphite_vram_addr[31:1], 2'b0};
             cache_ctrl_din = {graphite_vram_data_out, graphite_vram_data_out};
             //cache_ctrl_din = {16'd0, graphite_vram_data_out};
             cache_ctrl_mreq = graphite_vram_sel;
