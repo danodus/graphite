@@ -60,7 +60,7 @@ The following CPU speeds are available:
 | CPU Speed      | Description |
 | -------------- | ----------- |
 | slow (default) | 40MHz       |
-| fast           | 40MHz (N/A) |
+| fast           | 50MHz       |
 
 ## System Simulation
 

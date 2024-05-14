@@ -707,18 +707,20 @@ module graphite #(
             end
 
             DRAW_TRIANGLE51: begin
-                vram_sel_o <= 1'b1;
-                vram_wr_o  <= 1'b0;
-                vram_addr_o <= texture_address + (dsp_mul_z[0] >> 14) * (TEXTURE_WIDTH << texture_width_scale) + (dsp_mul_z[1] >> 14);
+                dsp_mul_p0[0] <= dsp_mul_z[0] & 32'hFFFFC000;
+                dsp_mul_p1[0] <= (TEXTURE_WIDTH << texture_width_scale) << 14;
                 state <= DRAW_TRIANGLE52;
             end
 
             DRAW_TRIANGLE52: begin
+                vram_sel_o <= 1'b1;
+                vram_wr_o  <= 1'b0;
+                vram_addr_o <= texture_address + (dsp_mul_z[0] >> 14) + (dsp_mul_z[1] >> 14);
                 state <= DRAW_TRIANGLE53;
-                vram_sel_o <= 1'b0;
             end
 
             DRAW_TRIANGLE53: begin
+                vram_sel_o <= 1'b0;
                 sample <= vram_data_in_i;
                 state <= DRAW_TRIANGLE54;
             end
