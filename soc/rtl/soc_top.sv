@@ -327,6 +327,7 @@ module soc_top #(
     logic [15:0] graphite_vram_data_in, graphite_vram_data_out;
     logic [31:0] graphite_front_addr;
     logic graphite_clear;
+    logic graphite_swap;
 
     graphite #(
         .FB_ADDRESS(32'h1000000 >> 'd1),
@@ -351,7 +352,7 @@ module soc_top #(
         .vram_data_out_o(graphite_vram_data_out),
 
         .vsync_i(vga_vsync),
-        .swap_o(),
+        .swap_o(graphite_swap),
         .front_addr_o(graphite_front_addr),
         .clear_o(graphite_clear)
     );
@@ -458,7 +459,6 @@ module soc_top #(
     
     logic ddr_rd;
     logic ddr_wr;
-    logic [1:0] auto_flush = 2'b00;
 
     logic [31:0] cache_ctrl_adr;
     logic [31:0] cache_ctrl_din;
@@ -501,12 +501,8 @@ module soc_top #(
          .waddr(waddr),
          .cache_write_data(crw && sys_rd_data_valid), // read DDR, write to cache
          .cache_read_data(crw && sys_wr_data_valid),
-         .flush(auto_flush == 2'b01),
-`ifdef FAST_CLEAR
+         .flush(graphite_swap),
          .clear(graphite_clear)
-`else
-         .clear(1'b0)
-`endif
     );
     
     logic [15:0] video_din;
@@ -560,7 +556,6 @@ module soc_top #(
     always_ff @(posedge clk_pixel) begin
         if (rst_n)
             video_ready <= 1'b1;
-        auto_flush <= {auto_flush[0], vga_vsync};
         qready <= video_ready && !almost_empty;
     end
 
