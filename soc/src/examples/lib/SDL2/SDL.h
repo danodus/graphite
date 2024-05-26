@@ -118,6 +118,10 @@ typedef struct {
 typedef struct {
 } SDL_Rect;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int SDL_Init(Uint32 flags);
 
 int SDL_GetCurrentDisplayMode(int displayIndex, SDL_DisplayMode * mode);
@@ -169,5 +173,9 @@ void SDL_Quit(void);
 
 Uint32 SDL_GetTicks(void);
 void SDL_Delay(Uint32 ms);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // _SDL_H_

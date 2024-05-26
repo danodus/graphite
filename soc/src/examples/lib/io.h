@@ -19,6 +19,10 @@
 #define MEM_WRITE(_addr_, _value_) (*((volatile unsigned int *)(_addr_)) = _value_)
 #define MEM_READ(_addr_) *((volatile unsigned int *)(_addr_))
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 char *uitoa(unsigned int value, char* result, int base);
 
 // UART
@@ -31,5 +35,9 @@ void print(const char *s);
 // Keyboard
 int key_avail();
 int get_key();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
