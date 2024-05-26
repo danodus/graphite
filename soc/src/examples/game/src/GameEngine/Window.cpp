@@ -1,5 +1,7 @@
 #include "Window.h"
 
+#include "GL.h"
+
 #include <cassert>
 
 Window::Window() {
@@ -19,7 +21,7 @@ Window::Window() {
         SDL_WINDOWPOS_CENTERED,
         window_width,
         window_height,
-        SDL_WINDOW_BORDERLESS
+        SDL_WINDOW_FULLSCREEN | SDL_WINDOW_GRAPHITE
     );
     assert(m_window);
 
@@ -32,4 +34,11 @@ Window::Window() {
 Window::~Window() {
     SDL_DestroyRenderer(m_renderer);
     SDL_DestroyWindow(m_window);
+}
+
+void Window::makeCurrentContext() {
+}
+
+void Window::present(bool vsync) {
+    GL_swap(vsync);
 }

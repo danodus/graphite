@@ -38,31 +38,31 @@ INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 
 # The -MMD and -MP flags together generate Makefiles for us!
 # These files will have .d instead of .o as the output.
-CPPFLAGS := $(INC_FLAGS) -MMD -MP
+CPPFLAGS := $(INC_FLAGS) -MMD -MP -g
 
 all: $(BUILD_DIR)/program.hex
 
 # The final build step.
 $(BUILD_DIR)/$(TARGET_EXEC): $(OBJS)
-	$(CXX) -march=rv32i -mabi=ilp32 -O3 -nostartfiles -T program.ld $(OBJS) -o $@ $(LDFLAGS) -lm -lstdc++
+	$(CXX) -march=rv32i -mabi=ilp32 -nostartfiles -T program.ld $(OBJS) -o $@ $(LDFLAGS) -lm -lstdc++
 
 # Build step for S source
 $(BUILD_DIR)/%.S.o: %.S
 	mkdir -p $(dir $@)
-	$(CC) -march=rv32i -mabi=ilp32 -O3 $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CC) -march=rv32i -mabi=ilp32 $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 # Build step for C source
 $(BUILD_DIR)/%.c.o: %.c
 	mkdir -p $(dir $@)
-	$(CC) -march=rv32i -mabi=ilp32 -O3 $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CC) -march=rv32i -mabi=ilp32 $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 # Build step for C++ source
 $(BUILD_DIR)/%.cpp.o: %.cpp
 	mkdir -p $(dir $@)
-	$(CXX) -march=rv32i -mabi=ilp32 -std=c++17 -O3 $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
+	$(CXX) -march=rv32i -mabi=ilp32 -std=c++17 $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/program.lst: $(BUILD_DIR)/program.elf
-	${OBJDUMP} --disassemble $(BUILD_DIR)/program.elf > $(BUILD_DIR)/program.lst
+	${OBJDUMP} --disassemble --source $(BUILD_DIR)/program.elf > $(BUILD_DIR)/program.lst
 
 $(BUILD_DIR)/program.hex: $(BUILD_DIR)/program.bin
 	${PYTHON} ../../../../utils/makehex.py $(BUILD_DIR)/program.bin > $(BUILD_DIR)/program.hex

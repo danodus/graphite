@@ -12,7 +12,6 @@ typedef uint8_t Uint8;
 
 #define SDL_INIT_EVERYTHING 0
 #define SDL_WINDOWPOS_CENTERED 0
-#define SDL_WINDOW_BORDERLESS 0
 
 #define SDL_DEFINE_PIXELFORMAT(type, order, layout, bits, bytes) \
     ((1 << 28) | ((type) << 24) | ((order) << 20) | ((layout) << 16) | \
@@ -80,7 +79,9 @@ typedef enum {
 
 typedef enum
 {
-    SDL_WINDOW_FULLSCREEN = 0x00000001
+    SDL_WINDOW_FULLSCREEN = 0x00000001,
+    SDL_WINDOW_BORDERLESS = 0x00000010,
+    SDL_WINDOW_GRAPHITE   = 0x40000000
 } SDL_WindowFlags;
 
 typedef Sint32 SDL_Keycode;

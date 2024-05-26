@@ -40,9 +40,11 @@ SDL_Window * SDL_CreateWindow(
     unsigned int hres = res >> 16;
     unsigned int vres = res & 0xffff;
 
-    // clear the framebuffer
-    for (unsigned int i = 0; i < hres*vres*2; i += 4)
-        MEM_WRITE(BASE_VIDEO + i, 0x00000000);
+    if (!(flags & SDL_WINDOW_GRAPHITE)) {
+        // clear the framebuffer
+        for (unsigned int i = 0; i < hres*vres*2; i += 4)
+            MEM_WRITE(BASE_VIDEO + i, 0x00000000);
+    }
 
     SDL_Window * window = (SDL_Window *) malloc(sizeof(SDL_Window));
 
