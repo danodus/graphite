@@ -66,6 +66,8 @@ static char sys_read_char(bool force_serial)
 
 static void sys_write_char(bool force_serial, char c)
 {
+	if (c == '\n')
+		print_chr('\r');
 	print_chr(c);
 }
 
@@ -75,6 +77,15 @@ static void sys_print(const char *s)
 		sys_write_char(false, *s);
 		s++;
 	}
+}
+
+static void sys_print_buf(const char *s, size_t len)
+{
+    while (len > 0) {
+        sys_write_char(false, *s);
+        s++;
+        len--;
+    }
 }
 
 static size_t sys_read_line(bool force_serial, char *s, size_t buffer_len, bool *eof)
@@ -155,7 +166,7 @@ ssize_t _write(int file, const void *ptr, size_t len)
 {
 	if (file == STDOUT_FILENO || file == STDERR_FILENO || file == TTYS0_FILENO) {
 		// serial port
-		print_buf(ptr, len);
+		sys_print_buf(ptr, len);
     	return len;
 	}
 	errno = EBADF;
@@ -194,7 +205,7 @@ void *_sbrk(ptrdiff_t incr)
 		heap_end = (unsigned long)_end;
 
     if (heap_end + incr > (unsigned long)__stacktop) {
-		sys_print("*** Out of memory! ***\r\n");
+		sys_print("*** Out of memory! ***\n");
         errno = ENOMEM;
         return (void *)0;
     }
@@ -205,7 +216,7 @@ void *_sbrk(ptrdiff_t incr)
 
 void _exit(int exit_status)
 {
-	unimplemented_syscall("exit");
+	for(;;);
 	__builtin_unreachable();
 }
 
@@ -235,8 +246,7 @@ int _access(const char *pathname, int mode)
 
 int _kill(pid_t pid, int sig)
 {
-	unimplemented_syscall("kill");
-	__builtin_unreachable();
+	sys_print("Process killed\n");
 }
 
 int _execve(const char *pathname, char *const argv[], char *const envp[]) {
@@ -276,8 +286,7 @@ char *_getcwd(char *buf, size_t size)
 
 pid_t _getpid(void)
 {
-	unimplemented_syscall("getpid");
-	__builtin_unreachable();
+	return 0;
 }
 
 int _isatty(int fd)
