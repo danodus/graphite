@@ -45,7 +45,7 @@ typedef int32_t fx32;
 
 #if RV_FIXED_POINT_EXTENSION
 // Accelerated
-inline fx32 fix_mul(fx32 a, fx32 b) {
+static inline fx32 fix_mul(fx32 a, fx32 b) {
     int result;
     // .insn r opcode6, func3, func7, rd, rs1, rs2
     asm (".insn r 0x0b, 0, 0, %0, %1, %2" : "=r" (result) : "r" (a), "r" (b)); 
