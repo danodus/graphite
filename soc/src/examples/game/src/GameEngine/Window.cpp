@@ -36,9 +36,15 @@ Window::~Window() {
     SDL_DestroyWindow(m_window);
 }
 
+Rect Window::getInnerSize() {
+    SDL_DisplayMode display_mode;
+    SDL_GetCurrentDisplayMode(0, &display_mode);
+    return Rect(display_mode.w, display_mode.h);
+}
+
 void Window::makeCurrentContext() {
 }
 
 void Window::present(bool vsync) {
-    GL_swap(vsync);
+    gglSwap(vsync ? GL_TRUE : GL_FALSE);
 }

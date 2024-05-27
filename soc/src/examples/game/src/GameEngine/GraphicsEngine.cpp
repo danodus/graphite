@@ -1,5 +1,7 @@
 #include "GraphicsEngine.h"
+#include "VertexArrayObject.h"
 
+#include "GL.h"
 #include <stdexcept>
 
 GraphicsEngine::GraphicsEngine() {
@@ -8,10 +10,25 @@ GraphicsEngine::GraphicsEngine() {
 GraphicsEngine::~GraphicsEngine() {
 }
 
-void GraphicsEngine::clear(const vec3d& color) {
-    unsigned int r = INT(MUL(color.x, FX(15)));
-    unsigned int g = INT(MUL(color.y, FX(15)));
-    unsigned int b = INT(MUL(color.z, FX(15)));
-    unsigned int a = INT(MUL(color.w, FX(15)));
-    GL_clear((a << 12) | (r << 8) | (g << 4) | b);
+VertexArrayObjectPtr GraphicsEngine::createVertexArrayObject(const VertexBufferData& data) {
+    return std::make_shared<VertexArrayObject>(data);
+}
+
+void GraphicsEngine::clear(const Vec4& color) {
+    glClearColorx(color.x(), color.y(), color.z(), color.w());
+    //glClear(GL_COLOR_BUFFER_BIT);
+    // TODO: Remove this hack
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void GraphicsEngine::setViewport(const Rect& size) {
+    glViewport(size.left, size.top, size.width, size.height);
+}
+
+void GraphicsEngine::setVertexArrayObject(const VertexArrayObjectPtr& vao) {
+    glBindBuffer(GL_ARRAY_BUFFER, vao->getId());
+}
+
+void GraphicsEngine::drawTriangles(ui32 vertexCount, ui32 offset) {
+    glDrawArrays(GL_TRIANGLES, offset, vertexCount);
 }

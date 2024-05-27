@@ -1,6 +1,9 @@
 #include "GL.h"
 
 #include <io.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #define OP_SET_X0 0
 #define OP_SET_Y0 1
@@ -41,6 +44,22 @@ struct Command {
     uint32_t opcode : 8;
     uint32_t param : 24;
 };
+
+struct Buffer {
+    GLuint name;
+    void *data;
+    struct Buffer *next;
+};
+
+struct Context {
+    GLclampx clear_color_r, clear_color_g, clear_color_b, clear_color_a;
+    GLint viewport_x, viewport_y;
+    GLsizei viewport_width, viewport_height;
+    struct Buffer *buffers;
+    struct Buffer *current_buffer;
+};
+
+struct Context ctx = {0};
 
 static void send_command(struct Command *cmd)
 {
@@ -208,25 +227,188 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     send_command(&cmd);
 }
 
-void GL_clear(unsigned int color)
-{
-    struct Command cmd;
-
-    // Clear framebuffer
-    cmd.opcode = OP_CLEAR;
-    cmd.param = color;
-    send_command(&cmd);
-    // Clear depth buffer
-    cmd.opcode = OP_CLEAR;
-    cmd.param = 0x010000;
-    send_command(&cmd);
-}
-
-void GL_swap(bool vsync)
+void gglSwap(GLboolean vsync)
 {
     struct Command cmd;
 
     cmd.opcode = OP_SWAP;
     cmd.param = vsync ? 0x1 : 0x0;
     send_command(&cmd);
+}
+
+void glBindBuffer(GLenum target, GLuint buffer)
+{
+    bool found = false;
+    struct Buffer *b = ctx.buffers;
+    while (b != NULL) {
+        if (b->name == buffer) {
+            ctx.current_buffer = b;
+            found = true;
+            break;
+        }
+        b = b->next;
+    }
+    if (!found) {
+        fprintf(stderr, "glBindBuffer: buffer named %d not found\n", buffer);
+    } else {
+        //printf("glBindBuffer: buffer named %d bound\n", buffer);
+    }
+}
+
+void glBufferData(GLenum target, GLsizeiptr size, const void *data, GLenum usage)
+{
+    if (data != NULL) {
+        ctx.current_buffer->data = malloc(size);
+        memcpy(ctx.current_buffer->data, data, size);
+    } else {
+        ctx.current_buffer->data = NULL;
+    }
+}
+
+void glClear(GLbitfield mask)
+{
+    struct Command cmd;
+
+    if (mask & GL_COLOR_BUFFER_BIT) {
+        // Clear framebuffer
+
+        unsigned int r = INT(MUL(ctx.clear_color_r, FX(15)));
+        unsigned int g = INT(MUL(ctx.clear_color_g, FX(15)));
+        unsigned int b = INT(MUL(ctx.clear_color_b, FX(15)));
+        unsigned int a = INT(MUL(ctx.clear_color_a, FX(15)));
+        uint32_t color = (a << 12) | (r << 8) | (g << 4) | b;
+
+        cmd.opcode = OP_CLEAR;
+        cmd.param = color;
+        send_command(&cmd);
+    }
+    if (mask & GL_DEPTH_BUFFER_BIT) {
+        // Clear depth buffer
+        cmd.opcode = OP_CLEAR;
+        cmd.param = 0x010000;
+        send_command(&cmd);
+    }
+}
+
+void glClearColorx(GLclampx red, GLclampx green, GLclampx blue, GLclampx alpha)
+{
+    ctx.clear_color_r = red;
+    ctx.clear_color_g = green;
+    ctx.clear_color_b = blue;
+    ctx.clear_color_a = alpha;
+}
+
+static void deleteBuffer(GLuint name)
+{
+    struct Buffer *b = ctx.buffers, *pb = NULL;
+    while (b != NULL) {
+        if (b->name == name) {
+            if (pb != NULL) {
+                pb->next = b->next;
+            } else {
+                ctx.buffers = b->next;
+            }
+            if (b->data)
+                free(b->data);
+            free(b);
+            break;
+        }
+        pb = b;
+        b = b->next;
+    }
+}
+
+void glDeleteBuffers(GLsizei n, const GLuint *buffers)
+{
+    for (GLsizei i = 0; i < n; ++i)
+        deleteBuffer(buffers[i]);
+}
+
+static void drawTriangle(fx32 v[9])
+{
+    vec3d vertices[3];
+    vertices[0] = (vec3d){v[0], v[1], v[2], FX(1.0f)};
+    vertices[1] = (vec3d){v[3], v[4], v[5], FX(1.0f)};
+    vertices[2] = (vec3d){v[6], v[7], v[8], FX(1.0f)};
+
+    vec3d vec_camera = {
+        FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)
+    };
+
+    face_t face = {0};
+    face.indices[0] = 0;
+    face.indices[1] = 1;
+    face.indices[2] = 2;
+
+    triangle_t triangles_to_raster[2];
+
+    model_t model = {0};
+    model.mesh.nb_vertices = 9;
+    model.mesh.nb_faces = 1;
+    model.mesh.vertices = vertices;
+    model.mesh.faces = &face;
+    model.triangles_to_raster = triangles_to_raster;
+
+    //mat4x4 mat_proj = matrix_make_projection(ctx.viewport_width, ctx.viewport_height, 60.0f);
+    mat4x4 mat_proj = matrix_make_identity();
+    mat4x4 mat_world = matrix_make_identity();
+    mat4x4 mat_view = matrix_make_identity();
+    
+    draw_model(ctx.viewport_width, ctx.viewport_height, &vec_camera, &model, &mat_world, NULL, &mat_proj, &mat_view, NULL, 0, false, NULL, false, false, 0, 0, false);
+}
+
+void glDrawArrays(GLenum mode, GLint first, GLsizei count)
+{
+    struct Buffer *b = ctx.current_buffer;
+    if (b != NULL) {
+        if (b->data != NULL) {
+            GLfixed *d = b->data;
+            d += first;
+            for (GLsizei i = 0; i < count / 3; ++i) {
+                //printf("glDrawArrays: draw triangle (%x,%x,%x), (%x,%x,%x), (%x,%x,%x)\n", d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], d[8]);
+                drawTriangle((fx32 *)d);
+                d += 9;
+            }
+        } else {
+            printf("glDrawArrays: no data\n");
+        }
+    } else {
+        fprintf(stderr, "glDrawArrays: no bound buffer\n");
+    }
+}
+
+static GLuint genBuffer()
+{
+    struct Buffer *b = ctx.buffers, *pb = NULL;
+    GLuint name = 1;
+    while (b != NULL) {
+        if (b->name > name)
+            name = b->name + 1;
+        pb = b;
+        b = b->next;
+    }
+    struct Buffer *nb = malloc(sizeof(struct Buffer));
+    nb->name = name;
+    nb->data = NULL;
+    nb->next = NULL;
+    if (pb == NULL) {
+        ctx.buffers = nb;
+    } else {
+        pb->next = nb;
+    }
+    return name;
+}
+
+void glGenBuffers(GLsizei n, GLuint *buffers)
+{
+    for (GLsizei i = 0; i < n; ++i)
+        buffers[i] = genBuffer();
+}
+
+void glViewport(int left, int top, int width, int height)
+{
+    ctx.viewport_x = left;
+    ctx.viewport_y = top;
+    ctx.viewport_width = width;
+    ctx.viewport_height = height;
 }

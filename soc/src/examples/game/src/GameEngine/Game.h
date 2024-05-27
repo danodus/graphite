@@ -1,6 +1,8 @@
 #pragma once
 #include <memory>
 
+#include "VertexArrayObject.h"
+
 class GraphicsEngine;
 class Window;
 class Game {
@@ -19,4 +21,6 @@ protected:
     bool m_isRunning = true;
     std::unique_ptr<GraphicsEngine> m_graphicsEngine;
     std::unique_ptr<Window> m_display;
+
+    VertexArrayObjectPtr m_trianglesVAO;
 };

@@ -1,11 +1,14 @@
 #pragma once
 
 #include <SDL2/SDL.h>
+#include "Rect.h"
 
 class Window {
 public:
     Window();
     ~Window();
+
+    Rect getInnerSize();
 
     void makeCurrentContext();
     void present(bool vsync);

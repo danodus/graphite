@@ -1,11 +1,17 @@
 #pragma once
 
-#include "GL.h"
+#include "Vec4.h"
+#include "Rect.h"
 
 class GraphicsEngine {
 public:
     GraphicsEngine();
     ~GraphicsEngine();
 
-    void clear(const vec3d& color);
+    VertexArrayObjectPtr createVertexArrayObject(const VertexBufferData& data);
+
+    void clear(const Vec4& color);
+    void setViewport(const Rect& size);
+    void setVertexArrayObject(const VertexArrayObjectPtr& vao);
+    void drawTriangles(ui32 vertexCount, ui32 offset);
 };

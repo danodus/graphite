@@ -3,8 +3,6 @@
 #include "GameEngine/Game.h"
 #include <stdio.h>
 
-#include "GameEngine/GL.h"
-
 int main(void)
 {
     if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
