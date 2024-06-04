@@ -3,14 +3,23 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Graphite's documentation!
-====================================
+Graphite System
+===============
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Contents:
 
-
+   features.rst
+   memory_map.rst
+   clock.rst
+   led.rst
+   uart.rst
+   sd_card.rst
+   keyboard.rst
+   mouse.rst
+   graphite.rst
+   config.rst
 
 Indices and tables
 ==================

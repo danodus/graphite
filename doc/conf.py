@@ -6,7 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'Graphite'
+project = 'Graphite System'
 copyright = '2024, Daniel Cliche'
 author = 'Daniel Cliche'
 
