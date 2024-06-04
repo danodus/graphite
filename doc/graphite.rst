@@ -3,7 +3,7 @@ Graphite
 
 2D/3D accelerator.
 
-After a reset, the frame buffer address is 0x001000000.
+After a reset, the frame buffer address is 0x01000000.
 
 Registers
 ---------
@@ -77,8 +77,8 @@ OP_SET_T2        23    Set T2
 OP_CLEAR         24    Clear frame buffer or depth buffer
 OP_DRAW          25    Draw triangle
 OP_SWAP          26    Swap the front and back buffer addresses
-OP_SET_TEX_ADDR  27    Set texture address
-OP_SET_FB_ADDR   28    Set the frame buffer address
+OP_SET_TEX_ADDR  27    Set texture address (in 16-bit word, address >> 1)
+OP_SET_FB_ADDR   28    Set the frame buffer address (in 16-bit word, address >> 1)
 ================ ===== ===========
 
 OP_SET_*
@@ -112,7 +112,7 @@ OP_DRAW
 ======= ============================
 Field   Description
 ======= ============================
-[0]     0=solid, 1=textured
+[0]     0=not textured, 1=textured
 [1]     0=wrap T, 1=clamp T
 [2]     0=wrap S, 1=clamp S
 [3]     0=depth test disabled, 1=depth test enabled
