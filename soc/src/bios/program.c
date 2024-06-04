@@ -92,9 +92,6 @@ int receive_program()
 
 void main(void)
 {
-    // Fast bitrate
-    MEM_WRITE(UART_STATUS, 0x1);
-
     if (receive_program())
         start_prog();
 }

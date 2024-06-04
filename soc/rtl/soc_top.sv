@@ -144,7 +144,6 @@ module soc_top #(
     logic rdyKbd;
     logic doneKbd;
     logic [27:0] dataMs;
-    logic bitrate;  // for RS232
     logic limit;  // of cnt0
 
     logic [16:0] cnt0 = 0;
@@ -220,9 +219,9 @@ module soc_top #(
         .writer_alm_full_o()
     );
 
-    uart_rx #(.FREQ_HZ(FREQ_HZ), .BAUD_RATE(BAUD_RATE)) uart_rx(.clk(clk_cpu), .rst(rst_n), .RxD(rx_i), .fsel(bitrate), .done(doneRx),
+    uart_rx #(.FREQ_HZ(FREQ_HZ), .BAUD_RATE(BAUD_RATE)) uart_rx(.clk(clk_cpu), .rst(rst_n), .RxD(rx_i), .fsel(1'b0), .done(doneRx),
     .data(uart_rx_data), .rdy(uart_valid));
-    uart_tx #(.FREQ_HZ(FREQ_HZ), .BAUD_RATE(BAUD_RATE)) uart_tx(.clk(clk_cpu), .rst(rst_n), .start(uart_wr), .fsel(bitrate),
+    uart_tx #(.FREQ_HZ(FREQ_HZ), .BAUD_RATE(BAUD_RATE)) uart_tx(.clk(clk_cpu), .rst(rst_n), .start(uart_wr), .fsel(1'b0),
     .data(uart_tx_data), .TxD(tx_o), .rdy(rdyTx));
 
     logic [7:0] uart_code;
@@ -399,15 +398,12 @@ module soc_top #(
         if (~rst_n) begin
             led_o <= 8'd0;
             spiCtrl <= 4'd0;
-            bitrate <= 1'b0;
             graphite_cmd_axis_tvalid <= 1'b0;
         end else begin
             graphite_cmd_axis_tvalid <= 1'b0;
             if(CE && wr && ioenb) begin
                 if (iowadr == 1)
                     led_o <= outbus[7:0];
-                else if (iowadr == 3)
-                    bitrate <= outbus[0];
                 else if (iowadr == 5)
                     spiCtrl <= outbus[3:0];
                 else if (iowadr == 8) begin

@@ -110,7 +110,7 @@ module mmm_top(
 
     soc_top #(
         .FREQ_HZ(cpu_clock_hz),
-        .BAUD_RATE(1_000_000)
+        .BAUD_RATE(2_000_000)
     ) soc_top(
         .clk_cpu(clk_cpu),
         .clk_sdram(clk_sdram),

@@ -13,7 +13,7 @@ The documentation is available here: https://danodus.github.io/graphite/
 The system has the following features:
 
 - RISC-V (RV32I + Graphite extension)
-- UART (1000000/2000000-N-8-1)
+- UART (2000000-N-8-1)
 - SDRAM (32MiB shared between CPU and video)
 - Set associative cache (4-way with LRU replacement policy)
 - VGA (60 Hz), 480p (60Hz), 720p (60Hz) or 1080p (30Hz) HDMI video output with framebuffer (ARGB4444)
