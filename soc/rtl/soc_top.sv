@@ -115,6 +115,7 @@ module soc_top #(
     logic CE; 
     logic empty;
     logic qready = 1'b0;
+    logic req_flush_cache;
 
     assign sd_di_o   = MOSI[0];
     assign sd_ck_o   = SCLK[0];
@@ -399,8 +400,10 @@ module soc_top #(
             led_o <= 8'd0;
             spiCtrl <= 4'd0;
             graphite_cmd_axis_tvalid <= 1'b0;
+            req_flush_cache <= 1'b0;
         end else begin
             graphite_cmd_axis_tvalid <= 1'b0;
+            req_flush_cache <= 1'b0;
             if(CE && wr && ioenb) begin
                 if (iowadr == 1)
                     led_o <= outbus[7:0];
@@ -409,6 +412,9 @@ module soc_top #(
                 else if (iowadr == 8) begin
                     graphite_cmd_axis_tdata  <= outbus[31:0];
                     graphite_cmd_axis_tvalid <= 1'b1;
+                end else if (iowadr == 9) begin
+                    if (outbus[0])
+                        req_flush_cache <= 1'b1;
                 end
             end
         end
@@ -497,7 +503,7 @@ module soc_top #(
          .waddr(waddr),
          .cache_write_data(crw && sys_rd_data_valid), // read DDR, write to cache
          .cache_read_data(crw && sys_wr_data_valid),
-         .flush(graphite_swap),
+         .flush(graphite_swap | req_flush_cache),
          .clear(graphite_clear)
     );
     

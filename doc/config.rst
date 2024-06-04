@@ -24,4 +24,10 @@ Field   Description
 [31:16] Horizontal video resolution
 ======= ============================
 
-Write: -
+Write:
+
+======= ============================
+Field   Description
+======= ============================
+[0]     0=no action, 1=flush cache
+======= ============================
