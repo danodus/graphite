@@ -153,7 +153,7 @@ module soc_top #(
     logic [31:0] spiRx;
     logic spiStart, spiRdy;
     logic [3:0] spiCtrl;
-    logic [18:0] vidadr = 0;
+    logic [19:0] vidadr = 0;
 
     assign iowadr = adr[5:2];
     assign ioenb = (adr[31:28] == 4'hE);
@@ -430,13 +430,13 @@ module soc_top #(
     logic [17:0] waddr;
 
     logic [22:0] sys_addr;
-    logic [18:0] front_vidadr;
-    assign front_vidadr = graphite_front_addr[22:4] + vidadr;
+    logic [19:0] front_vidadr;
+    assign front_vidadr = graphite_front_addr[23:4] + vidadr;
     always_comb begin
         sys_addr = 23'hxxxxx;
         case(cntrl0_user_command_register)
             2'b01: sys_addr = {waddr[16:0], 6'b000000}; // write 256bytes
-            2'b10: sys_addr = {1'b1, front_vidadr[18:0], 3'b000}; // read 32bytes video
+            2'b10: sys_addr = {front_vidadr, 3'b000}; // read 32bytes video
             2'b11: sys_addr = {cache_ctrl_adr[24:8], 6'b000000}; // read 256bytes	
         endcase
     end
@@ -541,8 +541,8 @@ module soc_top #(
         if(nop) case(sys_cmd_ack)
             2'b10: begin
                 crw <= 1'b0;	// VGA read
-                if(vidadr == 19'(H_RES*V_RES*2/32-1)) vidadr <= 19'd0;
-                else vidadr <= vidadr + 1'b1;
+                if(vidadr == 20'(H_RES*V_RES*2/32-1)) vidadr <= 20'd0;
+                else vidadr <= vidadr + 20'b1;
             end
             2'b01, 2'b11: crw <= 1'b1;	// cache read/write			
         endcase
