@@ -61,7 +61,7 @@ all: top.bin
 clean:
 	rm -f *.hex *.asc *.json *.bin *.log
 
-top.json: $(SRC)
+top.json: $(SRC) prom.mem
 	make -C ../../src/bios
 	$(YOSYS) -ql top.log -p 'verilog_defines $(DEFINES) ; read_verilog -sv $(SRC); synth_ecp5 -top $(TOP_MODULE) -json top.json -abc9'
 

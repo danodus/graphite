@@ -3,10 +3,12 @@
 #define RAM_START   0x00000000
 
 #define BASE_IO     0xE0000000
+#define BASE_VIDEO  0x1000000
 
 #define LED         (BASE_IO + 4)
 #define UART_DATA   (BASE_IO + 8)
 #define UART_STATUS (BASE_IO + 12)
+#define CONFIG      (BASE_IO + 36)
 
 #define MEM_WRITE(_addr_, _value_) (*((volatile unsigned int *)(_addr_)) = _value_)
 #define MEM_READ(_addr_) *((volatile unsigned int *)(_addr_))
@@ -90,8 +92,33 @@ int receive_program()
     return 1;
 }
 
+void flush_cache(void)
+{
+    // Flush cache
+    MEM_WRITE(CONFIG, 0x1);
+}
+
+void clear(int color)
+{
+    unsigned int res = MEM_READ(CONFIG);
+    unsigned hres = res >> 16;
+    unsigned vres = res & 0xffff;
+
+    unsigned int *fb = (unsigned int *)BASE_VIDEO;
+    unsigned int c = color << 16 | color;
+    for (unsigned int y = 0; y < vres; y++)
+        for (unsigned int x = 0; x < hres / 2; x++) {
+            *fb = c;
+            fb++;
+        }
+
+    flush_cache();
+}
+
 void main(void)
 {
+    clear(0xF333);
+
     if (receive_program())
         start_prog();
 }

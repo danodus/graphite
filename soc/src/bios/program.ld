@@ -8,7 +8,7 @@ SECTIONS {
 		. = 0x000000;
 		*(.init);
 		*(.text);
-		*(*);
+		*(.sbss);
 		. = ALIGN(4);
 		end = .;
 	} >ram
