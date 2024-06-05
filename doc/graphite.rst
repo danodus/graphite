@@ -152,5 +152,6 @@ Field   Description
 ======= ============================
 [0:15]  16-bit value
 [16]    0=LSB, 1=MSB
-[31:24] Opcode (27)
+[17]    0=double buffer (back != front), 1=single buffer (back == front)
+[31:24] Opcode (28)
 ======= ============================

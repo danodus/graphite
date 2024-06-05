@@ -374,7 +374,7 @@ module graphite #(
                             fb_address[15:0] <= cmd_axis_tdata_i[15:0];
                         end
                         front_rel_address   <= 32'h0;
-                        back_rel_address    <= FB_WIDTH * FB_HEIGHT;
+                        back_rel_address    <= cmd_axis_tdata_i[17] ? 32'h0 : FB_WIDTH * FB_HEIGHT;
                         state <= WAIT_COMMAND;
                     end
                     default:
