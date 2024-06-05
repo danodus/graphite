@@ -9,22 +9,37 @@ Registers
 =============== =============
 Register        Address
 =============== =============
-MOUSE           BASE_IO + 24
+MOUSE_STATUS    BASE_IO + 40
+MOUSE_DATA      BASE_IO + 44
 =============== =============
 
-MOUSE
-^^^^^
+MOUSE_STATUS
+^^^^^^^^^^^^
+
+Read:
+
+===== ============================
+Field Description
+===== ============================
+[28]  Mouse event available? 
+===== ============================
+
+Write: -
+
+MOUSE_DATA
+^^^^^^^^^^
 
 Read:
 
 ======= ============================
 Field   Description
 ======= ============================
-[9:0]   X position
-[21:12] Y position
-[24]    Left button
-[25]    Middle button
-[26]    Right button
+[7:0]   Delta Z
+[15:8]  Delta Y
+[23:16] Delta X
+[24]    Left button pressed?
+[25]    Right button pressed?
+[26]    Middle button pressed?
 ======= ============================
 
 Write: -

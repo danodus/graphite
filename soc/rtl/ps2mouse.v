@@ -27,22 +27,15 @@ CONNECTION WITH THE DEALINGS IN OR USE OR PERFORMANCE OF THE SOFTWARE.*/
 
 module ps2mouse
 #(
-  parameter c_x_bits = 11,   // >= 8
-  parameter c_y_bits = 11,   // >= 8
-  parameter c_y_neg  = 0,
-  parameter c_z_bits = 11,   // >= 4
-  parameter c_z_ena  = 1,    // 1:yes wheel, 0:not wheel
-  parameter c_hotplug = 1
+  parameter c_z_ena  = 1    // 1:yes wheel, 0:not wheel
 )
 (
-  input clk, clk_ena,
+  input clk,
   input ps2m_reset,
   inout ps2m_clk, ps2m_dat,
-  output reg update,
-  output reg [c_x_bits-1:0] x,
-  output reg [c_y_bits-1:0] y,
-  output reg [c_z_bits-1:0] z,
-  output reg [2:0] btn
+  input done,   // "word has been read"
+  output rdy,   // "word is available"
+  output [26:0] data  
 );
   reg [2:0] sent;
   localparam c_rx_bits = c_z_ena ? 42 : 31;
@@ -51,11 +44,12 @@ module ps2mouse
   reg [14:0] count;
   reg [5:0] filter;
   reg req;
-  wire shift, endbit, endcount, done, run;
+  wire shift, endbit, endcount, donereq, run;
   wire [8:0] cmd;  //including odd tx parity bit
-  wire [c_x_bits-1:0] dx;
-  wire [c_y_bits-1:0] dy;
-  wire [c_z_bits-1:0] dz;
+  wire [7:0] dx;
+  wire [7:0] dy;
+  wire [7:0] dz;
+  wire [2:0] btn;  
 
 // 322222222221111111111 (scroll mouse z and rx parity p ignored)
 // 0987654321098765432109876543210   X, Y = overflow
@@ -87,32 +81,34 @@ module ps2mouse
   // first bit that enters rx at MSB is 1 and it is shifted to the right
   // when this bit reaches the position in rx, it indicates end of transmission
   assign endbit = run ? ~rx[0] : ~rx[$bits(rx)-21];
-  assign done = endbit & endcount & ~req;
+  assign donereq = endbit & endcount & ~req;
   assign dx = {{($bits(dx)-8){rx[5]}}, rx[7] ? 8'b0 : rx[19:12]};  //sign+overfl
   assign dy = {{($bits(dy)-8){rx[6]}}, rx[8] ? 8'b0 : rx[30:23]};  //sign+overfl
   generate
     if(c_z_ena)
       assign dz = {{($bits(dz)-3){rx[37]}}, rx[37:34]};  //sign,wheel
   endgenerate
-//  assign out = {run,  // full debug
-//    run ? {rx[25:0], endbit} : {rx[30:10], endbit, sent, tx[0], ~req}};
-//  assign out = {run,  // debug then normal
-//    run ? {btns, 2'b0, y, 2'b0, x} : {rx[30:10], sent, endbit, tx[0], ~req}};
+  assign btn = rx[3:1];
   assign ps2m_clk = req ? 1'b0 : 1'bz;  //bidir clk/request
   assign ps2m_dat = ~tx[0] ? 1'b0 : 1'bz;  //bidir data
+
+  reg [3:0] inptr, outptr;
+  reg [26:0] fifo [15:0];  // 16 word buffer
+
+  assign data = fifo[outptr];
+  assign rdy = ~(inptr == outptr);
 
   always @ (posedge clk) begin
     filter <= {filter[$bits(filter)-2:0], ps2m_clk};
     count <= (ps2m_reset | shift | endcount) ? 0 : count+1;
     req <= ~ps2m_reset & ~run & (req ^ endcount);
-    sent <= ps2m_reset ? 0 : (done & ~run) ? sent+1 : sent;
+    sent <= ps2m_reset ? 0 : (donereq & ~run) ? sent+1 : sent;
     tx <= (ps2m_reset | run) ? {$bits(tx){1'b1}} : req ? {cmd, 1'b0} : shift ? {1'b1, tx[$bits(tx)-1:1]} : tx;
-    rx <= (ps2m_reset | done) ? {$bits(rx){1'b1}} : (shift & ~endbit) ? {ps2m_dat, rx[$bits(rx)-1:1]} : rx;
-    x <= ~run ? 0 : done ? x + dx : x;
-    y <= ~run ? 0 : done ? (c_y_neg ? y + dy : y - dy) : y;
-    z <= ~run ? 0 : done ? z + dz : z;
-    btn <= ~run ? 0 : done ? rx[3:1] : btn;
-    update <= done;
+    rx <= (ps2m_reset | donereq) ? {$bits(rx){1'b1}} : (shift & ~endbit) ? {ps2m_dat, rx[$bits(rx)-1:1]} : rx;
+
+    outptr <= ps2m_reset ? 0 : rdy & done ? outptr+1 : outptr;
+    inptr <= ps2m_reset ? 0 : run & donereq ? inptr+1 : inptr;
+    if (donereq) fifo[inptr] <= {btn, dx, dy, dz};
   end
 
 endmodule

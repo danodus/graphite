@@ -19,7 +19,7 @@ LED                 BASE_IO + 4
 UART                BASE_IO + 8
 SD_CARD             BASE_IO + 16
 KEYBOARD            BASE_IO + 24
-MOUSE               BASE_IO + 24
 GRAPHITE            BASE_IO + 32
 CONFIG              BASE_IO + 36
+MOUSE               BASE_IO + 40
 ==================  ===============

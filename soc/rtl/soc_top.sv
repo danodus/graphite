@@ -144,7 +144,9 @@ module soc_top #(
     logic [7:0] dataKbd;
     logic rdyKbd;
     logic doneKbd;
-    logic [27:0] dataMs;
+    logic rdyMs;
+    logic doneMs;
+    logic [26:0] dataMs;
     logic limit;  // of cnt0
 
     logic [16:0] cnt0 = 0;
@@ -302,18 +304,13 @@ module soc_top #(
     .viddata(inbusvid), .de(de), .RGB(RGB), .hsync(vga_hsync), .vsync(vga_vsync));
     ps2kbd ps2kbd(.clk(clk_cpu), .rst(rst_n), .done(doneKbd), .rdy(rdyKbd), .shift(),
     .data(dataKbd), .PS2C(ps2clka_i), .PS2D(ps2data_i));
-    logic [2:0] mousebtn;
     ps2mouse
-    #(.c_x_bits(10), .c_y_bits(10), .c_y_neg(1), .c_z_ena(0), .c_hotplug(1))
+    #(.c_z_ena(1))
     ps2mouse
     (
-    .clk(clk_cpu), .clk_ena(1'b1), .ps2m_reset(~rst_n), .ps2m_clk(ps2clkb_io), .ps2m_dat(ps2datb_io),
-    .x(dataMs[9:0]), .y(dataMs[21:12]), .btn(mousebtn)
+    .clk(clk_cpu), .ps2m_reset(~rst_n), .ps2m_clk(ps2clkb_io), .ps2m_dat(ps2datb_io),
+    .done(doneMs), .rdy(rdyMs), .data(dataMs)   
     );
-    assign dataMs[24] = mousebtn[1]; // left
-    assign dataMs[25] = mousebtn[2]; // middle
-    assign dataMs[26] = mousebtn[0]; // right
-    assign dataMs[27] = 1'b1;
 
     // Graphite
     logic           graphite_cmd_axis_tvalid;
@@ -364,10 +361,12 @@ module soc_top #(
         (iowadr == 3) ? {30'b0, rdyTx, rdyRx} :
         (iowadr == 4) ? spiRx :
         (iowadr == 5) ? {31'b0, spiRdy} :
-        (iowadr == 6) ? {3'b0, rdyKbd, dataMs} :
+        (iowadr == 6) ? {3'b0, rdyKbd, 28'd0} :
         (iowadr == 7) ? {24'b0, dataKbd} :
         (iowadr == 8) ? {31'b0, graphite_cmd_axis_tready} :
-        (iowadr == 9) ? {16'(H_RES), 16'(V_RES)} : 32'd0);
+        (iowadr == 9) ? {16'(H_RES), 16'(V_RES)} :
+        (iowadr == 10) ? {3'b0, rdyMs, 28'd0} :
+        (iowadr == 11) ? {5'b0, dataMs} : 32'd0);
 
     assign dataTx = outbus[7:0];
     assign startTx = wr & ioenb & (iowadr == 2);
@@ -381,6 +380,12 @@ module soc_top #(
         doneKbd <= 1'b0;
         if (rd & ioenb & (iowadr == 7))
             doneKbd <= 1'b1;
+    end
+
+    always @(posedge clk_cpu) begin
+        doneMs <= 1'b0;
+        if (rd & ioenb & (iowadr == 11))
+            doneMs <= 1'b1;
     end
 
     // Auto reset and counter
