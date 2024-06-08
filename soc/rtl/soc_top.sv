@@ -30,7 +30,8 @@ CONNECTION WITH THE DEALINGS IN OR USE OR PERFORMANCE OF THE SOFTWARE.
 
 module soc_top #(
     parameter FREQ_HZ = 25_000_000,
-    parameter BAUD_RATE = 115_200
+    parameter BAUD_RATE = 115_200,
+    parameter DEFAULT_FB_ADDRESS = 32'h1000000
 ) (
     input  wire logic        clk_cpu,
     input  wire logic        clk_sdram,
@@ -312,6 +313,8 @@ module soc_top #(
     .done(doneMs), .rdy(rdyMs), .data(dataMs)   
     );
 
+    logic [31:0]    fb_addr;
+
     // Graphite
     logic           graphite_cmd_axis_tvalid;
     logic           graphite_cmd_axis_tready;
@@ -325,9 +328,10 @@ module soc_top #(
     logic [31:0] graphite_front_addr;
     logic graphite_clear;
     logic graphite_swap;
+    logic use_graphite_front_addr;
 
     graphite #(
-        .FB_ADDRESS(32'h1000000 >> 'd1),
+        .FB_ADDRESS(DEFAULT_FB_ADDRESS >> 'd1),
         .FB_WIDTH(H_RES),
         .FB_HEIGHT(V_RES)
     ) graphite(
@@ -366,7 +370,10 @@ module soc_top #(
         (iowadr == 8) ? {31'b0, graphite_cmd_axis_tready} :
         (iowadr == 9) ? {16'(H_RES), 16'(V_RES)} :
         (iowadr == 10) ? {3'b0, rdyMs, 28'd0} :
-        (iowadr == 11) ? {5'b0, dataMs} : 32'd0);
+        (iowadr == 11) ? {5'b0, dataMs} :
+        (iowadr == 12) ? fb_addr :
+        (iowadr == 13) ? {31'b0, vga_vsync} :
+        32'd0);
 
     assign dataTx = outbus[7:0];
     assign startTx = wr & ioenb & (iowadr == 2);
@@ -406,6 +413,8 @@ module soc_top #(
             spiCtrl <= 4'd0;
             graphite_cmd_axis_tvalid <= 1'b0;
             req_flush_cache <= 1'b0;
+            fb_addr <= DEFAULT_FB_ADDRESS;
+            use_graphite_front_addr <= 1'b0;
         end else begin
             graphite_cmd_axis_tvalid <= 1'b0;
             req_flush_cache <= 1'b0;
@@ -417,9 +426,13 @@ module soc_top #(
                 else if (iowadr == 8) begin
                     graphite_cmd_axis_tdata  <= outbus[31:0];
                     graphite_cmd_axis_tvalid <= 1'b1;
+                    use_graphite_front_addr <= 1'b1;    // Graphite will handle the fb address
                 end else if (iowadr == 9) begin
                     if (outbus[0])
                         req_flush_cache <= 1'b1;
+                end else if (iowadr == 12) begin
+                    fb_addr <= outbus[31:0];
+                    use_graphite_front_addr <= 1'b0;
                 end
             end
         end
@@ -436,7 +449,7 @@ module soc_top #(
 
     logic [22:0] sys_addr;
     logic [19:0] front_vidadr;
-    assign front_vidadr = graphite_front_addr[23:4] + vidadr;
+    assign front_vidadr = (use_graphite_front_addr ? graphite_front_addr[23:4] : fb_addr[24:5]) + vidadr;
     always_comb begin
         sys_addr = 23'hxxxxx;
         case(cntrl0_user_command_register)

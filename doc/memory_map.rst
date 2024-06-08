@@ -22,4 +22,5 @@ KEYBOARD            BASE_IO + 24
 GRAPHITE            BASE_IO + 32
 CONFIG              BASE_IO + 36
 MOUSE               BASE_IO + 40
+CONFIG (2)          BASE_IO + 44
 ==================  ===============
