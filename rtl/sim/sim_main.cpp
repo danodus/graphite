@@ -312,7 +312,7 @@ void clear() {
     Command cmd;
     // Clear framebuffer
     cmd.opcode = OP_CLEAR;
-    cmd.param = 0x00F333;
+    cmd.param = 0x0031A6;
     g_commands.push_back(cmd);
     // Clear depth buffer
     cmd.opcode = OP_CLEAR;
@@ -361,7 +361,7 @@ int main(int argc, char** argv, char** env) {
     for (size_t i = 0; i < VRAM_SIZE; ++i) vram_data[i] = 0x0000;
 
     SDL_Texture* texture =
-        SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB4444, SDL_TEXTUREACCESS_STREAMING, FB_WIDTH, FB_HEIGHT);
+        SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, FB_WIDTH, FB_HEIGHT);
 
     const std::unique_ptr<VerilatedContext> contextp{new VerilatedContext};
 
@@ -582,7 +582,7 @@ int main(int argc, char** argv, char** env) {
                 }
                 top->vram_data_in_i = vram_data[top->vram_addr_o];
             } else {
-                top->vram_data_in_i = 0xFF00;
+                top->vram_data_in_i = 0xF800;
             }
         }
 

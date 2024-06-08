@@ -103,7 +103,7 @@ module mmm_top(
     assign clk_cpu = clocks_system[2];
 
     logic vga_hsync, vga_vsync, vga_blank;
-    logic [3:0] vga_r, vga_g, vga_b;
+    logic [7:0] vga_r, vga_g, vga_b;
 
     logic pll_locked;
     assign pll_locked = pll_system_locked & pll_video_locked;
@@ -151,18 +151,13 @@ module mmm_top(
         .sdram_dqm_o(sdram_dqm)
     );
 
-    // oberon video signal from oberon, rgb444->rgb888
-    logic [7:0] vga_r8 = {vga_r, vga_r};
-    logic [7:0] vga_g8 = {vga_g, vga_g};
-    logic [7:0] vga_b8 = {vga_b, vga_b};
-
     // VGA to digital video converter
     hdmi_interface hdmi_interface_instance(
       .pixel_clk(clk_pixel),
       .pixel_clk_x5(clk_shift),
-      .red(vga_r8),
-      .green(vga_g8),
-      .blue(vga_b8),
+      .red(vga_r),
+      .green(vga_g),
+      .blue(vga_b),
       .vde(~vga_blank),
       .hsync(vga_hsync),
       .vsync(vga_vsync),

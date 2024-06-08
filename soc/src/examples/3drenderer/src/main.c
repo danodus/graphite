@@ -371,7 +371,7 @@ void update(void) {
 // Render function to draw objects on the display
 ///////////////////////////////////////////////////////////////////////////////
 void render(void) {
-    clear_color_buffer(0xF000);
+    clear_color_buffer(0x0000);
     clear_z_buffer();
 
     draw_grid();

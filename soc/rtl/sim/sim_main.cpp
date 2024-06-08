@@ -1,3 +1,7 @@
+// sim_main.cpp
+// Copyright (c) 2023-2024 Daniel Cliche
+// SPDX-License-Identifier: MIT
+
 #include <SDL.h>
 
 #include <memory>
@@ -61,7 +65,7 @@ int main(int argc, char **argv, char **env)
     do {
 
         for (size_t i = 0; i < SDRAM_MEM_SIZE; ++i) {
-            sdram_mem[i] =  (i >= SDRAM_MEM_SIZE / 2) ? 0xF00F : 0x0000;
+            sdram_mem[i] =  (i >= SDRAM_MEM_SIZE / 2) ? 0x001F : 0x0000;
         }
 
         std::ifstream file("program.hex", std::ifstream::in);
@@ -260,9 +264,9 @@ int main(int argc, char **argv, char **env)
                     was_vsync = false;
                 }
 
-                pixels[pixel_index] = top->vga_r << 4;
-                pixels[pixel_index + 1] = top->vga_g << 4;
-                pixels[pixel_index + 2] = top->vga_b << 4;
+                pixels[pixel_index] = top->vga_r;
+                pixels[pixel_index + 1] = top->vga_g;
+                pixels[pixel_index + 2] = top->vga_b;
                 pixels[pixel_index + 3] = 255;
                 pixel_index = (pixel_index + 4) % (pixels_size);
 

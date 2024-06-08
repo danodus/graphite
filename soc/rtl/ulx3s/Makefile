@@ -29,6 +29,7 @@ SRC = \
   ../riscv/bus_arbiter.sv \
   ../riscv/rv32.sv \
   ../video.v \
+  ../rgb565_to_rgb888.sv \
   ../lattice/bram32bit.v \
   ../bram_true2p_2clk.v \
   ../vqueue.v \
@@ -56,7 +57,7 @@ ifeq ($(CPU_SPEED),fast)
 DEFINES += -DFAST_CPU
 endif
 
-all: top.bin
+all: bios top.bin
 
 clean:
 	rm -f *.hex *.asc *.json *.bin *.log
@@ -64,7 +65,7 @@ clean:
 bios:
 	make -C ../../src/bios
 
-top.json: $(SRC) bios
+top.json: $(SRC)
 	$(YOSYS) -ql top.log -p 'verilog_defines $(DEFINES) ; read_verilog -sv $(SRC); synth_ecp5 -top $(TOP_MODULE) -json top.json -abc9'
 
 top.asc: top.json $(PIN_DEF)

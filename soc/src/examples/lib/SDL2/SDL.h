@@ -1,3 +1,7 @@
+// SDL.h
+// Copyright (c) 2024 Daniel Cliche
+// SPDX-License-Identifier: MIT
+
 #ifndef _SDL_H_
 #define _SDL_H_
 
@@ -62,16 +66,16 @@ typedef enum {
 } SDL_PixelType;
 
 typedef enum {
-    SDL_PACKEDORDER_ARGB = 3
+    SDL_PACKEDORDER_XRGB = 1
 } SDL_PackedOrder;
 
 typedef enum {
-    SDL_PACKEDLAYOUT_4444 = 2
+    SDL_PACKEDLAYOUT_565 = 5
 } SDL_PackedLayout;
 
 typedef enum {
-    SDL_PIXELFORMAT_ARGB4444 = SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED16, SDL_PACKEDORDER_ARGB,
-                               SDL_PACKEDLAYOUT_4444, 16, 2)
+    SDL_PIXELFORMAT_RGB565 = SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED16, SDL_PACKEDORDER_XRGB,
+                               SDL_PACKEDLAYOUT_565, 16, 2)
 } SDL_PixelFormatEnum;
 
 typedef enum {

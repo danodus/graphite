@@ -39,7 +39,7 @@ module video #(
     output reg req,  // SRAM read request
     output hsync, vsync,  // to display
     output de,
-    output [11:0] RGB
+    output [15:0] RGB
 );
 
   localparam H_TOTAL = H_RES + H_FP + H_SYNC + H_BP;
@@ -62,7 +62,7 @@ assign hsync = (hcnt >= H_RES+H_FP) & (hcnt < H_RES+H_FP+H_BP);
 assign vsync = (vcnt >= V_RES+V_FP) & (vcnt < V_RES+V_FP+V_BP);
 assign xfer = hcnt[0];  // data delay > hcnt cycle + req cycle
 assign vid = (~hblank & ~vblank) ? pixbuf[15:0] : 16'd0;
-assign RGB = {vid[11:8], vid[7:4], vid[3:0]};
+assign RGB = vid;
 
 always @(posedge pclk) if(ce && init_req_counter == 2'd0) begin  // pixel clock domain
   hcnt <= hend ? 0 : hcnt+1;

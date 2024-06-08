@@ -1,3 +1,7 @@
+// program.c
+// Copyright (c) 2023-2024 Daniel Cliche
+// SPDX-License-Identifier: MIT
+
 #define BASE_IO 0xE0000000
 #define BASE_VIDEO 0x1000000
 
@@ -17,13 +21,13 @@ void delay(unsigned int ms)
 unsigned int val(int hres, int vres, int x, int y, unsigned int c)
 {
     if (x == 0)
-        return 0x0F000F00;
+        return 0xf800f800;
     if (x == hres/2-1)
-        return 0x00F000F0;
+        return 0x07e007e0;
     if (y == 0)
-        return 0x000F000F;
+        return 0x001f001f;
     if (y == vres-1)
-        return 0x0FFF0FFF;
+        return 0xffffffff;
     return c;
 }
 

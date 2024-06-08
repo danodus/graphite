@@ -1,5 +1,5 @@
 // soc_top.sv
-// Copyright (c) 2023 Daniel Cliche
+// Copyright (c) 2023-2024 Daniel Cliche
 // SPDX-License-Identifier: MIT
 
 /*
@@ -51,9 +51,9 @@ module soc_top #(
     output      logic        vga_hsync_o,
     output      logic        vga_vsync_o,
     output      logic        vga_blank_o,
-    output      logic [3:0]  vga_r_o,
-    output      logic [3:0]  vga_g_o,
-    output      logic [3:0]  vga_b_o,
+    output      logic [7:0]  vga_r_o,
+    output      logic [7:0]  vga_g_o,
+    output      logic [7:0]  vga_b_o,
     // PS/2 keyboard
     input  wire logic        ps2clka_i,
     input  wire logic        ps2data_i,
@@ -112,7 +112,8 @@ module soc_top #(
     logic [1:0]  MISO = {1'b1, sd_do_i};
     logic [1:0]  SCLK, MOSI;
     logic [1:0]  SS;
-    logic [11:0] RGB;
+    logic [15:0] RGB565;
+    logic [23:0] RGB888;
     logic CE; 
     logic empty;
     logic qready = 1'b0;
@@ -122,13 +123,18 @@ module soc_top #(
     assign sd_ck_o   = SCLK[0];
     assign sd_cs_n_o = SS[0];
 
-    assign vga_r_o = RGB[11:8];
-    assign vga_g_o = RGB[7:4];
-    assign vga_b_o = RGB[3:0];
+    assign vga_r_o = RGB888[23:16];
+    assign vga_g_o = RGB888[15:8];
+    assign vga_b_o = RGB888[7:0];
 
     assign vga_hsync_o = H_POL ? vga_hsync : ~vga_hsync;
     assign vga_vsync_o = V_POL ? vga_vsync : ~vga_vsync;
     assign vga_blank_o = ~de;
+
+    rgb565_to_rgb888 rgb565_to_rgb888(
+        .rgb565_i(RGB565),
+        .rgb888_o(RGB888)
+    );
 
     logic [31:0] adr;
     logic [3:0]  iowadr; // word address
@@ -302,7 +308,7 @@ module soc_top #(
         .V_BP(33)     // vertical back porch
 `endif
     )video(.clk(clk_cpu), .ce(qready), .pclk(clk_pixel), .req(dspreq),
-    .viddata(inbusvid), .de(de), .RGB(RGB), .hsync(vga_hsync), .vsync(vga_vsync));
+    .viddata(inbusvid), .de(de), .RGB(RGB565), .hsync(vga_hsync), .vsync(vga_vsync));
     ps2kbd ps2kbd(.clk(clk_cpu), .rst(rst_n), .done(doneKbd), .rdy(rdyKbd), .shift(),
     .data(dataKbd), .PS2C(ps2clka_i), .PS2D(ps2data_i));
     ps2mouse

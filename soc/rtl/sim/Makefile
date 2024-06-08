@@ -19,6 +19,7 @@ SRC = bram32bit.v \
 	soc_top.sv \
 	video.v \
 	vqueue.v \
+	rgb565_to_rgb888.sv \
 	riscv/bus_arbiter.sv \
 	riscv/processor.sv \
 	riscv/rv32.sv \

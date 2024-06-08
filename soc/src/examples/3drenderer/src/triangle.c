@@ -243,11 +243,10 @@ void draw_texel(
         uint32_t* texture_buffer = (uint32_t *)upng_get_buffer(texture);
 
         uint8_t* tc = (uint8_t*)(&texture_buffer[(texture_width * tex_y) + tex_x]);
-        uint16_t cr = tc[0] >> 4;
-        uint16_t cg = tc[1] >> 4;
-        uint16_t cb = tc[2] >> 4;
-        uint16_t ca = tc[3] >> 4;
-        uint16_t color = (ca << 12) | (cr << 8) | (cg << 4) | cb;
+        uint16_t cr = tc[0] >> 3;
+        uint16_t cg = tc[1] >> 2;
+        uint16_t cb = tc[2] >> 3;
+        uint16_t color = (cr << 11) | (cg << 5) | cb;
 
         draw_pixel(x, y, color);
 

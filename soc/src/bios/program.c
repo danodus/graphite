@@ -1,3 +1,7 @@
+// program.c
+// Copyright (c) 2023-2024 Daniel Cliche
+// SPDX-License-Identifier: MIT
+
 #include <stddef.h>
 
 #define RAM_START   0x00000000
@@ -117,7 +121,7 @@ void clear(int color)
 
 void main(void)
 {
-    clear(0xF333);
+    clear(0x8410);  // Gray
 
     if (receive_program())
         start_prog();

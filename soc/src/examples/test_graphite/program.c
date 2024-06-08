@@ -326,7 +326,7 @@ void main(void)
     lights[4].ambient_color = (vec3d){FX(0.1f), FX(0.1f), FX(0.0f), FX(1.0f)};
     lights[4].diffuse_color = (vec3d){FX(0.2f), FX(0.2f), FX(0.0f), FX(1.0f)};      
 
-    clear(0xF333);
+    clear(0x31A6);
 
     uint32_t counter = 0;
     while(!quit) {
@@ -376,7 +376,7 @@ void main(void)
 
         uint32_t t1_clear = MEM_READ(TIMER);
         if (rasterizer_ena)
-            clear(0x00F333);
+            clear(0x31A6);
         uint32_t t2_clear = MEM_READ(TIMER);
 
         uint32_t t1_xform = MEM_READ(TIMER);

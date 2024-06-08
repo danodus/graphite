@@ -728,31 +728,29 @@ module graphite #(
             end
 
             DRAW_TRIANGLE54: begin
-                vram_data_out_o[15:12] <= 4'hF;
-                // vram_data_out_o[11:8] = 4'(mul({14'd0, sample[11:8], 14'd0}, r) >> 14)
-                // vram_data_out_o[7:4] = 4'(mul({14'd0, sample[7:4], 14'd0}, g) >> 14)
-                // vram_data_out_o[3:0] = 4'(mul({14'd0, sample[3:0], 14'd0}, b) >> 14)
-                dsp_mul_p0[0] <= {14'd0, sample[11:8], 14'd0};
+                // Write RGB565 color to VRAM
+                // The sample is RGB444, so a conversion is required
+                dsp_mul_p0[0] <= {13'd0, sample[11:8], sample[11], 14'd0};
                 dsp_mul_p1[0] <= r;
                 state <= DRAW_TRIANGLE55;
             end
 
             DRAW_TRIANGLE55: begin
-                vram_data_out_o[11:8] <= 4'(dsp_mul_z[0] >> 14);
-                dsp_mul_p0[0] <= {14'd0, sample[7:4], 14'd0};
+                vram_data_out_o[15:11] <= 5'(dsp_mul_z[0] >> 14);
+                dsp_mul_p0[0] <= {12'd0, sample[7:4], sample[7:6], 14'd0};
                 dsp_mul_p1[0] <= g;
                 state <= DRAW_TRIANGLE56;
             end
 
             DRAW_TRIANGLE56: begin
-                vram_data_out_o[7:4] <= 4'(dsp_mul_z[0] >> 14);
-                dsp_mul_p0[0] <= {14'd0, sample[3:0], 14'd0};
+                vram_data_out_o[10:5] <= 6'(dsp_mul_z[0] >> 14);
+                dsp_mul_p0[0] <= {13'd0, sample[3:0], sample[3], 14'd0};
                 dsp_mul_p1[0] <= b;
                 state <= DRAW_TRIANGLE57;
             end
 
             DRAW_TRIANGLE57: begin
-                vram_data_out_o[3:0] <= 4'(dsp_mul_z[0] >> 14);
+                vram_data_out_o[4:0] <= 5'(dsp_mul_z[0] >> 14);
                 vram_sel_o <= 1'b1;
                 vram_wr_o  <= 1'b1;
                 vram_addr_o <= fb_address + back_rel_address + raster_rel_address;

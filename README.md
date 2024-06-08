@@ -16,7 +16,7 @@ The system has the following features:
 - UART (2000000-N-8-1)
 - SDRAM (32MiB shared between CPU and video)
 - Set associative cache (4-way with LRU replacement policy)
-- VGA (60 Hz), 480p (60Hz), 720p (60Hz) or 1080p (30Hz) HDMI video output with framebuffer (ARGB4444)
+- VGA (60 Hz), 480p (60Hz), 720p (60Hz) or 1080p (30Hz) HDMI video output with framebuffer (RGB565)
 - 2D/3D graphics accelerator (textured triangles)
 - PS/2 keyboard
 - PS/2 mouse
@@ -32,7 +32,7 @@ The system has the following features:
 
 (*) Extract and add the `bin` directory to the path.
 
-Note: Tested with `oss-cad-suite-darwin-arm64-20240201` and `xpack-riscv-none-elf-gcc-13.2.0-2-darwin-arm64`.
+Note: Tested with `oss-cad-suite-darwin-arm64-20240515` and `xpack-riscv-none-elf-gcc-13.2.0-2-darwin-arm64`.
 
 ## Getting Started on ULX3S
 

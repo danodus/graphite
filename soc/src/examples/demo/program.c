@@ -521,7 +521,7 @@ void main(void)
 
         uint32_t t1_clear = MEM_READ(TIMER);
         if (rasterizer_ena)
-            clear(0x00F003);
+            clear(0x0006);
         uint32_t t2_clear = MEM_READ(TIMER);
 
         uint32_t t1_xform = MEM_READ(TIMER);

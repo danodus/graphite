@@ -1,5 +1,5 @@
 // top.sv
-// Copyright (c) 2023 Daniel Cliche
+// Copyright (c) 2023-2024 Daniel Cliche
 // SPDX-License-Identifier: MIT
 
 module top (
@@ -12,9 +12,9 @@ module top (
 
     output      logic        vga_hsync,
     output      logic        vga_vsync,
-    output      logic [3:0]  vga_r,
-    output      logic [3:0]  vga_g,
-    output      logic [3:0]  vga_b,
+    output      logic [7:0]  vga_r,
+    output      logic [7:0]  vga_g,
+    output      logic [7:0]  vga_b,
 
     input  wire logic [7:0]  ps2_kbd_code_i,
     input  wire logic        ps2_kbd_strobe_i,

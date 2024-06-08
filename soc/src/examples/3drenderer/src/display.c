@@ -81,7 +81,7 @@ bool initialize_window(void) {
     // Creating a SDL texture that is used to display the color buffer
     color_buffer_texture = SDL_CreateTexture(
         renderer,
-        SDL_PIXELFORMAT_ARGB4444,
+        SDL_PIXELFORMAT_RGB565,
         SDL_TEXTUREACCESS_STREAMING,
         window_width,
         window_height
@@ -93,7 +93,7 @@ bool initialize_window(void) {
 void draw_grid(void) {
     for (int y = 0; y < window_height; y += 10)
         for (int x = 0; x < window_width; x += 10)
-            color_buffer[(window_width * y) + x] = 0xF333;
+            color_buffer[(window_width * y) + x] = 0x31A6;
 }
 
 void draw_pixel(int x, int y, uint16_t color) {
