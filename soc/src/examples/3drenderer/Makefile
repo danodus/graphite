@@ -15,7 +15,7 @@ LIB_SOURCE = ../lib/io.c ../lib/syscalls.c ../lib/array.c ../lib/SDL2/sdl.c ../l
 PROGRAM_SOURCE = src/start.S src/*.c
 SERIAL ?= /dev/tty.usbserial-D00039
 
-LDFILE ?= program.ld
+LDFILE ?= ../lib/program.ld
 
 all: program.hex
 

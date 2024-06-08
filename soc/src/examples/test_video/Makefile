@@ -13,7 +13,7 @@ RISCV_CC_OPT ?= -march=rv32i -mabi=ilp32
 PROGRAM_SOURCE = start.S program.c
 SERIAL ?= /dev/tty.usbserial-D00039
 
-LDFILE ?= program.ld
+LDFILE ?= ../lib/program.ld
 
 all: program.hex
 

@@ -35,7 +35,7 @@ prom.mem: program.bin
 program.bin: program.elf program.lst
 	${OBJCOPY} -O binary program.elf program.bin
 
-program.elf: $(PROGRAM_SOURCE) $(EXTRA_SOURCE)
+program.elf: $(PROGRAM_SOURCE) $(EXTRA_SOURCE) $(LDFILE)
 	${CC} $(RISCV_CC_OPT) -nostartfiles -O3 -T $(LDFILE) -I ../../lib -I ../common $(CC_OPT) $(PROGRAM_SOURCE) -o program.elf -lm
 
 .PHONY: all clean

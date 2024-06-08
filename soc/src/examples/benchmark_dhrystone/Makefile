@@ -14,7 +14,7 @@ LIB_SOURCE = ../lib/io.c ../lib/syscalls.c
 PROGRAM_SOURCE = start.S *.c
 SERIAL ?= /dev/tty.usbserial-D00039
 
-LDFILE ?= program.ld
+LDFILE ?= ../lib/program.ld
 
 all: program.hex
 

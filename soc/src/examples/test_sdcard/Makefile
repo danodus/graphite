@@ -14,7 +14,7 @@ FAT32_SOURCE = ../lib/fat/fat_access.c ../lib/fat/fat_cache.c ../lib/fat/fat_fil
 PROGRAM_SOURCE = start.S program.c ../lib/syscalls.c ../lib/io.c ../lib/sd_card.c $(FAT32_SOURCE)
 SERIAL ?= /dev/tty.usbserial-D00039
 
-LDFILE ?= program.ld
+LDFILE ?= ../lib/program.ld
 
 all: program.hex
 
