@@ -47,7 +47,8 @@ module top(
         .vram_data_out_o(vram_data_out_o),
         .vsync_i(1'b1),
         .swap_o(swap_o),
-        .front_addr_o(front_addr_o)
+        .front_addr_o(front_addr_o),
+        .clear_o()
     );
 
 endmodule
