@@ -61,10 +61,10 @@ all: top.bin
 clean:
 	rm -f *.hex *.asc *.json *.bin *.log
 
-prom.mem:
+bios:
 	make -C ../../src/bios
 
-top.json: $(SRC) prom.mem
+top.json: $(SRC) bios
 	$(YOSYS) -ql top.log -p 'verilog_defines $(DEFINES) ; read_verilog -sv $(SRC); synth_ecp5 -top $(TOP_MODULE) -json top.json -abc9'
 
 top.asc: top.json $(PIN_DEF)
@@ -76,4 +76,4 @@ top.bin: top.asc
 prog: top.bin
 	$(FUJPROG) -T bit top.bin
 
-.PHONY: all prog
+.PHONY: all prog bios
