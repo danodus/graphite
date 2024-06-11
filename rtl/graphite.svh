@@ -38,13 +38,12 @@ localparam OP_SET_FB_ADDR   = 28;
 localparam OP_POS   = 24;
 localparam OP_SIZE  = 8;
 
-function logic signed [31:0] mul(logic signed [31:0] x, logic signed [31:0] y);
+function logic signed [63:0] mul(logic signed [31:0] x, logic signed [31:0] y);
     logic signed [63:0] x2, y2, mul2;
     begin
         x2 = {{32{x[31]}}, x};
         y2 = {{32{y[31]}}, y};
-        mul2 = (x2 * y2) >>> 14;
-        mul = mul2[31:0];
+        mul = (x2 * y2) >>> 14;
     end
 endfunction
 

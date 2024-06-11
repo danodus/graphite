@@ -9,7 +9,7 @@
 module dsp_mul(
     input wire logic signed [31:0] p0,
     input wire logic signed [31:0] p1,
-    output     logic signed [31:0] z
+    output     logic signed [63:0] z
 );
     assign z = mul(p0, p1);
 endmodule
@@ -92,7 +92,8 @@ module graphite #(
     logic signed [31:0] s, t;
     logic signed [31:0] r, g, b;
 
-    logic signed [31:0] dsp_mul_p0[NB_DSP_MULS], dsp_mul_p1[NB_DSP_MULS], dsp_mul_z[NB_DSP_MULS];
+    logic signed [31:0] dsp_mul_p0[NB_DSP_MULS], dsp_mul_p1[NB_DSP_MULS];
+    logic signed [63:0] dsp_mul_z[NB_DSP_MULS];
 
     logic signed [31:0] t0, t1;
     logic        [31:0] z;
@@ -428,7 +429,7 @@ module graphite #(
             end
 
             DRAW_TRIANGLE02: begin
-                reciprocal_x <= dsp_mul_z[0] - dsp_mul_z[1];
+                reciprocal_x <= dsp_mul_z[0][31:0] - dsp_mul_z[1][31:0];
                 reciprocal_start <= 1'b1;
                 state <= DRAW_TRIANGLE04;
             end
@@ -476,9 +477,9 @@ module graphite #(
             end
 
             DRAW_TRIANGLE07: begin
-                w0 <= dsp_mul_z[0] - dsp_mul_z[1];
-                w1 <= dsp_mul_z[2] - dsp_mul_z[3];
-                w2 <= dsp_mul_z[4] - dsp_mul_z[5];
+                w0 <= dsp_mul_z[0][31:0] - dsp_mul_z[1][31:0];
+                w1 <= dsp_mul_z[2][31:0] - dsp_mul_z[3][31:0];
+                w2 <= dsp_mul_z[4][31:0] - dsp_mul_z[5][31:0];
                 state <= DRAW_TRIANGLE12;
             end
 
@@ -501,9 +502,9 @@ module graphite #(
             end
 
             DRAW_TRIANGLE13: begin
-                w0 <= dsp_mul_z[0] >> 8;
-                w1 <= dsp_mul_z[1] >> 8;
-                w2 <= dsp_mul_z[2] >> 8;
+                w0 <= dsp_mul_z[0][31:0] >> 8;
+                w1 <= dsp_mul_z[1][31:0] >> 8;
+                w2 <= dsp_mul_z[2][31:0] >> 8;
                 state <= DRAW_TRIANGLE15;
             end
 
@@ -522,7 +523,7 @@ module graphite #(
             end
 
             DRAW_TRIANGLE18: begin
-                r <= dsp_mul_z[0] + dsp_mul_z[1] + dsp_mul_z[2];
+                r <= dsp_mul_z[0][31:0] + dsp_mul_z[1][31:0] + dsp_mul_z[2][31:0];
                 // g = mul(w0, c01) + mul(w1, c11) + mul(w2, c21)
                 // t0 = mul(w0, c01)
                 dsp_mul_p0[0] <= w0;
@@ -537,7 +538,7 @@ module graphite #(
             end
 
             DRAW_TRIANGLE21: begin
-                g <= dsp_mul_z[0] + dsp_mul_z[1] + dsp_mul_z[2];
+                g <= dsp_mul_z[0][31:0] + dsp_mul_z[1][31:0] + dsp_mul_z[2][31:0];
                 // b = mul(w0, c02) + mul(w1, c12) + mul(w2, c22)
                 // t0 = mul(w0, c02)
                 dsp_mul_p0[0] <= w0;
@@ -552,7 +553,7 @@ module graphite #(
             end
 
             DRAW_TRIANGLE24: begin
-                b <= dsp_mul_z[0] + dsp_mul_z[1] + dsp_mul_z[2];
+                b <= dsp_mul_z[0][31:0] + dsp_mul_z[1][31:0] + dsp_mul_z[2][31:0];
                 if (is_textured) begin
                     state <= DRAW_TRIANGLE25;
                 end else begin
@@ -576,7 +577,7 @@ module graphite #(
             end
 
             DRAW_TRIANGLE28: begin
-                s <= dsp_mul_z[0] + dsp_mul_z[1] + dsp_mul_z[2];
+                s <= dsp_mul_z[0][31:0] + dsp_mul_z[1][31:0] + dsp_mul_z[2][31:0];
                 // t = mul(w0, st01) + mul(w1, st11) + mul(w2, st21)
                 // t0 = mul(w0, st01)
                 dsp_mul_p0[0] <= w0;
@@ -591,7 +592,7 @@ module graphite #(
             end
 
             DRAW_TRIANGLE31: begin
-                t <= dsp_mul_z[0] + dsp_mul_z[1] + dsp_mul_z[2];
+                t <= dsp_mul_z[0][31:0] + dsp_mul_z[1][31:0] + dsp_mul_z[2][31:0];
                 state <= DRAW_TRIANGLE32;
             end
 
@@ -607,7 +608,7 @@ module graphite #(
             end
 
             DRAW_TRIANGLE35: begin
-                z <= dsp_mul_z[0] + dsp_mul_z[1] + dsp_mul_z[2];
+                z <= dsp_mul_z[0][31:0] + dsp_mul_z[1][31:0] + dsp_mul_z[2][31:0];
                 vram_addr_o <= fb_address + depth_rel_address + 32'(y) * FB_WIDTH + 32'(x);
                 if (is_depth_test) begin
                     vram_wr_o <= 1'b0;
@@ -682,11 +683,11 @@ module graphite #(
             end
 
             DRAW_TRIANGLE43: begin
-                r <= dsp_mul_z[0] >> 8;
-                g <= dsp_mul_z[1] >> 8;
-                b <= dsp_mul_z[2] >> 8;
-                s <= dsp_mul_z[3] >> 8;
-                t <= dsp_mul_z[4] >> 8;
+                r <= dsp_mul_z[0][31:0] >> 8;
+                g <= dsp_mul_z[1][31:0] >> 8;
+                b <= dsp_mul_z[2][31:0] >> 8;
+                s <= dsp_mul_z[3][31:0] >> 8;
+                t <= dsp_mul_z[4][31:0] >> 8;
                 state <= DRAW_TRIANGLE48;
             end
 
@@ -709,7 +710,7 @@ module graphite #(
             end
 
             DRAW_TRIANGLE51: begin
-                dsp_mul_p0[0] <= dsp_mul_z[0] & 32'hFFFFC000;
+                dsp_mul_p0[0] <= dsp_mul_z[0][31:0] & 32'hFFFFC000;
                 dsp_mul_p1[0] <= (TEXTURE_WIDTH << texture_width_scale) << 14;
                 state <= DRAW_TRIANGLE52;
             end
@@ -717,7 +718,7 @@ module graphite #(
             DRAW_TRIANGLE52: begin
                 vram_sel_o <= 1'b1;
                 vram_wr_o  <= 1'b0;
-                vram_addr_o <= texture_address + (dsp_mul_z[0] >> 14) + (dsp_mul_z[1] >> 14);
+                vram_addr_o <= texture_address + 32'(dsp_mul_z[0] >> 14) + 32'(dsp_mul_z[1] >> 14);
                 state <= DRAW_TRIANGLE53;
             end
 
@@ -736,21 +737,21 @@ module graphite #(
             end
 
             DRAW_TRIANGLE55: begin
-                vram_data_out_o[15:11] <= 5'(dsp_mul_z[0] >> 14);
+                vram_data_out_o[15:11] <= 5'(dsp_mul_z[0][31:0] >> 14);
                 dsp_mul_p0[0] <= {12'd0, sample[7:4], sample[7:6], 14'd0};
                 dsp_mul_p1[0] <= g;
                 state <= DRAW_TRIANGLE56;
             end
 
             DRAW_TRIANGLE56: begin
-                vram_data_out_o[10:5] <= 6'(dsp_mul_z[0] >> 14);
+                vram_data_out_o[10:5] <= 6'(dsp_mul_z[0][31:0] >> 14);
                 dsp_mul_p0[0] <= {13'd0, sample[3:0], sample[3], 14'd0};
                 dsp_mul_p1[0] <= b;
                 state <= DRAW_TRIANGLE57;
             end
 
             DRAW_TRIANGLE57: begin
-                vram_data_out_o[4:0] <= 5'(dsp_mul_z[0] >> 14);
+                vram_data_out_o[4:0] <= 5'(dsp_mul_z[0][31:0] >> 14);
                 vram_sel_o <= 1'b1;
                 vram_wr_o  <= 1'b1;
                 vram_addr_o <= fb_address + back_rel_address + raster_rel_address;
