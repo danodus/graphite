@@ -388,11 +388,6 @@ void main(void)
         mat4x4 mat_world, mat_normal;
         mat_world = matrix_make_identity();
         mat_world = mat_normal = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
-        if (model == teapot_model) {
-            mat4x4 mat_scale = matrix_make_scale(FX(10.0f), FX(10.0f), FX(10.0f));
-            mat_world = matrix_multiply_matrix(&mat_world, &mat_scale);
-        }
-
         mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
         uint32_t t2_xform = MEM_READ(TIMER);
 
