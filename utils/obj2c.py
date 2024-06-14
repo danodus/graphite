@@ -34,7 +34,8 @@ def process_line(line):
         w2 = words[2].split('/')
         w3 = words[3].split('/')
         faces.append([int(w1[0])-1, int(w2[0])-1, int(w3[0])-1,
-                     int(w1[1])-1, int(w2[1])-1, int(w3[1])-1])
+                     int(w1[1])-1, int(w2[1])-1, int(w3[1])-1,
+                     int(w1[2])-1, int(w2[2])-1, int(w3[2])-1])
 
 def print_vertices(array):
     puts("static vec3d vertices[] = {\n")
@@ -80,8 +81,8 @@ def print_normals(array):
 def print_faces(array):
     puts("static face_t faces[] = {\n")
     for i, v in enumerate(array):
-        puts("{{{{{}, {}, {}}}, {{{}, {}, {}}}, {{{}, {}, {}}}}}".format(
-            v[0], v[1], v[2], v[3], v[4], v[5], len(colors) > 0 and v[0] or -1, len(colors) > 0 and v[1] or -1, len(colors) > 0 and v[2] or -1))
+        puts("{{{{{}, {}, {}}}, {{{}, {}, {}}}, {{{}, {}, {}}}, {{{}, {}, {}}}}}".format(
+            v[0], v[1], v[2], v[3], v[4], v[5], len(colors) > 0 and v[0] or -1, len(colors) > 0 and v[1] or -1, len(colors) > 0 and v[2] or -1, len(normals) > 0 and v[6] or -1, len(normals) > 0 and v[7] or -1, len(normals) > 0 and v[8] or -1))
         if (i < len(array) - 1):
             puts(",")
         puts("\n")

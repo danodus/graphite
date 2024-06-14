@@ -90,6 +90,7 @@ typedef struct {
     int indices[3];
     int tex_indices[3];
     int col_indices[3];
+    int norm_indices[3];
 } face_t;
 
 typedef struct {

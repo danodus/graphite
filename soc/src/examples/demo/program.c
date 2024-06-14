@@ -348,6 +348,19 @@ bool load_mesh_obj_data(mesh_t *mesh, char *obj_filename) {
             array_push(mesh->vertices, v);
             mesh->nb_vertices++;
         }
+        // Vertex normal information
+        if (strncmp(line, "vn ", 3) == 0) {
+            float x, y, z;
+            sscanf(line, "vn %f %f %f", &x, &y, &z);
+            vec3d v = {
+                .x = FX(x),
+                .y = FX(y),
+                .z = FX(z),
+                .w = FX(0.0f)
+            };
+            array_push(mesh->normals, v);
+            mesh->nb_normals++;
+        }        
         // Texture coordinate information
         if (strncmp(line, "vt ", 3) == 0) {
             float u, v;
@@ -376,6 +389,7 @@ bool load_mesh_obj_data(mesh_t *mesh, char *obj_filename) {
                 face.indices[i] = vertex_indices[i] - 1;
                 face.col_indices[i] = 0;
                 face.tex_indices[i] = texture_indices[i] - 1;
+                face.norm_indices[i] = normal_indices[i] - 1;
             }
             array_push(mesh->faces, face);
             mesh->nb_faces++;
@@ -528,11 +542,13 @@ void main(void)
         // world
         mat4x4 mat_rot_z = matrix_make_rotation_z(theta);
         mat4x4 mat_rot_x = matrix_make_rotation_x(theta);
+        mat4x4 mat_scale = matrix_make_scale(FX(2.0f), FX(2.0f), FX(2.0f));
 
         mat4x4 mat_trans = matrix_make_translation(FX(0.0f), FX(0.0f), FX(5.0f));
         mat4x4 mat_world, mat_normal;
         mat_world = matrix_make_identity();
         mat_world = mat_normal = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
+        //mat_world = matrix_multiply_matrix(&mat_world, &mat_scale);
         mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
         uint32_t t2_xform = MEM_READ(TIMER);
 

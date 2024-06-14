@@ -579,9 +579,9 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
             tri.c[2] = (vec3d){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
         }
         if (model->mesh.normals) {
-            tri.n[0] = model->mesh.normals[face->indices[0]];
-            tri.n[1] = model->mesh.normals[face->indices[1]];
-            tri.n[2] = model->mesh.normals[face->indices[2]];
+            tri.n[0] = model->mesh.normals[face->norm_indices[0]];
+            tri.n[1] = model->mesh.normals[face->norm_indices[1]];
+            tri.n[2] = model->mesh.normals[face->norm_indices[2]];
         } else {
             tri.n[0] = (vec3d){FX(0.0f), FX(0.0f), FX(0.0f), FX(0.0f)};
             tri.n[1] = (vec3d){FX(0.0f), FX(0.0f), FX(0.0f), FX(0.0f)};
