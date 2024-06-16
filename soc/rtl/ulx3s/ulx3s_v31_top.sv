@@ -100,7 +100,7 @@ module ulx3s_v31_top(
 
     soc_top #(
         .FREQ_HZ(48_000_000),
-        .BAUD_RATE(1_000_000)
+        .BAUD_RATE(2_000_000)
     ) soc_top(
         .clk_cpu(clk_cpu),
         .clk_sdram(clk_sdram),
