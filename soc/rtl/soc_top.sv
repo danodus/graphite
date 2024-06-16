@@ -367,7 +367,9 @@ module soc_top #(
         .utmi_termselect_o(utmi_termselect),
         .utmi_dppulldown_o(utmi_dppulldown),
         .utmi_dmpulldown_o(utmi_dmpulldown)
-    );    
+    );   
+
+    logic [31:0]    fb_addr;     
 
     // Graphite
     logic           graphite_cmd_axis_tvalid;
@@ -433,18 +435,6 @@ module soc_top #(
     assign spiStart = wr & ioenb & (iowadr == 4);
     assign SS = ~spiCtrl[1:0];  //active low slave select
     assign MOSI[1] = MOSI[0], SCLK[1] = SCLK[0];
-
-    always @(posedge clk_cpu) begin
-        doneKbd <= 1'b0;
-        if (rd & ioenb & (iowadr == 7))
-            doneKbd <= 1'b1;
-    end
-
-    always @(posedge clk_cpu) begin
-        doneMs <= 1'b0;
-        if (rd & ioenb & (iowadr == 11))
-            doneMs <= 1'b1;
-    end
 
     // Auto reset and counter
     always_ff @(posedge clk_cpu) begin
