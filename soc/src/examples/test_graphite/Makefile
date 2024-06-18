@@ -11,7 +11,7 @@ CC = ${RISCV_TOOLCHAIN_PATH}${RISCV_TOOLCHAIN_PREFIX}gcc
 RISCV_CC_OPT ?= -march=rv32i -mabi=ilp32
 
 LIB_SOURCE = ../lib/io.c ../lib/syscalls.c
-PROGRAM_SOURCE = start.S program.c ../../../../common/graphite.c ../../../../common/cube.c ../../../../common/teapot.c ../../../../common/tex32x32.c ../../../../common/tex64x64.c
+PROGRAM_SOURCE = ../lib/start.S program.c ../../../../common/graphite.c ../../../../common/cube.c ../../../../common/teapot.c ../../../../common/tex32x32.c ../../../../common/tex64x64.c
 SERIAL ?= /dev/tty.usbserial-D00039
 
 LDFILE ?= ../lib/program.ld

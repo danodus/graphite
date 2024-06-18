@@ -12,7 +12,7 @@ RISCV_CC_OPT ?= -march=rv32i -mabi=ilp32
 
 FAT32_SOURCE = ../lib/fat/fat_access.c ../lib/fat/fat_cache.c ../lib/fat/fat_filelib.c ../lib/fat/fat_format.c ../lib/fat/fat_misc.c ../lib/fat/fat_string.c ../lib/fat/fat_table.c ../lib/fat/fat_write.c
 LIB_SOURCE = ../lib/io.c ../lib/syscalls.c ../lib/array.c ../lib/SDL2/sdl.c ../lib/sd_card.c $(FAT32_SOURCE) ../lib/libfixmath/*.c ../lib/upng/*.c
-PROGRAM_SOURCE = src/start.S src/*.c
+PROGRAM_SOURCE = ../lib/start.S src/*.c
 SERIAL ?= /dev/tty.usbserial-D00039
 
 LDFILE ?= ../lib/program.ld
