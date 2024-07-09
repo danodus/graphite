@@ -177,7 +177,9 @@ module soc_top #(
 
     logic pm_sel = adr[31:28] == 4'hF;
 
-    processor cpu(
+    processor #(
+        .RESET_VEC_ADDR(32'hF0000000)
+    ) cpu(
         .clk(clk_cpu),
         .reset_i(~rst_n),
         .ce_i(CE && !process_graphite),

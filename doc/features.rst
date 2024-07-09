@@ -1,7 +1,7 @@
 Features
 ========
 
-- RISC-V (RV32I + Graphite extension)
+- RISC-V (RV32IM)
 - UART (2000000-N-8-1)
 - SDRAM (32MiB shared between CPU and video)
 - Set associative cache (4-way with LRU replacement policy)

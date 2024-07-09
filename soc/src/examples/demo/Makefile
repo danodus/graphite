@@ -8,7 +8,7 @@ AS = ${RISCV_TOOLCHAIN_PATH}${RISCV_TOOLCHAIN_PREFIX}as
 OBJCOPY = ${RISCV_TOOLCHAIN_PATH}${RISCV_TOOLCHAIN_PREFIX}objcopy
 OBJDUMP = ${RISCV_TOOLCHAIN_PATH}${RISCV_TOOLCHAIN_PREFIX}objdump
 CC = ${RISCV_TOOLCHAIN_PATH}${RISCV_TOOLCHAIN_PREFIX}gcc
-RISCV_CC_OPT ?= -march=rv32i -mabi=ilp32
+RISCV_CC_OPT ?= -march=rv32im -mabi=ilp32
 
 FAT32_SOURCE = ../lib/fat/fat_access.c ../lib/fat/fat_cache.c ../lib/fat/fat_filelib.c ../lib/fat/fat_format.c ../lib/fat/fat_misc.c ../lib/fat/fat_string.c ../lib/fat/fat_table.c ../lib/fat/fat_write.c
 LIB_SOURCE = $(FAT32_SOURCE) ../lib/io.c ../lib/syscalls.c ../lib/sd_card.c ../lib/upng/upng.c ../lib/array.c
@@ -17,7 +17,7 @@ SERIAL ?= /dev/tty.usbserial-D00039
 
 LDFILE ?= ../lib/program.ld
 
-EXTRA_CC_ARGS = -DRV_FIXED_POINT_EXTENSION=1
+EXTRA_CC_ARGS = -DRV_FIXED_POINT_EXTENSION=0
 
 all: program.hex
 

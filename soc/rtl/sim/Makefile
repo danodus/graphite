@@ -20,9 +20,12 @@ SRC = bram32bit.v \
 	video.v \
 	vqueue.v \
 	rgb565_to_rgb888.sv \
-	riscv/bus_arbiter.sv \
-	riscv/processor.sv \
-	riscv/rv32.sv \
+	processor.sv \
+	alu.sv \
+	register_file.sv \
+	decoder.sv \
+	divider.v \
+	multiplier.v \
 	graphite.sv \
 	reciprocal.sv \
 	div.sv
@@ -33,7 +36,7 @@ clean:
 	rm -rf obj_dir
 
 sim: top.sv sim_main.cpp $(PROGRAM)
-	$(VERILATOR) -cc --exe $(CFLAGS) $(LDFLAGS) --trace --top-module top $(XOSERA_SRC) top.sv sdl_ps2.cpp sim_main.cpp -I.. -I../riscv -I../../../rtl $(SRC) -Wno-PINMISSING -Wno-WIDTH -Wno-CASEINCOMPLETE -Wno-TIMESCALEMOD -Wno-NULLPORT -Wno-MULTIDRIVEN -Wno-UNOPTFLAT
+	$(VERILATOR) -cc --exe $(CFLAGS) $(LDFLAGS) --trace --top-module top $(XOSERA_SRC) top.sv sdl_ps2.cpp sim_main.cpp -I.. -I../../../external/xglib/rtl/riscv -I../../../rtl $(SRC) -Wno-PINMISSING -Wno-WIDTH -Wno-CASEINCOMPLETE -Wno-TIMESCALEMOD -Wno-NULLPORT -Wno-MULTIDRIVEN -Wno-UNOPTFLAT
 	$(MAKE) -j 4 -C obj_dir -f Vtop.mk
 
 run: sim
