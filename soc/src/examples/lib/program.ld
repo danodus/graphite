@@ -18,7 +18,7 @@ SECTIONS {
         _sdata = .;        /* create a global symbol at data start; used by startup code in order to initialise the .data section in RAM */
         _ram_start = .;    /* create a global symbol at ram start (e.g., for garbage collector) */
 
-
+        *(.init)
         *(.text)                /* .text sections (code) */
         *(.text*)               /* .text* sections (code) */
         . = ALIGN(4);
