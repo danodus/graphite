@@ -32,7 +32,7 @@ The system has the following features:
 
 (*) Extract and add the `bin` directory to the path.
 
-Note: Tested with `oss-cad-suite-darwin-arm64-20240515` and `xpack-riscv-none-elf-gcc-13.2.0-2-darwin-arm64`.
+Note: Tested with `oss-cad-suite-darwin-arm64-20240810` and `xpack-riscv-none-elf-gcc-14.2.0-1-darwin-arm64`.
 
 ## Clone and Update
 
