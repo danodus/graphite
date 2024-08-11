@@ -12,7 +12,7 @@ The documentation is available here: https://danodus.github.io/graphite/
 
 The system has the following features:
 
-- RISC-V (RV32IM)
+- RISC-V (RV32I + Graphite extension)
 - UART (2000000-N-8-1)
 - SDRAM (32MiB shared between CPU and video)
 - Set associative cache (4-way with LRU replacement policy)
@@ -33,28 +33,6 @@ The system has the following features:
 (*) Extract and add the `bin` directory to the path.
 
 Note: Tested with `oss-cad-suite-darwin-arm64-20240810` and `xpack-riscv-none-elf-gcc-14.2.0-1-darwin-arm64`.
-
-## Clone and Update
-
-### Clone
-
-```bash
-git clone --recurse-submodules https://github.com/danodus/graphite.git
-cd graphite
-```
-
-If the repository has been cloned without the `--recurse-submodules` option, do the following:
-```
-git submodule update --init
-```
-
-### Update
-
-```bash
-git pull
-git submodule update --recursive
-```
-
 
 ## Getting Started on ULX3S
 
@@ -112,3 +90,4 @@ make run
 ## Acknowledgements
 
 - The SoC is based on the Oberon project for the ULX3S available here: https://github.com/emard/oberon
+- The CPU is based on icicle v1 available here: https://github.com/grahamedgecombe/icicle/tree/v1

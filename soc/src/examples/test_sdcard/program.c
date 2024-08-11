@@ -85,13 +85,6 @@ int main(void) {
 
     list_directory("/");
 
-    FL_FILE *f = fl_fopen("/hello.s", "r");
-    if (f == NULL) {
-        printf("Unable to open\r\n");
-        fl_shutdown();
-        return EXIT_FAILURE;
-    }
-
     printf("Success!\r\n");
 
     fl_shutdown();

@@ -1,3 +1,0 @@
-[submodule "external/xglib"]
-	path = external/xglib
-	url = https://github.com/danodus/xglib.git
