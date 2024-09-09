@@ -37,7 +37,7 @@ sim: top.sv sim_main.cpp $(PROGRAM)
 	$(MAKE) -j 4 -C obj_dir -f Vtop.mk
 
 run: sim
-	cp $(PROGRAM) .
+	ln -f -s $(PROGRAM) .
 	obj_dir/Vtop
 
 .PHONY: all clean
