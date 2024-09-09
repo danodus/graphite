@@ -46,16 +46,6 @@ static int min3(int a, int b, int c) { return min(a, min(b, c)); }
 
 static int max3(int a, int b, int c) { return max(a, max(b, c)); }
 
-static sample_t texture_sample_color(texture_t* tex, fx32 u, fx32 v) {
-    if (tex != NULL) {
-        if (u < FX(0.5) && v < FX(0.5)) return (sample_t){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
-        if (u >= FX(0.5) && v < FX(0.5)) return (sample_t){FX(1.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
-        if (u < FX(0.5) && v >= FX(0.5)) return (sample_t){FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
-        return (sample_t){FX(0.0f), FX(0.0f), FX(1.0f), FX(1.0f)};
-    }
-    return (sample_t){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
-}
-
 void sw_draw_triangle_barycentric(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0,
                       fx32 x1, fx32 y1, fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1,
                       fx32 x2, fx32 y2, fx32 z2, fx32 u2, fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2,
@@ -109,7 +99,7 @@ void sw_draw_triangle_barycentric(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, f
                 // Perspective correction
                 fx32 z = MUL(w0, vv0[2]) + MUL(w1, vv1[2]) + MUL(w2, vv2[2]);
 
-                sw_fragment_shader(g_fb_width, g_fb_height, x, y, z, u, v, r, g, b, a, depth_test, texture, g_depth_buffer, persp_correct, g_draw_pixel_fn);
+                sw_fragment_shader(g_fb_width, g_fb_height, x, y, z, u, v, r, g, b, a, clamp_s, clamp_t, depth_test, texture, g_depth_buffer, persp_correct, g_draw_pixel_fn);
             }
         }
 }

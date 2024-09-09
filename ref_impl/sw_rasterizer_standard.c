@@ -28,6 +28,7 @@ typedef struct {
     bool bottom_half;
     bool tex;
     bool persp_correct;
+    bool clamp_s, clamp_t;
     bool depth_test;
 } rasterize_triangle_half_params_t;
 
@@ -139,7 +140,7 @@ void rasterize_triangle_half(bool bottom_half, rasterize_triangle_half_params_t*
             b = MUL(FX(1.0f) - tt, col_sb) + MUL(tt, col_eb);
             a = MUL(FX(1.0f) - tt, col_sa) + MUL(tt, col_ea);
 
-            sw_fragment_shader(g_fb_width, g_fb_height, x, y, z, s, t, r, g, b, a, p->depth_test, p->tex, g_depth_buffer, p->persp_correct, g_draw_pixel_fn);
+            sw_fragment_shader(g_fb_width, g_fb_height, x, y, z, s, t, r, g, b, a, p->clamp_s, p->clamp_t, p->depth_test, p->tex, g_depth_buffer, p->persp_correct, g_draw_pixel_fn);
 
             tt += tstep;
         }
@@ -217,6 +218,8 @@ void sw_draw_triangle_standard(fx32 x0, fx32 y0, fx32 w0, fx32 s0, fx32 t0, fx32
 
     p.tex = texture;
     p.persp_correct = persp_correct;
+    p.clamp_s = clamp_s;
+    p.clamp_t = clamp_t;
     p.depth_test = depth_test;
 
     // rasterize top half

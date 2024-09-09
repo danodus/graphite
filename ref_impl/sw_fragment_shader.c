@@ -1,5 +1,7 @@
 #include "sw_rasterizer.h"
 
+#include <math.h>
+
 extern uint16_t tex32x32[];
 extern uint16_t tex32x64[];
 extern uint16_t tex256x2048[];
@@ -14,18 +16,6 @@ typedef struct {
 
 #define RECIPROCAL_NUMERATOR 256.0f
 static fx32 reciprocal(fx32 x) { return x > 0 ? DIV(FX(RECIPROCAL_NUMERATOR), x) : FX(RECIPROCAL_NUMERATOR); }
-
-/*
-color_t texture_sample_color(bool texture, fx32 u, fx32 v) {
-    if (texture) {
-        if (u < FX(0.5f) && v < FX(0.5f)) return (color_t){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
-        if (u >= FX(0.5f) && v < FX(0.5f)) return (color_t){FX(1.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
-        if (u < FX(0.5f) && v >= FX(0.5f)) return (color_t){FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
-        return (color_t){FX(0.0f), FX(0.0f), FX(1.0f), FX(1.0f)};
-    }
-    return (color_t){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
-}
-*/
 
 color_t texture_sample_color(bool texture, fx32 u, fx32 v) {
     if (texture) {
@@ -44,8 +34,26 @@ color_t texture_sample_color(bool texture, fx32 u, fx32 v) {
     return (color_t){FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)};
 }
 
+static fx32 clamp(fx32 v) {
+    if (v < FX(0.0f)) {
+        v = FX(0.0f);
+    } else if (v > FX(1.0f)) {
+        v = FX(1.0f);
+    }
+    return v;
+}
 
-void sw_fragment_shader(int fb_width, int fb_height, int x, int y, fx32 z, fx32 u, fx32 v, fx32 r, fx32 g, fx32 b, fx32 a, bool depth_test, bool texture, fx32* depth_buffer, bool persp_correct, draw_pixel_fn_t draw_pixel_fn) {
+static fx32 wrap(fx32 v) {
+    if (v < FX(0.0f)) {
+        v = FX(0.0f);
+    } else if (v >= FX(1.0f)) {
+        //v = FX(fmod(FLT(v), 1.0f));
+        v = v & 0x3FFF;
+    }
+    return v;
+}
+
+void sw_fragment_shader(int fb_width, int fb_height, int x, int y, fx32 z, fx32 u, fx32 v, fx32 r, fx32 g, fx32 b, fx32 a, bool clamp_s, bool clamp_t, bool depth_test, bool texture, fx32* depth_buffer, bool persp_correct, draw_pixel_fn_t draw_pixel_fn) {
     if (x < 0 || y < 0 || x >= fb_width || y >= fb_height)
         return;
     int depth_index = y * fb_width + x;
@@ -61,6 +69,18 @@ void sw_fragment_shader(int fb_width, int fb_height, int x, int y, fx32 z, fx32 
             g = MUL(g, inv_z);
             b = MUL(b, inv_z);
             a = MUL(a, inv_z);
+        }
+
+        if (clamp_s) {
+            u = clamp(u);
+        } else {
+            u = wrap(u);
+        }
+        
+        if (clamp_t) {
+            v = clamp(v);
+        } else {
+            v = wrap(v);
         }
 
         color_t sample = texture_sample_color(texture, u, v);
