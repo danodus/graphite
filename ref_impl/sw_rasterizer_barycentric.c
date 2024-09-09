@@ -109,7 +109,7 @@ void sw_draw_triangle_barycentric(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, f
                 // Perspective correction
                 fx32 z = MUL(w0, vv0[2]) + MUL(w1, vv1[2]) + MUL(w2, vv2[2]);
 
-                sw_fragment_shader(g_fb_width, x, y, z, u, v, r, g, b, a, depth_test, texture, g_depth_buffer, persp_correct, g_draw_pixel_fn);
+                sw_fragment_shader(g_fb_width, g_fb_height, x, y, z, u, v, r, g, b, a, depth_test, texture, g_depth_buffer, persp_correct, g_draw_pixel_fn);
             }
         }
 }

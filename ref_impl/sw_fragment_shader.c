@@ -45,7 +45,9 @@ color_t texture_sample_color(bool texture, fx32 u, fx32 v) {
 }
 
 
-void sw_fragment_shader(int fb_width, int x, int y, fx32 z, fx32 u, fx32 v, fx32 r, fx32 g, fx32 b, fx32 a, bool depth_test, bool texture, fx32* depth_buffer, bool persp_correct, draw_pixel_fn_t draw_pixel_fn) {
+void sw_fragment_shader(int fb_width, int fb_height, int x, int y, fx32 z, fx32 u, fx32 v, fx32 r, fx32 g, fx32 b, fx32 a, bool depth_test, bool texture, fx32* depth_buffer, bool persp_correct, draw_pixel_fn_t draw_pixel_fn) {
+    if (x < 0 || y < 0 || x >= fb_width || y >= fb_height)
+        return;
     int depth_index = y * fb_width + x;
     if (!depth_test || (z > depth_buffer[depth_index])) {
         // Perspective correction
