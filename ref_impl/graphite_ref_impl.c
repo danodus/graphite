@@ -18,11 +18,18 @@ static SDL_Renderer* renderer;
 bool g_rasterizer_barycentric = true;
 
 void draw_pixel(int x, int y, int color) {
-    float r = (float)((color >> 8) & 0xF) / 15.0f;
-    float g = (float)((color >> 4) & 0xF) / 15.0f;
-    float b = (float)((color >> 0) & 0xF) / 15.0f;
 
-    SDL_SetRenderDrawColor(renderer, r * 255, g * 255, b * 255, SDL_ALPHA_OPAQUE);
+    // Constants taken from https://stackoverflow.com/a/9069480
+
+    int r5 = color >> 11;
+    int g6 = (color >> 5) & 0x3F;
+    int b5 = color & 0x1F;
+
+    int r = (r5 * 527 + 23) >> 6;
+    int g = (g6 * 259 + 33) >> 6;
+    int b = (b5 * 527 + 23) >> 6;
+
+    SDL_SetRenderDrawColor(renderer, r, g, b, SDL_ALPHA_OPAQUE);
     SDL_RenderDrawPoint(renderer, x, y);
 }
 

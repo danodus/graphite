@@ -68,12 +68,11 @@ void sw_fragment_shader(int fb_width, int fb_height, int x, int y, fx32 z, fx32 
         g = MUL(g, sample.g);
         b = MUL(b, sample.b);
 
-        int rr = INT(MUL(r, FX(15.0f)));
-        int gg = INT(MUL(g, FX(15.0f)));
-        int bb = INT(MUL(b, FX(15.0f)));
-        int aa = INT(MUL(a, FX(15.0f)));
+        int rr = INT(MUL(r, FX(31.0f)));
+        int gg = INT(MUL(g, FX(63.0f)));
+        int bb = INT(MUL(b, FX(31.0f)));
 
-        (*draw_pixel_fn)(x, y, aa << 12 | rr << 8 | gg << 4 | bb);
+        (*draw_pixel_fn)(x, y, rr << 11 | gg << 5 | bb);
 
         // write to depth buffer
         depth_buffer[depth_index] = z;
