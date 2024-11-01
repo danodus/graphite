@@ -9,6 +9,7 @@
 
 extern uint32_t *usbh;
 uint32_t now_ms(void);
+void wait_ms(uint32_t ms);
 
 static int out_txn(REQ *req, int want_hs)
 {
