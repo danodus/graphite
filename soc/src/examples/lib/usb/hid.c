@@ -22,7 +22,7 @@ struct hid_data {
     uint8_t flags;
     uint8_t ms_ep;
     uint8_t ms_toggle;
-    uint8_t ms_pkt[4];
+    uint8_t ms_pkt[8];
     uint8_t kbd_ep;
     uint8_t kbd_toggle;
     uint8_t kbd_pkt[8];
@@ -82,7 +82,7 @@ void drv_hid(TASK *task, uint8_t *config)
     // for combined devices (e.g. keyboard with a trackpad)
     //
     case hid_mouse1:
-        data_req(task, local->ms_ep, IN, local->ms_pkt, 4);
+        data_req(task, local->ms_ep, IN, local->ms_pkt, 8);
         task->req->toggle =local->ms_toggle;
         task->state = hid_mouse2;
         return;
@@ -98,7 +98,7 @@ void drv_hid(TASK *task, uint8_t *config)
         if (task->req->resp == REQ_OK) {
             local->ms_toggle = task->req->toggle;
             printf("MOUSE: ");
-            for(int i=0; i<4; i++) printf("%x ", local->ms_pkt[i]);
+            for(int i=0; i<8; i++) printf("%x ", local->ms_pkt[i]);
             printf("\n");
         }
         return;
