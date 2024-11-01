@@ -425,7 +425,8 @@ module soc_top #(
         (iowadr == 7) ? {32'b0} :
         (iowadr == 8) ? {31'b0, graphite_cmd_axis_tready} :
         (iowadr == 9) ? {16'(H_RES), 16'(V_RES)} :
-        (iowadr == 12) ? fb_addr :
+        (iowadr == 10) ? fb_addr :
+        (iowadr == 11) ? {31'b0, vga_vsync} :
         (iowadr >= 16 && iowadr < 32) ? sie_di : 32'd0);
 
     assign dataTx = outbus[7:0];
@@ -471,7 +472,7 @@ module soc_top #(
                 end else if (iowadr == 9) begin
                     if (outbus[0])
                         req_flush_cache <= 1'b1;
-                end else if (iowadr == 12) begin
+                end else if (iowadr == 10) begin
                     fb_addr <= outbus[31:0];
                     use_graphite_front_addr <= 1'b0;
                 end

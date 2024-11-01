@@ -10,8 +10,8 @@ Registers
 Register        Address
 =============== =============
 CONFIG          BASE_IO + 36
-FB_ADDR         BASE_IO + 44
-VSYNC           BASE_IO + 48
+FB_ADDR         BASE_IO + 40
+VSYNC           BASE_IO + 44
 =============== =============
 
 CONFIG

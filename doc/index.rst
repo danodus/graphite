@@ -16,8 +16,6 @@ Graphite System
    led.rst
    uart.rst
    sd_card.rst
-   keyboard.rst
-   mouse.rst
    graphite.rst
    config.rst
 
