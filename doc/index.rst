@@ -11,13 +11,7 @@ Graphite System
    :caption: Contents:
 
    features.rst
-   memory_map.rst
-   clock.rst
-   led.rst
-   uart.rst
-   sd_card.rst
-   graphite.rst
-   config.rst
+   commands.rst
 
 Indices and tables
 ==================
