@@ -15,8 +15,7 @@ TOP_MODULE_FILE = $(TOP_MODULE).sv
 
 SRC = \
   $(TOP_MODULE_FILE) \
-  pll_cpu.v \
-  pll_sdram.v \
+  pll_main.v \
   ../soc_top.sv \
   ../prom.v \
   ../cache_controller.v \
