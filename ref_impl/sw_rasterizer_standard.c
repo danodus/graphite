@@ -1,5 +1,5 @@
 // sw_rasterizer_standard.c
-// Copyright (c) 2021-2022 Daniel Cliche
+// Copyright (c) 2021-2025 Daniel Cliche
 // SPDX-License-Identifier: MIT
 
 #include <stdbool.h>
@@ -8,7 +8,7 @@
 
 #include "sw_rasterizer.h"
 
-int g_fb_width, g_fb_height;
+static int g_fb_width, g_fb_height;
 static draw_pixel_fn_t g_draw_pixel_fn;
 
 static fx32* g_depth_buffer;
