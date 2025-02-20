@@ -1,0 +1,409 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Commands &mdash; Graphite System  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Features" href="features.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Graphite System
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Commands</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#command-format">Command Format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#opcodes">Opcodes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#op-set">OP_SET_*</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#op-clear">OP_CLEAR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#op-draw">OP_DRAW</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#op-swap">OP_SWAP</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#op-set-tex-addr">OP_SET_TEX_ADDR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#op-set-fb-addr">OP_SET_FB_ADDR</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Graphite System</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Commands</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/commands.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="commands">
+<h1>Commands<a class="headerlink" href="#commands" title="Link to this heading"></a></h1>
+<section id="command-format">
+<h2>Command Format<a class="headerlink" href="#command-format" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Field</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>[31:24]</p></td>
+<td><p>Opcode</p></td>
+</tr>
+<tr class="row-odd"><td><p>[23:0]</p></td>
+<td><p>Parameter</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="opcodes">
+<h2>Opcodes<a class="headerlink" href="#opcodes" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Value</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>OP_SET_X0</p></td>
+<td><p>0</p></td>
+<td><p>Set X0</p></td>
+</tr>
+<tr class="row-odd"><td><p>OP_SET_Y0</p></td>
+<td><p>1</p></td>
+<td><p>Set Y0</p></td>
+</tr>
+<tr class="row-even"><td><p>OP_SET_Z0</p></td>
+<td><p>2</p></td>
+<td><p>Set 1/W0</p></td>
+</tr>
+<tr class="row-odd"><td><p>OP_SET_X1</p></td>
+<td><p>3</p></td>
+<td><p>Set X1</p></td>
+</tr>
+<tr class="row-even"><td><p>OP_SET_Y1</p></td>
+<td><p>4</p></td>
+<td><p>Set Y1</p></td>
+</tr>
+<tr class="row-odd"><td><p>OP_SET_Z1</p></td>
+<td><p>5</p></td>
+<td><p>Set 1/W1</p></td>
+</tr>
+<tr class="row-even"><td><p>OP_SET_X2</p></td>
+<td><p>6</p></td>
+<td><p>Set X2</p></td>
+</tr>
+<tr class="row-odd"><td><p>OP_SET_Y2</p></td>
+<td><p>7</p></td>
+<td><p>Set Y2</p></td>
+</tr>
+<tr class="row-even"><td><p>OP_SET_Z2</p></td>
+<td><p>8</p></td>
+<td><p>Set 1/W2</p></td>
+</tr>
+<tr class="row-odd"><td><p>OP_SET_R0</p></td>
+<td><p>9</p></td>
+<td><p>Set R0</p></td>
+</tr>
+<tr class="row-even"><td><p>OP_SET_G0</p></td>
+<td><p>10</p></td>
+<td><p>Set G0</p></td>
+</tr>
+<tr class="row-odd"><td><p>OP_SET_B0</p></td>
+<td><p>11</p></td>
+<td><p>Set B0</p></td>
+</tr>
+<tr class="row-even"><td><p>OP_SET_R1</p></td>
+<td><p>12</p></td>
+<td><p>Set R1</p></td>
+</tr>
+<tr class="row-odd"><td><p>OP_SET_G1</p></td>
+<td><p>13</p></td>
+<td><p>Set G1</p></td>
+</tr>
+<tr class="row-even"><td><p>OP_SET_B1</p></td>
+<td><p>14</p></td>
+<td><p>Set B1</p></td>
+</tr>
+<tr class="row-odd"><td><p>OP_SET_R2</p></td>
+<td><p>15</p></td>
+<td><p>Set R2</p></td>
+</tr>
+<tr class="row-even"><td><p>OP_SET_G2</p></td>
+<td><p>16</p></td>
+<td><p>Set G2</p></td>
+</tr>
+<tr class="row-odd"><td><p>OP_SET_B2</p></td>
+<td><p>17</p></td>
+<td><p>Set B2</p></td>
+</tr>
+<tr class="row-even"><td><p>OP_SET_S0</p></td>
+<td><p>18</p></td>
+<td><p>Set S0</p></td>
+</tr>
+<tr class="row-odd"><td><p>OP_SET_T0</p></td>
+<td><p>19</p></td>
+<td><p>Set T0</p></td>
+</tr>
+<tr class="row-even"><td><p>OP_SET_S1</p></td>
+<td><p>20</p></td>
+<td><p>Set S1</p></td>
+</tr>
+<tr class="row-odd"><td><p>OP_SET_T1</p></td>
+<td><p>21</p></td>
+<td><p>Set T1</p></td>
+</tr>
+<tr class="row-even"><td><p>OP_SET_S2</p></td>
+<td><p>22</p></td>
+<td><p>Set S2</p></td>
+</tr>
+<tr class="row-odd"><td><p>OP_SET_T2</p></td>
+<td><p>23</p></td>
+<td><p>Set T2</p></td>
+</tr>
+<tr class="row-even"><td><p>OP_CLEAR</p></td>
+<td><p>24</p></td>
+<td><p>Clear frame buffer or depth buffer</p></td>
+</tr>
+<tr class="row-odd"><td><p>OP_DRAW</p></td>
+<td><p>25</p></td>
+<td><p>Draw triangle</p></td>
+</tr>
+<tr class="row-even"><td><p>OP_SWAP</p></td>
+<td><p>26</p></td>
+<td><p>Swap the front and back buffer addresses</p></td>
+</tr>
+<tr class="row-odd"><td><p>OP_SET_TEX_ADDR</p></td>
+<td><p>27</p></td>
+<td><p>Set texture address (in 16-bit word, address &gt;&gt; 1)</p></td>
+</tr>
+<tr class="row-even"><td><p>OP_SET_FB_ADDR</p></td>
+<td><p>28</p></td>
+<td><p>Set the frame buffer address (in 16-bit word, address &gt;&gt; 1)</p></td>
+</tr>
+</tbody>
+</table>
+<section id="op-set">
+<h3>OP_SET_*<a class="headerlink" href="#op-set" title="Link to this heading"></a></h3>
+<p>Set a 18.14 fixed point value for a given parameter.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Field</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>[0:15]</p></td>
+<td><p>16-bit value</p></td>
+</tr>
+<tr class="row-odd"><td><p>[16]</p></td>
+<td><p>0=LSB, 1=MSB</p></td>
+</tr>
+<tr class="row-even"><td><p>[31:24]</p></td>
+<td><p>Opcode (0..23)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="op-clear">
+<h3>OP_CLEAR<a class="headerlink" href="#op-clear" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Field</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>[15:0]</p></td>
+<td><p>Color (RGB565)</p></td>
+</tr>
+<tr class="row-odd"><td><p>[16]</p></td>
+<td><p>0=frame buffer, 1=depth buffer</p></td>
+</tr>
+<tr class="row-even"><td><p>[31:24]</p></td>
+<td><p>Opcode (24)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="op-draw">
+<h3>OP_DRAW<a class="headerlink" href="#op-draw" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Field</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>[0]</p></td>
+<td><p>0=not textured, 1=textured</p></td>
+</tr>
+<tr class="row-odd"><td><p>[1]</p></td>
+<td><p>0=wrap T, 1=clamp T</p></td>
+</tr>
+<tr class="row-even"><td><p>[2]</p></td>
+<td><p>0=wrap S, 1=clamp S</p></td>
+</tr>
+<tr class="row-odd"><td><p>[3]</p></td>
+<td><p>0=depth test disabled, 1=depth test enabled</p></td>
+</tr>
+<tr class="row-even"><td><p>[4]</p></td>
+<td><p>0=perspective correction disabled, 1=perspective correction enabled</p></td>
+</tr>
+<tr class="row-odd"><td><p>[7:5]</p></td>
+<td><p>Texture width scale (0=32, 1=64, 2=128, 3=256, 4=512, 5=1024, 6=2048, 7=4096)</p></td>
+</tr>
+<tr class="row-even"><td><p>[10:8]</p></td>
+<td><p>Texture height scale (0=32, 1=64, 2=128, 3=256, 4=512, 5=1024, 6=2048, 7=4096)</p></td>
+</tr>
+<tr class="row-odd"><td><p>[31:24]</p></td>
+<td><p>Opcode (25)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="op-swap">
+<h3>OP_SWAP<a class="headerlink" href="#op-swap" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Field</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>[0]</p></td>
+<td><p>0=do not wait for vsync, 1=wait for vsync</p></td>
+</tr>
+<tr class="row-odd"><td><p>[31:24]</p></td>
+<td><p>Opcode (26)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="op-set-tex-addr">
+<h3>OP_SET_TEX_ADDR<a class="headerlink" href="#op-set-tex-addr" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Field</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>[0:15]</p></td>
+<td><p>16-bit value</p></td>
+</tr>
+<tr class="row-odd"><td><p>[16]</p></td>
+<td><p>0=LSB, 1=MSB</p></td>
+</tr>
+<tr class="row-even"><td><p>[31:24]</p></td>
+<td><p>Opcode (27)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="op-set-fb-addr">
+<h3>OP_SET_FB_ADDR<a class="headerlink" href="#op-set-fb-addr" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Field</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>[0:15]</p></td>
+<td><p>16-bit value</p></td>
+</tr>
+<tr class="row-odd"><td><p>[16]</p></td>
+<td><p>0=LSB, 1=MSB</p></td>
+</tr>
+<tr class="row-even"><td><p>[17]</p></td>
+<td><p>0=double buffer (back != front), 1=single buffer (back == front)</p></td>
+</tr>
+<tr class="row-odd"><td><p>[31:24]</p></td>
+<td><p>Opcode (28)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="features.html" class="btn btn-neutral float-left" title="Features" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Daniel Cliche.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
