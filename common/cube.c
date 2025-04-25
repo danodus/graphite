@@ -4,14 +4,14 @@
 #include <stdlib.h>
 
 static vec3d vertices[] = {
-    {FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)},  // 0
-    {FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)},  // 1
-    {FX(1.0f), FX(1.0f), FX(0.0f), FX(1.0f)},  // 2
-    {FX(1.0f), FX(0.0f), FX(0.0f), FX(1.0f)},  // 3
-    {FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)},  // 4
-    {FX(1.0f), FX(0.0f), FX(1.0f), FX(1.0f)},  // 5
-    {FX(0.0f), FX(1.0f), FX(1.0f), FX(1.0f)},  // 6
-    {FX(0.0f), FX(0.0f), FX(1.0f), FX(1.0f)}   // 7
+    {FX(-0.5f), FX(-0.5f), FX(-0.5f), FX(1.0f)},  // 0
+    {FX(-0.5f), FX(0.5f), FX(-0.5f), FX(1.0f)},   // 1
+    {FX(0.5f), FX(0.5f), FX(-0.5f), FX(1.0f)},    // 2
+    {FX(0.5f), FX(-0.5f), FX(-0.5f), FX(1.0f)},   // 3
+    {FX(0.5f), FX(0.5f), FX(0.5f), FX(1.0f)},     // 4
+    {FX(0.5f), FX(-0.5f), FX(0.5f), FX(1.0f)},    // 5
+    {FX(-0.5f), FX(0.5f), FX(0.5f), FX(1.0f)},    // 6
+    {FX(-0.5f), FX(-0.5f), FX(0.5f), FX(1.0f)}    // 7
 };
 
 static vec2d texcoords[] = {
