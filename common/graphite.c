@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define Z_NEAR  0.3     // near clipping plane
+
 #define SORT_TRIANGLES 0
 
 #define MAX_NB_TRIANGLES    16      // maximum number of triangles produced by the clipping
@@ -281,7 +283,7 @@ mat4x4 matrix_make_projection(int viewport_width, int viewport_height, float fov
     mat4x4 mat_proj;
 
     // projection matrix
-    fx32 near = FX(0.1f);
+    fx32 near = FX(Z_NEAR);
     fx32 far = FX(1000.0f);
     fx32 aspect_ratio = FX((float)viewport_height / (float)viewport_width);
     fx32 fov_rad = FX(1.0f / tanf(fov * 0.5f / 180.0f * 3.14159f));
@@ -701,7 +703,7 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
             // clip viewed triangle against near plane, this could form two additional triangles
             int nb_clipped_triangles = 0;
             triangle_t clipped[2];
-            const fx32 z_near = FX(0.1f);
+            const fx32 z_near = FX(Z_NEAR);
             vec3d plane_p = {FX(0.0f), FX(0.0f), z_near, FX(1.0f)};
             vec3d plane_n = {FX(0.0f), FX(0.0f), FX(1.0f), FX(1.0f)};
             nb_clipped_triangles = triangle_clip_against_plane(plane_p, plane_n, &tri_viewed, &clipped[0], &clipped[1]);
