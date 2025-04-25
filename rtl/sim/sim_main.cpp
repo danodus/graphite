@@ -545,9 +545,6 @@ int main(int argc, char** argv, char** env) {
     lights[4].ambient_color = {FX(0.1f), FX(0.1f), FX(0.0f), FX(1.0f)};
     lights[4].diffuse_color = {FX(0.2f), FX(0.2f), FX(0.0f), FX(1.0f)};
 
-    uint16_t show_depth_value = 32000;
-    uint16_t last_show_depth_value = show_depth_value;
-
     bool quit = false;
 
     bool dump = false;
@@ -691,8 +688,6 @@ int main(int argc, char** argv, char** env) {
             if (state[SDL_SCANCODE_S]) vec_camera = vector_sub(&vec_camera, &vec_forward);
             if (state[SDL_SCANCODE_A]) yaw -= 2.0f * elapsed_time;
             if (state[SDL_SCANCODE_D]) yaw += 2.0f * elapsed_time;
-            if (state[SDL_SCANCODE_LEFTBRACKET]) show_depth_value -= 1000;
-            if (state[SDL_SCANCODE_RIGHTBRACKET]) show_depth_value += 1000;
         }
 
         if (top->cmd_axis_tready_o) {
@@ -715,10 +710,6 @@ int main(int argc, char** argv, char** env) {
             top->vram_data_in_i = 0xF800;
         }
 
-        if (last_show_depth_value != show_depth_value) {
-            printf("Displaying depth %d\n", show_depth_value);
-            last_show_depth_value = show_depth_value;
-        }
         if (top->swap_o) {
 
             if (tga_path) {
@@ -743,12 +734,9 @@ int main(int argc, char** argv, char** env) {
                     uint16_t* d = &vram_data[2 * FB_WIDTH * FB_HEIGHT];
                     for (int y = 0; y < FB_HEIGHT; ++y)
                         for (int x = 0; x < FB_WIDTH; ++x) {
-                            // if (*d > show_depth_value - 1000 && *d < show_depth_value + 1000) {
-                            uint16_t i = *d >> 12;
-                            *pp = (i) | (i << 4) | (i << 8);
-                            //} else {
-                            //    *pp = 0;
-                            //}
+                            // Green 6-bit
+                            uint16_t i = *d >> 10;
+                            *pp = (i << 5);
                             ++pp;
                             ++d;
                         }
