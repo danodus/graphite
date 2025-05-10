@@ -322,6 +322,7 @@ mat4x4 matrix_make_rotation_y(float theta) {
     mat_rot_y.m[1][1] = FX(1.0f);
     mat_rot_y.m[2][0] = FX(sinf(theta));
     mat_rot_y.m[2][2] = FX(cosf(theta));
+    mat_rot_y.m[3][3] = FX(1.0f);    
 
     return mat_rot_y;
 }
