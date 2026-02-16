@@ -130,7 +130,7 @@ struct Command {
     uint32_t param : 24;
 };
 
-std::deque<Command> g_commands;
+std::deque<Command> commands;
 
 void pulse_clk(Vtop* top) {
     top->contextp()->timeInc(1);
@@ -155,147 +155,147 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
 
     cmd.opcode = OP_SET_X0;
     cmd.param = PARAM(p[0].x) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(p[0].x) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_Y0;
     cmd.param = PARAM(p[0].y) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(p[0].y) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_Z0;
     cmd.param = PARAM(t[0].w) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(t[0].w) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_X1;
     cmd.param = PARAM(p[1].x) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(p[1].x) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_Y1;
     cmd.param = PARAM(p[1].y) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(p[1].y) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_Z1;
     cmd.param = PARAM(t[1].w) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(t[1].w) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_X2;
     cmd.param = PARAM(p[2].x) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(p[2].x) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_Y2;
     cmd.param = PARAM(p[2].y) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(p[2].y) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_Z2;
     cmd.param = PARAM(t[2].w) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(p[2].z) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_S0;
     cmd.param = PARAM(t[0].u) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(t[0].u) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_T0;
     cmd.param = PARAM(t[0].v) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(t[0].v) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_S1;
     cmd.param = PARAM(t[1].u) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(t[1].u) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_T1;
     cmd.param = PARAM(t[1].v) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(t[1].v) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_S2;
     cmd.param = PARAM(t[2].u) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(t[2].u) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_T2;
     cmd.param = PARAM(t[2].v) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(t[2].v) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_R0;
     cmd.param = PARAM(c[0].x) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(c[0].x) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_G0;
     cmd.param = PARAM(c[0].y) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(c[0].y) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_B0;
     cmd.param = PARAM(c[0].z) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(c[0].z) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_R1;
     cmd.param = PARAM(c[1].x) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(c[1].x) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_G1;
     cmd.param = PARAM(c[1].y) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(c[1].y) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_B1;
     cmd.param = PARAM(c[1].z) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(c[1].z) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_R2;
     cmd.param = PARAM(c[2].x) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(c[2].x) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_G2;
     cmd.param = PARAM(c[2].y) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(c[2].y) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_SET_B2;
     cmd.param = PARAM(c[2].z) & 0xFFFF;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     cmd.param = 0x10000 | (PARAM(c[2].z) >> 16);
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 
     cmd.opcode = OP_DRAW;
 
@@ -305,7 +305,7 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     cmd.param |= texture_scale_x << 5;
     cmd.param |= texture_scale_y << 8;
 
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 }
 
 void clear() {
@@ -313,31 +313,33 @@ void clear() {
     // Clear framebuffer
     cmd.opcode = OP_CLEAR;
     cmd.param = 0x0031A6;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
     // Clear depth buffer
     cmd.opcode = OP_CLEAR;
     cmd.param = 0x010000;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 }
 
 void swap() {
     Command cmd;
     cmd.opcode = OP_SWAP;
     cmd.param = 0;
-    g_commands.push_back(cmd);
+    commands.push_back(cmd);
 }
 
 void send_command(const char* s) {
     Command c;
     c.opcode = s[0];
     c.param = (((uint32_t)s[1] << 16) & 0xFF0000) | (((uint32_t)s[2] << 8) & 0xFF00) | ((uint32_t)s[3] & 0xFF);
-    g_commands.push_back(c);
+    commands.push_back(c);
 }
 
 void write_texture(uint16_t* vram) {
     uint32_t tex_addr = 3 * FB_WIDTH * FB_HEIGHT;
     memcpy(vram + tex_addr, tex, TEXTURE_WIDTH*TEXTURE_HEIGHT*2);
 }
+
+double sc_time_stamp() { return 0; }
 
 int main(int argc, char** argv, char** env) {
     if (argc > 1) {
@@ -431,7 +433,7 @@ int main(int argc, char** argv, char** env) {
     while (!contextp->gotFinish() && !quit) {
         SDL_Event e;
 
-        if (top->cmd_axis_tready_o && g_commands.size() == 0) {
+        if (top->cmd_axis_tready_o && commands.size() == 0) {
             clear();
 
             //
@@ -476,7 +478,7 @@ int main(int argc, char** argv, char** env) {
             }
 
             if (dump) {
-                for (auto cmd : g_commands) {
+                for (auto cmd : commands) {
                     if (g_serial_fd >= 0) {
                         char b[4];
                         b[0] = cmd.opcode;
@@ -566,9 +568,9 @@ int main(int argc, char** argv, char** env) {
         }
 
         if (top->cmd_axis_tready_o) {
-            if (g_commands.size() > 0) {
-                auto c = g_commands.front();
-                g_commands.pop_front();
+            if (commands.size() > 0) {
+                auto c = commands.front();
+                commands.pop_front();
                 top->cmd_axis_tdata_i = (c.opcode << 24) | c.param;
                 top->cmd_axis_tvalid_i = 1;
             }
