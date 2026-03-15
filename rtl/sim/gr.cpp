@@ -312,7 +312,7 @@ void grBufferData(size_t bufferSize, void* data) {
     memcpy(ctx.bufferData, data, bufferSize);
 }
 
-void grDrawArrays(void) {
+void grDrawArrays(int type) {
     size_t nbPoints = ctx.bufferSize / (3 * sizeof(float));
     float* f = (float *)ctx.bufferData;
     for (size_t i = 0; i < nbPoints; ++i) {
@@ -325,7 +325,11 @@ void grDrawArrays(void) {
         y += 1.0f;
         x *= 320.0 / 2.0f;
         y *= 240.0 / 2.0f;
-        drawPoint(x, y);
+        if (type == GR_POINTS) {
+            drawPoint(x, y);
+        } else if (type == GR_TRIANGLES) {
+            // TODO
+        }
         f += 3;
     }
 }
