@@ -9,6 +9,7 @@ all: sim
 
 clean:
 	rm -rf obj_dir
+	rm -f golden_capture.tga
 
 sim: top.sv sim_main.cpp $(SRC) ../../common/graphite.h ../../common/cube.h ../../common/teapot.h
 	$(VERILATOR) -cc --exe $(CFLAGS) $(LDFLAGS) top.sv sim_main.cpp $(SRC) -I..
@@ -17,4 +18,12 @@ sim: top.sv sim_main.cpp $(SRC) ../../common/graphite.h ../../common/cube.h ../.
 run: sim
 	obj_dir/Vtop $(SERIAL)
 
-.PHONY: all clean
+# Pixel regression: capture framebuffer to a temp TGA and require a byte-identical
+# match with the golden reference (default: out.tga in this directory).
+GOLDEN_TGA ?= out.tga
+CAPTURE_TGA ?= golden_capture.tga
+
+golden: sim
+	obj_dir/Vtop --write-tga $(CAPTURE_TGA) --golden-tga $(GOLDEN_TGA) && rm -f $(CAPTURE_TGA)
+
+.PHONY: all clean golden

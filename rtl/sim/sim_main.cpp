@@ -11,12 +11,14 @@
 #include <string.h>
 #include <teapot.h>
 #include <termios.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <verilated.h>
 
 #include <deque>
 #include <iostream>
 #include <limits>
+#include <vector>
 
 #define FB_WIDTH 320
 #define FB_HEIGHT 240
@@ -300,7 +302,7 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     cmd.opcode = OP_DRAW;
 
     cmd.param = (depth_test ? 0b01000 : 0b00000) | (clamp_s ? 0b00100 : 0b00000) | (clamp_t ? 0b00010 : 0b00000) |
-              ((tex != NULL) ? 0b00001 : 0b00000) | (perspective_correct ? 0b10000 : 0xb00000);
+              ((tex != NULL) ? 0b00001 : 0b00000) | (perspective_correct ? 0b10000 : 0b00000);
 
     cmd.param |= texture_scale_x << 5;
     cmd.param |= texture_scale_y << 8;
@@ -339,11 +341,137 @@ void write_texture(uint16_t* vram) {
     memcpy(vram + tex_addr, tex, TEXTURE_WIDTH*TEXTURE_HEIGHT*2);
 }
 
+// Uncompressed 24-bit BGR TGA (type 2), top-left origin (descriptor 0x20).
+static bool write_rgb565_tga(const char* path, const uint16_t* rgb565, int w, int h) {
+    FILE* fp = fopen(path, "wb");
+    if (!fp) {
+        std::cerr << "write_rgb565_tga: cannot open " << path << ": " << strerror(errno) << "\n";
+        return false;
+    }
+    uint8_t header[18] = {};
+    header[2] = 2;  // uncompressed true-color
+    header[12] = (uint8_t)(w & 0xFF);
+    header[13] = (uint8_t)((w >> 8) & 0xFF);
+    header[14] = (uint8_t)(h & 0xFF);
+    header[15] = (uint8_t)((h >> 8) & 0xFF);
+    header[16] = 24;
+    header[17] = 0x20;  // top-left origin
+    if (fwrite(header, 1, 18, fp) != 18) {
+        std::cerr << "write_rgb565_tga: short write header\n";
+        fclose(fp);
+        return false;
+    }
+    for (int y = 0; y < h; ++y) {
+        const uint16_t* row = rgb565 + y * w;
+        for (int x = 0; x < w; ++x) {
+            uint16_t p = row[x];
+            unsigned r5 = (p >> 11) & 31u;
+            unsigned g6 = (p >> 5) & 63u;
+            unsigned b5 = p & 31u;
+            uint8_t b = (uint8_t)((b5 << 3) | (b5 >> 2));
+            uint8_t g = (uint8_t)((g6 << 2) | (g6 >> 4));
+            uint8_t r = (uint8_t)((r5 << 3) | (r5 >> 2));
+            if (fputc(b, fp) == EOF || fputc(g, fp) == EOF || fputc(r, fp) == EOF) {
+                std::cerr << "write_rgb565_tga: write error\n";
+                fclose(fp);
+                return false;
+            }
+        }
+    }
+    fclose(fp);
+    return true;
+}
+
+// Return 0 if byte-identical, 1 on mismatch or I/O error (prints to stderr).
+static int compare_binary_files(const char* path_a, const char* path_b) {
+    FILE* fa = fopen(path_a, "rb");
+    FILE* fb = fopen(path_b, "rb");
+    if (!fa) {
+        std::cerr << "compare_binary_files: cannot open " << path_a << ": " << strerror(errno) << "\n";
+        return 1;
+    }
+    if (!fb) {
+        std::cerr << "compare_binary_files: cannot open " << path_b << ": " << strerror(errno) << "\n";
+        fclose(fa);
+        return 1;
+    }
+    if (fseek(fa, 0, SEEK_END) != 0 || fseek(fb, 0, SEEK_END) != 0) {
+        std::cerr << "compare_binary_files: fseek failed\n";
+        fclose(fa);
+        fclose(fb);
+        return 1;
+    }
+    long na = ftell(fa);
+    long nb = ftell(fb);
+    if (na < 0 || nb < 0) {
+        std::cerr << "compare_binary_files: ftell failed\n";
+        fclose(fa);
+        fclose(fb);
+        return 1;
+    }
+    if (na != nb) {
+        std::cerr << "golden TGA size mismatch: " << path_a << " (" << na << " bytes) vs " << path_b << " (" << nb
+                  << " bytes)\n";
+        fclose(fa);
+        fclose(fb);
+        return 1;
+    }
+    rewind(fa);
+    rewind(fb);
+    std::vector<uint8_t> bufa((size_t)na);
+    std::vector<uint8_t> bufb((size_t)nb);
+    if (fread(bufa.data(), 1, (size_t)na, fa) != (size_t)na || fread(bufb.data(), 1, (size_t)nb, fb) != (size_t)nb) {
+        std::cerr << "compare_binary_files: short read\n";
+        fclose(fa);
+        fclose(fb);
+        return 1;
+    }
+    fclose(fa);
+    fclose(fb);
+    size_t n_diff = 0;
+    for (long i = 0; i < na; ++i) {
+        if (bufa[(size_t)i] != bufb[(size_t)i]) ++n_diff;
+    }
+    if (n_diff != 0) {
+        std::cerr << "golden TGA mismatch vs " << path_b << ": " << n_diff << " byte(s) differ (of " << na << ")\n";
+        return 1;
+    }
+    return 0;
+}
+
 int main(int argc, char** argv, char** env) {
-    if (argc > 1) {
-        g_serial_fd = open(argv[1], O_RDWR | O_NOCTTY | O_SYNC | O_NONBLOCK);
+    const char* tga_path = nullptr;
+    const char* golden_tga_path = nullptr;
+    int argi = 1;
+    while (argi < argc) {
+        if (strcmp(argv[argi], "--write-tga") == 0) {
+            if (argi + 1 >= argc) {
+                std::cerr << "usage: --write-tga <file.tga>\n";
+                return 1;
+            }
+            tga_path = argv[argi + 1];
+            argi += 2;
+            continue;
+        }
+        if (strcmp(argv[argi], "--golden-tga") == 0) {
+            if (argi + 1 >= argc) {
+                std::cerr << "usage: --golden-tga <reference.tga>\n";
+                return 1;
+            }
+            golden_tga_path = argv[argi + 1];
+            argi += 2;
+            continue;
+        }
+        break;
+    }
+    if (golden_tga_path && !tga_path) {
+        std::cerr << "--golden-tga requires --write-tga <path> (same run captures then compares)\n";
+        return 1;
+    }
+    if (argi < argc) {
+        g_serial_fd = open(argv[argi], O_RDWR | O_NOCTTY | O_SYNC | O_NONBLOCK);
         if (g_serial_fd < 0) {
-            printf("error %d opening %s: %s", errno, argv[1], strerror(errno));
+            printf("error %d opening %s: %s", errno, argv[argi], strerror(errno));
             return 1;
         }
         set_interface_attribs(g_serial_fd, B115200, 0);  // set speed to 115,200 bps, 8n1 (no parity)
@@ -427,6 +555,8 @@ int main(int argc, char** argv, char** env) {
     unsigned int time = SDL_GetTicks();
 
     bool texture_dirty = true;
+
+    int return_code = 0;
 
     while (!contextp->gotFinish() && !quit) {
         SDL_Event e;
@@ -574,16 +704,15 @@ int main(int argc, char** argv, char** env) {
             }
         }
 
-        if (top->vram_sel_o) {
-            if (top->vram_addr_o < VRAM_SIZE) {
-
-                if (top->vram_wr_o) {
-                    vram_data[top->vram_addr_o] = top->vram_data_out_o;
-                }
-                top->vram_data_in_i = vram_data[top->vram_addr_o];
-            } else {
-                top->vram_data_in_i = 0xF800;
+        // Combinational read from vram_data[addr]: RTL may latch vram_data_in_i on cycles
+        // after vram_sel_o is deasserted (e.g. depth read), so always drive read data from addr.
+        if (top->vram_addr_o < VRAM_SIZE) {
+            if (top->vram_sel_o && top->vram_wr_o) {
+                vram_data[top->vram_addr_o] = top->vram_data_out_o;
             }
+            top->vram_data_in_i = vram_data[top->vram_addr_o];
+        } else {
+            top->vram_data_in_i = 0xF800;
         }
 
         if (last_show_depth_value != show_depth_value) {
@@ -591,37 +720,53 @@ int main(int argc, char** argv, char** env) {
             last_show_depth_value = show_depth_value;
         }
         if (top->swap_o) {
-            void* p;
-            int pitch;
-            SDL_LockTexture(texture, NULL, &p, &pitch);
-            assert(pitch == FB_WIDTH * 2);
-            if (show_depth) {
-                uint16_t* pp = (uint16_t*)p;
-                uint16_t* d = &vram_data[2 * FB_WIDTH * FB_HEIGHT];
-                for (int y = 0; y < FB_HEIGHT; ++y)
-                    for (int x = 0; x < FB_WIDTH; ++x) {
-                        // if (*d > show_depth_value - 1000 && *d < show_depth_value + 1000) {
-                        uint16_t i = *d >> 12;
-                        *pp = (i) | (i << 4) | (i << 8);
-                        //} else {
-                        //    *pp = 0;
-                        //}
-                        ++pp;
-                        ++d;
-                    }
 
+            if (tga_path) {
+                if (!write_rgb565_tga(tga_path, vram_data + top->front_addr_o, FB_WIDTH, FB_HEIGHT)) {
+                    return_code = 1;
+                    quit = true;
+                    break;
+                }
+                if (golden_tga_path && compare_binary_files(tga_path, golden_tga_path) != 0) {
+                    return_code = 1;
+                    quit = true;
+                    break;
+                }
+                quit = true;
             } else {
-                memcpy(p, vram_data + top->front_addr_o, FB_WIDTH * FB_HEIGHT * 2);
+                void* p;
+                int pitch;
+                SDL_LockTexture(texture, NULL, &p, &pitch);
+                assert(pitch == FB_WIDTH * 2);
+                if (show_depth) {
+                    uint16_t* pp = (uint16_t*)p;
+                    uint16_t* d = &vram_data[2 * FB_WIDTH * FB_HEIGHT];
+                    for (int y = 0; y < FB_HEIGHT; ++y)
+                        for (int x = 0; x < FB_WIDTH; ++x) {
+                            // if (*d > show_depth_value - 1000 && *d < show_depth_value + 1000) {
+                            uint16_t i = *d >> 12;
+                            *pp = (i) | (i << 4) | (i << 8);
+                            //} else {
+                            //    *pp = 0;
+                            //}
+                            ++pp;
+                            ++d;
+                        }
+
+                } else {
+                    memcpy(p, vram_data + top->front_addr_o, FB_WIDTH * FB_HEIGHT * 2);
+                }
+                SDL_UnlockTexture(texture);
+
+                int draw_w, draw_h;
+                SDL_GL_GetDrawableSize(window, &draw_w, &draw_h);
+
+                SDL_Rect vga_r = {0, 0, draw_w, draw_h};
+                SDL_RenderCopy(renderer, texture, NULL, &vga_r);
+
+                SDL_RenderPresent(renderer);
             }
-            SDL_UnlockTexture(texture);
 
-            int draw_w, draw_h;
-            SDL_GL_GetDrawableSize(window, &draw_w, &draw_h);
-
-            SDL_Rect vga_r = {0, 0, draw_w, draw_h};
-            SDL_RenderCopy(renderer, texture, NULL, &vga_r);
-
-            SDL_RenderPresent(renderer);
         }
 
         pulse_clk(top);
@@ -637,5 +782,5 @@ int main(int argc, char** argv, char** env) {
 
     if (g_serial_fd >= 0) close(g_serial_fd);
 
-    return 0;
+    return return_code;
 }
