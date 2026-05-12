@@ -41,15 +41,22 @@ module graphite_fragment_shader #(
 
     input  wire logic [15:0] vram_data_in_i,
 
-    input  wire logic signed [63:0] dsp_mul_z_i [3],
+    // Separate multiplier result ports (Yosys does not support unpacked array ports)
+    input  wire logic signed [63:0] dsp_mul_z_0_i,
+    input  wire logic signed [63:0] dsp_mul_z_1_i,
+    input  wire logic signed [63:0] dsp_mul_z_2_i,
     input  wire logic [31:0] reciprocal_z_i,
     input  wire logic reciprocal_done_i,
 
     output logic busy_o,
     output logic done_o,
 
-    output logic signed [31:0] fs_dsp_mul_p0_o [3],
-    output logic signed [31:0] fs_dsp_mul_p1_o [3],
+    output logic signed [31:0] fs_dsp_mul_p0_0_o,
+    output logic signed [31:0] fs_dsp_mul_p0_1_o,
+    output logic signed [31:0] fs_dsp_mul_p0_2_o,
+    output logic signed [31:0] fs_dsp_mul_p1_0_o,
+    output logic signed [31:0] fs_dsp_mul_p1_1_o,
+    output logic signed [31:0] fs_dsp_mul_p1_2_o,
     output logic [31:0] fs_reciprocal_x_o,
     output logic fs_reciprocal_start_o,
 
@@ -113,12 +120,12 @@ module graphite_fragment_shader #(
                     end else begin
                         fs_vram_sel_o <= 1'b0;
                         fs_vram_wr_o <= 1'b0;
-                        fs_dsp_mul_p0_o[0] <= '0;
-                        fs_dsp_mul_p0_o[1] <= '0;
-                        fs_dsp_mul_p0_o[2] <= '0;
-                        fs_dsp_mul_p1_o[0] <= '0;
-                        fs_dsp_mul_p1_o[1] <= '0;
-                        fs_dsp_mul_p1_o[2] <= '0;
+                        fs_dsp_mul_p0_0_o <= '0;
+                        fs_dsp_mul_p0_1_o <= '0;
+                        fs_dsp_mul_p0_2_o <= '0;
+                        fs_dsp_mul_p1_0_o <= '0;
+                        fs_dsp_mul_p1_1_o <= '0;
+                        fs_dsp_mul_p1_2_o <= '0;
                     end
                 end
 
@@ -176,30 +183,30 @@ module graphite_fragment_shader #(
 
                 FS_S42: begin
                     if (reciprocal_done_i) begin
-                        fs_dsp_mul_p0_o[0] <= r;
-                        fs_dsp_mul_p1_o[0] <= (reciprocal_z_i << 12);
-                        fs_dsp_mul_p0_o[1] <= g;
-                        fs_dsp_mul_p1_o[1] <= (reciprocal_z_i << 12);
-                        fs_dsp_mul_p0_o[2] <= b;
-                        fs_dsp_mul_p1_o[2] <= (reciprocal_z_i << 12);
+                        fs_dsp_mul_p0_0_o <= r;
+                        fs_dsp_mul_p1_0_o <= (reciprocal_z_i << 12);
+                        fs_dsp_mul_p0_1_o <= g;
+                        fs_dsp_mul_p1_1_o <= (reciprocal_z_i << 12);
+                        fs_dsp_mul_p0_2_o <= b;
+                        fs_dsp_mul_p1_2_o <= (reciprocal_z_i << 12);
                         state <= FS_S43;
                     end
                 end
 
                 FS_S43: begin
-                    r <= dsp_mul_z_i[0][31:0] >> 8;
-                    g <= dsp_mul_z_i[1][31:0] >> 8;
-                    b <= dsp_mul_z_i[2][31:0] >> 8;
-                    fs_dsp_mul_p0_o[0] <= s;
-                    fs_dsp_mul_p1_o[0] <= (reciprocal_z_i << 12);
-                    fs_dsp_mul_p0_o[1] <= t;
-                    fs_dsp_mul_p1_o[1] <= (reciprocal_z_i << 12);
+                    r <= dsp_mul_z_0_i[31:0] >> 8;
+                    g <= dsp_mul_z_1_i[31:0] >> 8;
+                    b <= dsp_mul_z_2_i[31:0] >> 8;
+                    fs_dsp_mul_p0_0_o <= s;
+                    fs_dsp_mul_p1_0_o <= (reciprocal_z_i << 12);
+                    fs_dsp_mul_p0_1_o <= t;
+                    fs_dsp_mul_p1_1_o <= (reciprocal_z_i << 12);
                     state <= FS_S44;
                 end
 
                 FS_S44: begin
-                    s <= dsp_mul_z_i[0][31:0] >> 8;
-                    t <= dsp_mul_z_i[1][31:0] >> 8;
+                    s <= dsp_mul_z_0_i[31:0] >> 8;
+                    t <= dsp_mul_z_1_i[31:0] >> 8;
                     state <= FS_S48;
                 end
 
@@ -212,23 +219,23 @@ module graphite_fragment_shader #(
                 end
 
                 FS_S49: begin
-                    fs_dsp_mul_p0_o[0] <= (((TEXTURE_HEIGHT << texture_height_scale_i) - 1) << 14);
-                    fs_dsp_mul_p1_o[0] <= (is_clamp_t_i ? clamp(t) : wrap(t));
-                    fs_dsp_mul_p0_o[1] <= (((TEXTURE_WIDTH << texture_width_scale_i) - 1) << 14);
-                    fs_dsp_mul_p1_o[1] <= (is_clamp_s_i ? clamp(s) : wrap(s));
+                    fs_dsp_mul_p0_0_o <= (((TEXTURE_HEIGHT << texture_height_scale_i) - 1) << 14);
+                    fs_dsp_mul_p1_0_o <= (is_clamp_t_i ? clamp(t) : wrap(t));
+                    fs_dsp_mul_p0_1_o <= (((TEXTURE_WIDTH << texture_width_scale_i) - 1) << 14);
+                    fs_dsp_mul_p1_1_o <= (is_clamp_s_i ? clamp(s) : wrap(s));
                     state <= FS_S51;
                 end
 
                 FS_S51: begin
-                    fs_dsp_mul_p0_o[0] <= dsp_mul_z_i[0][31:0] & 32'hFFFFC000;
-                    fs_dsp_mul_p1_o[0] <= (TEXTURE_WIDTH << texture_width_scale_i) << 14;
+                    fs_dsp_mul_p0_0_o <= dsp_mul_z_0_i[31:0] & 32'hFFFFC000;
+                    fs_dsp_mul_p1_0_o <= (TEXTURE_WIDTH << texture_width_scale_i) << 14;
                     state <= FS_S52;
                 end
 
                 FS_S52: begin
                     fs_vram_sel_o <= 1'b1;
                     fs_vram_wr_o <= 1'b0;
-                    fs_vram_addr_o <= texture_address_i + 32'(dsp_mul_z_i[0] >> 14) + 32'(dsp_mul_z_i[1] >> 14);
+                    fs_vram_addr_o <= texture_address_i + 32'(dsp_mul_z_0_i >> 14) + 32'(dsp_mul_z_1_i >> 14);
                     state <= FS_S53;
                 end
 
@@ -239,27 +246,27 @@ module graphite_fragment_shader #(
                 end
 
                 FS_S54: begin
-                    fs_dsp_mul_p0_o[0] <= {13'd0, sample[11:8], sample[11], 14'd0};
-                    fs_dsp_mul_p1_o[0] <= r;
+                    fs_dsp_mul_p0_0_o <= {13'd0, sample[11:8], sample[11], 14'd0};
+                    fs_dsp_mul_p1_0_o <= r;
                     state <= FS_S55;
                 end
 
                 FS_S55: begin
-                    fs_vram_data_out_o[15:11] <= 5'(dsp_mul_z_i[0][31:0] >> 14);
-                    fs_dsp_mul_p0_o[0] <= {12'd0, sample[7:4], sample[7:6], 14'd0};
-                    fs_dsp_mul_p1_o[0] <= g;
+                    fs_vram_data_out_o[15:11] <= 5'(dsp_mul_z_0_i[31:0] >> 14);
+                    fs_dsp_mul_p0_0_o <= {12'd0, sample[7:4], sample[7:6], 14'd0};
+                    fs_dsp_mul_p1_0_o <= g;
                     state <= FS_S56;
                 end
 
                 FS_S56: begin
-                    fs_vram_data_out_o[10:5] <= 6'(dsp_mul_z_i[0][31:0] >> 14);
-                    fs_dsp_mul_p0_o[0] <= {13'd0, sample[3:0], sample[3], 14'd0};
-                    fs_dsp_mul_p1_o[0] <= b;
+                    fs_vram_data_out_o[10:5] <= 6'(dsp_mul_z_0_i[31:0] >> 14);
+                    fs_dsp_mul_p0_0_o <= {13'd0, sample[3:0], sample[3], 14'd0};
+                    fs_dsp_mul_p1_0_o <= b;
                     state <= FS_S57;
                 end
 
                 FS_S57: begin
-                    fs_vram_data_out_o[4:0] <= 5'(dsp_mul_z_i[0][31:0] >> 14);
+                    fs_vram_data_out_o[4:0] <= 5'(dsp_mul_z_0_i[31:0] >> 14);
                     fs_vram_sel_o <= 1'b1;
                     fs_vram_wr_o <= 1'b1;
                     fs_vram_addr_o <= fb_address_i + back_rel_address_i + raster_rel_address_i;
