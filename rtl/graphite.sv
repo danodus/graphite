@@ -49,12 +49,9 @@ module graphite #(
            DRAW_TRIANGLE00, DRAW_TRIANGLE01, DRAW_TRIANGLE02, DRAW_TRIANGLE04, DRAW_TRIANGLE05, DRAW_TRIANGLE06, DRAW_TRIANGLE07, DRAW_TRIANGLE08,
            DRAW_TRIANGLE12, DRAW_TRIANGLE13, DRAW_TRIANGLE15,
            DRAW_TRIANGLE18, DRAW_TRIANGLE21,
-           DRAW_TRIANGLE24, DRAW_TRIANGLE25, DRAW_TRIANGLE28, 
-           DRAW_TRIANGLE31, DRAW_TRIANGLE32, DRAW_TRIANGLE35,
-           DRAW_TRIANGLE36, DRAW_TRIANGLE37, DRAW_TRIANGLE38, DRAW_TRIANGLE39, DRAW_TRIANGLE40, DRAW_TRIANGLE41,
-           DRAW_TRIANGLE42, DRAW_TRIANGLE43, DRAW_TRIANGLE44,
-           DRAW_TRIANGLE48, DRAW_TRIANGLE49, DRAW_TRIANGLE51, DRAW_TRIANGLE52, DRAW_TRIANGLE53,
-           DRAW_TRIANGLE54, DRAW_TRIANGLE55, DRAW_TRIANGLE56, DRAW_TRIANGLE57, DRAW_TRIANGLE58, DRAW_TRIANGLE59,
+           DRAW_TRIANGLE24, DRAW_TRIANGLE25, DRAW_TRIANGLE28,
+           DRAW_TRIANGLE31, DRAW_TRIANGLE32, DRAW_TRIANGLE33, DRAW_TRIANGLE_FRAGMENT,
+           DRAW_TRIANGLE59,
            DRAW_TRIANGLE60
     } state;
 
@@ -91,14 +88,25 @@ module graphite #(
     logic signed [31:0] s, t;
     logic signed [31:0] r, g, b;
 
-    logic signed [31:0] dsp_mul_p0[NB_DSP_MULS], dsp_mul_p1[NB_DSP_MULS];
+    logic signed [31:0] raster_dsp_mul_p0[NB_DSP_MULS], raster_dsp_mul_p1[NB_DSP_MULS];
+    wire signed [31:0] frag_dsp_mul_p0[NB_DSP_MULS], frag_dsp_mul_p1[NB_DSP_MULS];
+    wire signed [31:0] dsp_mul_p0[NB_DSP_MULS], dsp_mul_p1[NB_DSP_MULS];
     logic signed [63:0] dsp_mul_z[NB_DSP_MULS];
 
     logic signed [31:0] t0, t1;
     logic        [31:0] z;
 
-    logic        [15:0] depth;
     logic        [15:0] sample;
+
+    logic signed [11:0] min_x, min_y, max_x, max_y;
+
+    genvar mi;
+    generate
+        for (mi = 0; mi < NB_DSP_MULS; mi++) begin : gen_dsp_mux
+            assign dsp_mul_p0[mi] = fs_busy ? frag_dsp_mul_p0[mi] : raster_dsp_mul_p0[mi];
+            assign dsp_mul_p1[mi] = fs_busy ? frag_dsp_mul_p1[mi] : raster_dsp_mul_p1[mi];
+        end
+    endgenerate
 
     genvar dsp_mul_index;
     generate
@@ -111,12 +119,94 @@ module graphite #(
         end
     endgenerate
 
-    logic signed [11:0] min_x, min_y, max_x, max_y;
+    logic [31:0] raster_reciprocal_x;
+    logic raster_reciprocal_start;
+    wire [31:0] frag_reciprocal_x;
+    wire frag_reciprocal_start;
+    wire [31:0] reciprocal_x;
+    wire reciprocal_start;
+    logic [31:0] reciprocal_z;
+    logic reciprocal_done;
 
-    logic [31:0] reciprocal_x, reciprocal_z;
-    logic reciprocal_start, reciprocal_done;
-    reciprocal reciprocal(.clk(clk), .reset_i(reset_i), .start_i(reciprocal_start), .x_i(reciprocal_x), .z_o(reciprocal_z), .done_o(reciprocal_done));
-    
+    reciprocal reciprocal(
+        .clk(clk),
+        .reset_i(reset_i),
+        .start_i(reciprocal_start),
+        .x_i(reciprocal_x),
+        .z_o(reciprocal_z),
+        .done_o(reciprocal_done)
+    );
+
+    logic core_vram_sel, core_vram_wr;
+    logic [3:0] core_vram_mask;
+    logic [31:0] core_vram_addr;
+    logic [15:0] core_vram_data_out;
+
+    logic frag_launch;
+    wire fs_busy;
+    wire frag_done;
+
+    wire fs_vram_sel_o, fs_vram_wr_o;
+    wire [3:0] fs_vram_mask_o;
+    wire [31:0] fs_vram_addr_o;
+    wire [15:0] fs_vram_data_out_o;
+
+    graphite_fragment_shader #(
+        .FB_WIDTH(FB_WIDTH),
+        .FB_HEIGHT(FB_HEIGHT),
+        .TEXTURE_WIDTH(TEXTURE_WIDTH),
+        .TEXTURE_HEIGHT(TEXTURE_HEIGHT)
+    ) fragment (
+        .clk(clk),
+        .reset_i(reset_i),
+        .ce_i(ce_i),
+        .start_i(frag_launch),
+        .x_i(x),
+        .y_i(y),
+        .z_i(z),
+        .r_i(r),
+        .g_i(g),
+        .b_i(b),
+        .s_i(s),
+        .t_i(t),
+        .sample_i(sample),
+        .is_textured_i(is_textured),
+        .is_clamp_s_i(is_clamp_s),
+        .is_clamp_t_i(is_clamp_t),
+        .is_depth_test_i(is_depth_test),
+        .is_perspective_correct_i(is_perspective_correct),
+        .texture_width_scale_i(texture_width_scale),
+        .texture_height_scale_i(texture_height_scale),
+        .fb_address_i(fb_address),
+        .texture_address_i(texture_address),
+        .depth_rel_address_i(depth_rel_address),
+        .back_rel_address_i(back_rel_address),
+        .raster_rel_address_i(raster_rel_address),
+        .vram_data_in_i(vram_data_in_i),
+        .dsp_mul_z_i(dsp_mul_z),
+        .reciprocal_z_i(reciprocal_z),
+        .reciprocal_done_i(reciprocal_done),
+        .busy_o(fs_busy),
+        .done_o(frag_done),
+        .fs_dsp_mul_p0_o(frag_dsp_mul_p0),
+        .fs_dsp_mul_p1_o(frag_dsp_mul_p1),
+        .fs_reciprocal_x_o(frag_reciprocal_x),
+        .fs_reciprocal_start_o(frag_reciprocal_start),
+        .fs_vram_sel_o(fs_vram_sel_o),
+        .fs_vram_wr_o(fs_vram_wr_o),
+        .fs_vram_mask_o(fs_vram_mask_o),
+        .fs_vram_addr_o(fs_vram_addr_o),
+        .fs_vram_data_out_o(fs_vram_data_out_o)
+    );
+
+    assign reciprocal_x = fs_busy ? frag_reciprocal_x : raster_reciprocal_x;
+    assign reciprocal_start = fs_busy ? frag_reciprocal_start : raster_reciprocal_start;
+    assign vram_sel_o = fs_busy ? fs_vram_sel_o : core_vram_sel;
+    assign vram_wr_o = fs_busy ? fs_vram_wr_o : core_vram_wr;
+    assign vram_mask_o = fs_busy ? fs_vram_mask_o : core_vram_mask;
+    assign vram_addr_o = fs_busy ? fs_vram_addr_o : core_vram_addr;
+    assign vram_data_out_o = fs_busy ? fs_vram_data_out_o : core_vram_data_out;
+
     assign p0 = {6'd0, x, 14'd0};
     assign p1 = {6'd0, y, 14'd0};
 
@@ -325,13 +415,13 @@ module graphite #(
                         state <= WAIT_COMMAND;
                     end
                     OP_CLEAR: begin
-                        vram_addr_o     <= fb_address + ((cmd_axis_tdata_i[16] == 0) ? back_rel_address : 32'(2 * FB_WIDTH * FB_HEIGHT));
-                        vram_data_out_o <= cmd_axis_tdata_i[15:0];
-                        clear_o         <= 1'b1;
-                        vram_mask_o     <= 4'hF;
-                        vram_sel_o      <= 1'b1;
-                        vram_wr_o       <= 1'b1;
-                        state           <= (cmd_axis_tdata_i[16] == 0) ? CLEAR_FB0 : CLEAR_DEPTH0;
+                        core_vram_addr     <= fb_address + ((cmd_axis_tdata_i[16] == 0) ? back_rel_address : 32'(2 * FB_WIDTH * FB_HEIGHT));
+                        core_vram_data_out <= cmd_axis_tdata_i[15:0];
+                        clear_o            <= 1'b1;
+                        core_vram_mask     <= 4'hF;
+                        core_vram_sel      <= 1'b1;
+                        core_vram_wr       <= 1'b1;
+                        state              <= (cmd_axis_tdata_i[16] == 0) ? CLEAR_FB0 : CLEAR_DEPTH0;
                     end
                     OP_DRAW: begin
                         // Draw triangle
@@ -342,7 +432,7 @@ module graphite #(
                         is_perspective_correct <= cmd_axis_tdata_i[4];
                         texture_width_scale    <= cmd_axis_tdata_i[7:5];
                         texture_height_scale   <= cmd_axis_tdata_i[10:8];
-                        vram_mask_o     <= 4'hF;
+                        core_vram_mask     <= 4'hF;
                         min_x <= min3(12'(vv00 >> 14), 12'(vv10 >> 14), 12'(vv20 >> 14));
                         min_y <= min3(12'(vv01 >> 14), 12'(vv11 >> 14), 12'(vv21 >> 14));
                         max_x <= max3(12'(vv00 >> 14), 12'(vv10 >> 14), 12'(vv20 >> 14));
@@ -389,19 +479,19 @@ module graphite #(
             end
 
             CLEAR_FB0: begin
-                if (vram_addr_o < fb_address + back_rel_address + FB_WIDTH * FB_HEIGHT - 1) begin
-                    vram_addr_o <= vram_addr_o + 1;
+                if (core_vram_addr < fb_address + back_rel_address + FB_WIDTH * FB_HEIGHT - 1) begin
+                    core_vram_addr <= core_vram_addr + 1;
                 end else begin
-                    clear_o     <= 1'b0;                    
+                    clear_o     <= 1'b0;
                     state       <= WAIT_COMMAND;
                 end
             end
 
             CLEAR_DEPTH0: begin
-                if (vram_addr_o < fb_address + 3 * FB_WIDTH * FB_HEIGHT - 1) begin
-                    vram_addr_o <= vram_addr_o + 1;
+                if (core_vram_addr < fb_address + 3 * FB_WIDTH * FB_HEIGHT - 1) begin
+                    core_vram_addr <= core_vram_addr + 1;
                 end else begin
-                    clear_o    <= 1'b0;                    
+                    clear_o    <= 1'b0;
                     state      <= WAIT_COMMAND;
                 end
             end
@@ -419,22 +509,22 @@ module graphite #(
 
                 // area = mul(c0 - a0, b1 - a1) - mul(c1 - a1, b0 - a0)
                 // t0 = mul(c0 - a0, b1 - a1)
-                dsp_mul_p0[0] <= (vv20 - vv00);
-                dsp_mul_p1[0] <= (vv11 - vv01);
+                raster_dsp_mul_p0[0] <= (vv20 - vv00);
+                raster_dsp_mul_p1[0] <= (vv11 - vv01);
                 // t1 = mul(c1 - a1, b0 - a0)
-                dsp_mul_p0[1] <= (vv21 - vv01);
-                dsp_mul_p1[1] <= (vv10 - vv00);
+                raster_dsp_mul_p0[1] <= (vv21 - vv01);
+                raster_dsp_mul_p1[1] <= (vv10 - vv00);
                 state <= DRAW_TRIANGLE02;
             end
 
             DRAW_TRIANGLE02: begin
-                reciprocal_x <= dsp_mul_z[0][31:0] - dsp_mul_z[1][31:0];
-                reciprocal_start <= 1'b1;
+                raster_reciprocal_x <= dsp_mul_z[0][31:0] - dsp_mul_z[1][31:0];
+                raster_reciprocal_start <= 1'b1;
                 state <= DRAW_TRIANGLE04;
             end
 
             DRAW_TRIANGLE04: begin
-                reciprocal_start <= 1'b0;
+                raster_reciprocal_start <= 1'b0;
                 if (reciprocal_done) begin
                     inv_area <= reciprocal_z;
                     x <= min_x;
@@ -448,11 +538,11 @@ module graphite #(
                 // w0 = edge_function(vv1, vv2, p);
                 // w0 = mul(c0 - a0, b1 - a1) - mul(c1 - a1, b0 - a0)
                 // t0 = mul(c0 - a0, b1 - a1)
-                dsp_mul_p0[0] <= (p0 - vv10);
-                dsp_mul_p1[0] <= (vv21 - vv11);
+                raster_dsp_mul_p0[0] <= (p0 - vv10);
+                raster_dsp_mul_p1[0] <= (vv21 - vv11);
                 // t1 = mul(c1 - a1, b0 - a0)
-                dsp_mul_p0[1] <= (p1 - vv11);
-                dsp_mul_p1[1] <= (vv20 - vv10);
+                raster_dsp_mul_p0[1] <= (p1 - vv11);
+                raster_dsp_mul_p1[1] <= (vv20 - vv10);
                 state <= DRAW_TRIANGLE06;
             end
 
@@ -463,12 +553,12 @@ module graphite #(
                 // w1 = edge_function(vv2, vv0, p);
                 // w1 = mul(c0 - a0, b1 - a1) - mul(c1 - a1, b0 - a0)
                 // t0 = mul(c0 - a0, b1 - a1)
-                dsp_mul_p0[0] <= (p0 - vv20);
-                dsp_mul_p1[0] <= (vv01 - vv21);
+                raster_dsp_mul_p0[0] <= (p0 - vv20);
+                raster_dsp_mul_p1[0] <= (vv01 - vv21);
 
                 // t1 = mul(c1 - a1, b0 - a0)
-                dsp_mul_p0[1] <= (p1 - vv21);
-                dsp_mul_p1[1] <= (vv00 - vv20);
+                raster_dsp_mul_p0[1] <= (p1 - vv21);
+                raster_dsp_mul_p1[1] <= (vv00 - vv20);
                 state <= DRAW_TRIANGLE07;
             end
 
@@ -478,11 +568,11 @@ module graphite #(
                 // w2 = edge_function(vv0, vv1, p);
                 // w2 = mul(c0 - a0, b1 - a1) - mul(c1 - a1, b0 - a0)
                 // t0 = mul(c0 - a0, b1 - a1)
-                dsp_mul_p0[0] <= (p0 - vv00);
-                dsp_mul_p1[0] <= (vv11 - vv01);
+                raster_dsp_mul_p0[0] <= (p0 - vv00);
+                raster_dsp_mul_p1[0] <= (vv11 - vv01);
                 // t1 = mul(c1 - a1, b0 - a0)
-                dsp_mul_p0[1] <= (p1 - vv01);
-                dsp_mul_p1[1] <= (vv10 - vv00);
+                raster_dsp_mul_p0[1] <= (p1 - vv01);
+                raster_dsp_mul_p1[1] <= (vv10 - vv00);
 
                 state <= DRAW_TRIANGLE08;
             end
@@ -498,14 +588,14 @@ module graphite #(
                     state <= DRAW_TRIANGLE59;
                 end else begin
                     // w0 = mul(w0, inv_area)
-                    dsp_mul_p0[0] <= w0;
-                    dsp_mul_p1[0] <= inv_area;
+                    raster_dsp_mul_p0[0] <= w0;
+                    raster_dsp_mul_p1[0] <= inv_area;
                     // w1 = mul(w1, inv_area)
-                    dsp_mul_p0[1] <= w1;
-                    dsp_mul_p1[1] <= inv_area;
+                    raster_dsp_mul_p0[1] <= w1;
+                    raster_dsp_mul_p1[1] <= inv_area;
                     // w2 = mul(w2, inv_area)
-                    dsp_mul_p0[2] <= w2;
-                    dsp_mul_p1[2] <= inv_area;
+                    raster_dsp_mul_p0[2] <= w2;
+                    raster_dsp_mul_p1[2] <= inv_area;
                     state <= DRAW_TRIANGLE13;
                 end
             end
@@ -520,14 +610,14 @@ module graphite #(
             DRAW_TRIANGLE15: begin
                 // r = mul(w0, c00) + mul(w1, c10) + mul(w2, c20)
                 // t0 = mul(w0, c00)
-                dsp_mul_p0[0] <= w0;
-                dsp_mul_p1[0] <= c00;
+                raster_dsp_mul_p0[0] <= w0;
+                raster_dsp_mul_p1[0] <= c00;
                 // t1 = mul(w1, c10)
-                dsp_mul_p0[1] <= w1;
-                dsp_mul_p1[1] <= c10;
+                raster_dsp_mul_p0[1] <= w1;
+                raster_dsp_mul_p1[1] <= c10;
                 // t2 = mul(w2, c20)
-                dsp_mul_p0[2] <= w2;
-                dsp_mul_p1[2] <= c20;
+                raster_dsp_mul_p0[2] <= w2;
+                raster_dsp_mul_p1[2] <= c20;
                 state <= DRAW_TRIANGLE18;
             end
 
@@ -535,14 +625,14 @@ module graphite #(
                 r <= dsp_mul_z[0][31:0] + dsp_mul_z[1][31:0] + dsp_mul_z[2][31:0];
                 // g = mul(w0, c01) + mul(w1, c11) + mul(w2, c21)
                 // t0 = mul(w0, c01)
-                dsp_mul_p0[0] <= w0;
-                dsp_mul_p1[0] <= c01;
+                raster_dsp_mul_p0[0] <= w0;
+                raster_dsp_mul_p1[0] <= c01;
                 // t1 = mul(w1, c11)
-                dsp_mul_p0[1] <= w1;
-                dsp_mul_p1[1] <= c11;
+                raster_dsp_mul_p0[1] <= w1;
+                raster_dsp_mul_p1[1] <= c11;
                 // t2 = mul(w2, c21)
-                dsp_mul_p0[2] <= w2;
-                dsp_mul_p1[2] <= c21;
+                raster_dsp_mul_p0[2] <= w2;
+                raster_dsp_mul_p1[2] <= c21;
                 state <= DRAW_TRIANGLE21;
             end
 
@@ -550,14 +640,14 @@ module graphite #(
                 g <= dsp_mul_z[0][31:0] + dsp_mul_z[1][31:0] + dsp_mul_z[2][31:0];
                 // b = mul(w0, c02) + mul(w1, c12) + mul(w2, c22)
                 // t0 = mul(w0, c02)
-                dsp_mul_p0[0] <= w0;
-                dsp_mul_p1[0] <= c02;
+                raster_dsp_mul_p0[0] <= w0;
+                raster_dsp_mul_p1[0] <= c02;
                 // t1 = mul(w1, c12)
-                dsp_mul_p0[1] <= w1;
-                dsp_mul_p1[1] <= c12;
+                raster_dsp_mul_p0[1] <= w1;
+                raster_dsp_mul_p1[1] <= c12;
                 // t2 = mul(w2, c22)
-                dsp_mul_p0[2] <= w2;
-                dsp_mul_p1[2] <= c22;
+                raster_dsp_mul_p0[2] <= w2;
+                raster_dsp_mul_p1[2] <= c22;
                 state <= DRAW_TRIANGLE24;
             end
 
@@ -574,14 +664,14 @@ module graphite #(
             DRAW_TRIANGLE25: begin
                 // s = mul(w0, st00) + mul(w1, st10) + mul(w2, st20)
                 // t0 = mul(w0, st00)
-                dsp_mul_p0[0] <= w0;
-                dsp_mul_p1[0] <= st00;
+                raster_dsp_mul_p0[0] <= w0;
+                raster_dsp_mul_p1[0] <= st00;
                 // t1 = mul(w1, st10)
-                dsp_mul_p0[1] <= w1;
-                dsp_mul_p1[1] <= st10;
+                raster_dsp_mul_p0[1] <= w1;
+                raster_dsp_mul_p1[1] <= st10;
                 // t2 = mul(w2, st20)
-                dsp_mul_p0[2] <= w2;
-                dsp_mul_p1[2] <= st20;
+                raster_dsp_mul_p0[2] <= w2;
+                raster_dsp_mul_p1[2] <= st20;
                 state <= DRAW_TRIANGLE28;
             end
 
@@ -589,14 +679,14 @@ module graphite #(
                 s <= dsp_mul_z[0][31:0] + dsp_mul_z[1][31:0] + dsp_mul_z[2][31:0];
                 // t = mul(w0, st01) + mul(w1, st11) + mul(w2, st21)
                 // t0 = mul(w0, st01)
-                dsp_mul_p0[0] <= w0;
-                dsp_mul_p1[0] <= st01;
+                raster_dsp_mul_p0[0] <= w0;
+                raster_dsp_mul_p1[0] <= st01;
                 // t1 = mul(w1, st11)
-                dsp_mul_p0[1] <= w1;
-                dsp_mul_p1[1] <= st11;
+                raster_dsp_mul_p0[1] <= w1;
+                raster_dsp_mul_p1[1] <= st11;
                 // t2 = mul(w2, st21)
-                dsp_mul_p0[2] <= w2;
-                dsp_mul_p1[2] <= st21;
+                raster_dsp_mul_p0[2] <= w2;
+                raster_dsp_mul_p1[2] <= st21;
                 state <= DRAW_TRIANGLE31;
             end
 
@@ -607,174 +697,25 @@ module graphite #(
 
             DRAW_TRIANGLE32: begin
                 // z = w0 * vv02 + w1 * vv12 + w2 * vv22
-                dsp_mul_p0[0] <= w0;
-                dsp_mul_p1[0] <= vv02;
-                dsp_mul_p0[1] <= w1;
-                dsp_mul_p1[1] <= vv12;
-                dsp_mul_p0[2] <= w2;
-                dsp_mul_p1[2] <= vv22;
-                state <= DRAW_TRIANGLE35;
+                raster_dsp_mul_p0[0] <= w0;
+                raster_dsp_mul_p1[0] <= vv02;
+                raster_dsp_mul_p0[1] <= w1;
+                raster_dsp_mul_p1[1] <= vv12;
+                raster_dsp_mul_p0[2] <= w2;
+                raster_dsp_mul_p1[2] <= vv22;
+                state <= DRAW_TRIANGLE33;
             end
 
-            DRAW_TRIANGLE35: begin
+            DRAW_TRIANGLE33: begin
                 z <= dsp_mul_z[0][31:0] + dsp_mul_z[1][31:0] + dsp_mul_z[2][31:0];
-                vram_addr_o <= fb_address + depth_rel_address + 32'(y) * FB_WIDTH + 32'(x);
-                if (is_depth_test) begin
-                    vram_wr_o <= 1'b0;
-                    vram_sel_o <= 1'b1;
-                    state <= DRAW_TRIANGLE36;
-                end else begin
-                    state <= DRAW_TRIANGLE39;
-                end
+                frag_launch <= 1'b1;
+                state <= DRAW_TRIANGLE_FRAGMENT;
             end
 
-            DRAW_TRIANGLE36: begin
-                vram_sel_o <= 1'b0;
-                state <= DRAW_TRIANGLE37;
-            end
-
-            DRAW_TRIANGLE37: begin
-                depth <= 16'(vram_data_in_i);
-                state <= DRAW_TRIANGLE38;
-            end
-
-            DRAW_TRIANGLE38: begin
-                if (16'(z) > depth) begin
-                    state <= DRAW_TRIANGLE39;
-                end else begin
+            DRAW_TRIANGLE_FRAGMENT: begin
+                frag_launch <= 1'b0;
+                if (frag_done)
                     state <= DRAW_TRIANGLE59;
-                end
-            end
-
-            DRAW_TRIANGLE39: begin
-                vram_data_out_o <= 16'(z);
-                vram_wr_o <= 1'b1;
-                vram_sel_o <= 1'b1;
-                state <= DRAW_TRIANGLE40;
-            end
-
-            DRAW_TRIANGLE40: begin
-                vram_sel_o <= 1'b0;
-                state <= DRAW_TRIANGLE41;
-            end
-
-            DRAW_TRIANGLE41: begin
-                if (is_perspective_correct) begin
-                    // Perspective correction
-                    // r = r * 1/z
-                    // g = g * 1/z
-                    // b = b * 1/z
-                    // s = s * 1/z
-                    // t = t * 1/z
-                    reciprocal_x <= z << 12;
-                    reciprocal_start <= 1'b1;
-                    state <= DRAW_TRIANGLE42;
-                end else begin
-                    state <= DRAW_TRIANGLE48;
-                end
-            end
-
-            DRAW_TRIANGLE42: begin
-                reciprocal_start <= 1'b0;
-                if (reciprocal_done) begin
-                    dsp_mul_p0[0] <= r;
-                    dsp_mul_p1[0] <= (reciprocal_z << 12);
-                    dsp_mul_p0[1] <= g;
-                    dsp_mul_p1[1] <= (reciprocal_z << 12);
-                    dsp_mul_p0[2] <= b;
-                    dsp_mul_p1[2] <= (reciprocal_z << 12);
-                    state <= DRAW_TRIANGLE43;
-                end
-            end
-
-            DRAW_TRIANGLE43: begin
-                r <= dsp_mul_z[0][31:0] >> 8;
-                g <= dsp_mul_z[1][31:0] >> 8;
-                b <= dsp_mul_z[2][31:0] >> 8;
-                dsp_mul_p0[0] <= s;
-                dsp_mul_p1[0] <= (reciprocal_z << 12);
-                dsp_mul_p0[1] <= t;
-                dsp_mul_p1[1] <= (reciprocal_z << 12);
-                state <= DRAW_TRIANGLE44;
-            end
-
-            DRAW_TRIANGLE44: begin
-                s <= dsp_mul_z[0][31:0] >> 8;
-                t <= dsp_mul_z[1][31:0] >> 8;
-                state <= DRAW_TRIANGLE48;
-            end
-
-            DRAW_TRIANGLE48: begin
-                if (is_textured) begin
-                    state <= DRAW_TRIANGLE49;
-                end else begin
-                    state <= DRAW_TRIANGLE54;
-                end
-            end
-
-            DRAW_TRIANGLE49: begin
-                // y = mul((TEXTURE_HEIGHT - 1) << 14, clamp(t))
-                dsp_mul_p0[0] <= (((TEXTURE_HEIGHT << texture_height_scale) - 1) << 14);
-                dsp_mul_p1[0] <= (is_clamp_t ? clamp(t) : wrap(t));
-                // x = mul((TEXTURE_WIDTH - 1) << 14, clamp(s))
-                dsp_mul_p0[1] <= (((TEXTURE_WIDTH << texture_width_scale) - 1) << 14);
-                dsp_mul_p1[1] <= (is_clamp_s ? clamp(s) : wrap(s));
-                state <= DRAW_TRIANGLE51;
-            end
-
-            DRAW_TRIANGLE51: begin
-                dsp_mul_p0[0] <= dsp_mul_z[0][31:0] & 32'hFFFFC000;
-                dsp_mul_p1[0] <= (TEXTURE_WIDTH << texture_width_scale) << 14;
-                state <= DRAW_TRIANGLE52;
-            end
-
-            DRAW_TRIANGLE52: begin
-                vram_sel_o <= 1'b1;
-                vram_wr_o  <= 1'b0;
-                vram_addr_o <= texture_address + 32'(dsp_mul_z[0] >> 14) + 32'(dsp_mul_z[1] >> 14);
-                state <= DRAW_TRIANGLE53;
-            end
-
-            DRAW_TRIANGLE53: begin
-                vram_sel_o <= 1'b0;
-                sample <= vram_data_in_i;
-                state <= DRAW_TRIANGLE54;
-            end
-
-            DRAW_TRIANGLE54: begin
-                // Write RGB565 color to VRAM
-                // The sample is RGB444, so a conversion is required
-                dsp_mul_p0[0] <= {13'd0, sample[11:8], sample[11], 14'd0};
-                dsp_mul_p1[0] <= r;
-                state <= DRAW_TRIANGLE55;
-            end
-
-            DRAW_TRIANGLE55: begin
-                vram_data_out_o[15:11] <= 5'(dsp_mul_z[0][31:0] >> 14);
-                dsp_mul_p0[0] <= {12'd0, sample[7:4], sample[7:6], 14'd0};
-                dsp_mul_p1[0] <= g;
-                state <= DRAW_TRIANGLE56;
-            end
-
-            DRAW_TRIANGLE56: begin
-                vram_data_out_o[10:5] <= 6'(dsp_mul_z[0][31:0] >> 14);
-                dsp_mul_p0[0] <= {13'd0, sample[3:0], sample[3], 14'd0};
-                dsp_mul_p1[0] <= b;
-                state <= DRAW_TRIANGLE57;
-            end
-
-            DRAW_TRIANGLE57: begin
-                vram_data_out_o[4:0] <= 5'(dsp_mul_z[0][31:0] >> 14);
-                vram_sel_o <= 1'b1;
-                vram_wr_o  <= 1'b1;
-                vram_addr_o <= fb_address + back_rel_address + raster_rel_address;
-                state <= DRAW_TRIANGLE58;
-            end
-
-            DRAW_TRIANGLE58: begin
-                state <= DRAW_TRIANGLE59;
-                vram_sel_o <= 1'b0;
-                vram_wr_o  <= 1'b0;
             end
 
             DRAW_TRIANGLE59: begin
@@ -800,19 +741,20 @@ module graphite #(
         endcase
 
         if (reset_i) begin
-            swap_o              <= 1'b0;
-            vram_sel_o          <= 1'b0;
-            vram_wr_o           <= 1'b0;
-            clear_o             <= 1'b0;
-            fb_address          <= FB_ADDRESS;
-            front_rel_address   <= 32'h0;
-            back_rel_address    <= FB_WIDTH * FB_HEIGHT;
-            depth_rel_address   <= 2 * FB_WIDTH * FB_HEIGHT;
-            texture_address     <= FB_ADDRESS + 3 * FB_WIDTH * FB_HEIGHT;
-            state               <= WAIT_COMMAND;
-            reciprocal_start    <= 1'b0;
-            texture_width_scale <= 3'd0;
+            swap_o               <= 1'b0;
+            core_vram_sel        <= 1'b0;
+            core_vram_wr         <= 1'b0;
+            clear_o              <= 1'b0;
+            fb_address           <= FB_ADDRESS;
+            front_rel_address    <= 32'h0;
+            back_rel_address     <= FB_WIDTH * FB_HEIGHT;
+            depth_rel_address    <= 2 * FB_WIDTH * FB_HEIGHT;
+            texture_address      <= FB_ADDRESS + 3 * FB_WIDTH * FB_HEIGHT;
+            state                <= WAIT_COMMAND;
+            raster_reciprocal_start <= 1'b0;
+            texture_width_scale  <= 3'd0;
             texture_height_scale <= 3'd0;
+            frag_launch          <= 1'b0;
         end
     end
 
