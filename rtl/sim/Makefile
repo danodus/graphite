@@ -11,8 +11,11 @@ clean:
 	rm -rf obj_dir
 	rm -f golden_capture.tga
 
-sim: top.sv ../graphite_fragment_shader.sv sim_main.cpp $(SRC) ../../common/graphite.h ../../common/cube.h ../../common/teapot.h
-	$(VERILATOR) -cc --exe $(CFLAGS) $(LDFLAGS) top.sv ../graphite_fragment_shader.sv sim_main.cpp $(SRC) -I..
+RTL := top.sv ../graphite.sv ../graphite_command_processor.sv ../graphite_rasterizer.sv \
+       ../graphite_fragment_shader.sv ../reciprocal.sv ../div.sv
+
+sim: $(RTL) sim_main.cpp $(SRC) ../../common/graphite.h ../../common/cube.h ../../common/teapot.h
+	$(VERILATOR) -cc --exe $(CFLAGS) $(LDFLAGS) $(RTL) sim_main.cpp $(SRC) -I..
 	$(MAKE) -j 4 -C obj_dir -f Vtop.mk
 
 run: sim
