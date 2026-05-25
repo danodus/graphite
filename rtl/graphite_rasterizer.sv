@@ -96,6 +96,7 @@ module graphite_rasterizer #(
     logic reciprocal_done;
 
     logic frag_launch;
+    logic start_pending;
     wire fs_busy;
     wire frag_done;
 
@@ -104,7 +105,7 @@ module graphite_rasterizer #(
     wire [31:0] fs_vram_addr_o;
     wire [15:0] fs_vram_data_out_o;
 
-    assign busy_o = (state != IDLE) | start_i;
+    assign busy_o = (state != IDLE);
     assign fs_busy_o = fs_busy;
 
     assign p0 = {6'd0, x, 14'd0};
@@ -201,10 +202,22 @@ module graphite_rasterizer #(
     assign vram_addr_o = fs_vram_addr_o;
     assign vram_data_out_o = fs_vram_data_out_o;
 
+    // Latch start (one-cycle pulse from cmd proc is easy to miss after module split).
+    always_ff @(posedge clk) begin
+        if (reset_i) begin
+            start_pending <= 1'b0;
+        end else begin
+            if (start_i)
+                start_pending <= 1'b1;
+            else if (ce_i && state != IDLE)
+                start_pending <= 1'b0;
+        end
+    end
+
     always_ff @(posedge clk) begin
         if (ce_i) case (state)
             IDLE: begin
-                if (start_i)
+                if (start_pending)
                     state <= DRAW_TRIANGLE00;
             end
 

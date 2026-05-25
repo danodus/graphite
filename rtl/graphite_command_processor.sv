@@ -72,6 +72,9 @@ module graphite_command_processor #(
     logic [31:0] core_vram_addr;
     logic [15:0] core_vram_data_out;
 
+    // Draw completion handshake: must see busy high before accepting idle (see OP_DRAW).
+    logic raster_busy_seen;
+
     assign front_addr_o = fb_address + front_rel_address;
     assign cmd_axis_tready_o = (state == WAIT_COMMAND) && !raster_busy_i;
 
@@ -313,8 +316,9 @@ module graphite_command_processor #(
                         is_perspective_correct <= cmd_axis_tdata_i[4];
                         texture_width_scale    <= cmd_axis_tdata_i[7:5];
                         texture_height_scale   <= cmd_axis_tdata_i[10:8];
-                        raster_start_o <= 1'b1;
-                        state <= WAIT_RASTER;
+                        raster_start_o   <= 1'b1;
+                        raster_busy_seen <= 1'b0;
+                        state            <= WAIT_RASTER;
                     end
                     OP_SWAP: begin
                         if (vsync_i || !cmd_axis_tdata_i[0]) begin
@@ -349,7 +353,9 @@ module graphite_command_processor #(
             end
 
             WAIT_RASTER: begin
-                if (!raster_busy_i)
+                if (raster_busy_i)
+                    raster_busy_seen <= 1'b1;
+                else if (raster_busy_seen)
                     state <= WAIT_COMMAND;
             end
 
@@ -391,6 +397,7 @@ module graphite_command_processor #(
             texture_width_scale  <= 3'd0;
             texture_height_scale <= 3'd0;
             raster_start_o    <= 1'b0;
+            raster_busy_seen  <= 1'b0;
         end
     end
 
