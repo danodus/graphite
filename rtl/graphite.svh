@@ -1,92 +1,53 @@
+// graphite.svh
+// Copyright (c) 2021-2026 Daniel Cliche
+// SPDX-License-Identifier: MIT
+
 `ifndef GRAPHITE_SVH
 `define GRAPHITE_SVH
 
 // 8 OP | 24 Immediate
 
-localparam OP_SET_X0        = 0;
-localparam OP_SET_Y0        = 1;
-localparam OP_SET_Z0        = 2;
-localparam OP_SET_X1        = 3;
-localparam OP_SET_Y1        = 4;
-localparam OP_SET_Z1        = 5;
-localparam OP_SET_X2        = 6;
-localparam OP_SET_Y2        = 7;
-localparam OP_SET_Z2        = 8;
-localparam OP_SET_R0        = 9;
-localparam OP_SET_G0        = 10;
-localparam OP_SET_B0        = 11;
-localparam OP_SET_R1        = 12;
-localparam OP_SET_G1        = 13;
-localparam OP_SET_B1        = 14;
-localparam OP_SET_R2        = 15;
-localparam OP_SET_G2        = 16;
-localparam OP_SET_B2        = 17;
-localparam OP_SET_S0        = 18;
-localparam OP_SET_T0        = 19;
-localparam OP_SET_S1        = 20;
-localparam OP_SET_T1        = 21;
-localparam OP_SET_S2        = 22;
-localparam OP_SET_T2        = 23;
-localparam OP_CLEAR         = 24;
-localparam OP_DRAW          = 25;
-localparam OP_SWAP          = 26;
-localparam OP_SET_TEX_ADDR  = 27;
-localparam OP_SET_FB_ADDR   = 28;
+localparam OP_SET_MIN_X         = 0;
+localparam OP_SET_MAX_X         = 1;
+localparam OP_SET_MAX_Y         = 2;
+localparam OP_SET_START_X       = 3;
+localparam OP_SET_START_Y       = 4;
+localparam OP_SET_E01_START     = 5;
+localparam OP_SET_E12_START     = 6;
+localparam OP_SET_E20_START     = 7;
+localparam OP_SET_STEP_E01_X    = 8;
+localparam OP_SET_STEP_E01_Y    = 9;
+localparam OP_SET_STEP_E12_X    = 10;
+localparam OP_SET_STEP_E12_Y    = 11;
+localparam OP_SET_STEP_E20_X    = 12;
+localparam OP_SET_STEP_E20_Y    = 13;
+localparam OP_SET_START_W_INV   = 14;
+localparam OP_SET_START_S       = 15;
+localparam OP_SET_START_T       = 16;
+localparam OP_SET_START_R       = 17;
+localparam OP_SET_START_G       = 18;
+localparam OP_SET_START_B       = 19;
+localparam OP_SET_DW_DX         = 20;
+localparam OP_SET_DW_DY         = 21;
+localparam OP_SET_DS_DX         = 22;
+localparam OP_SET_DS_DY         = 23;
+localparam OP_SET_DT_DX         = 24;
+localparam OP_SET_DT_DY         = 25;
+localparam OP_SET_DR_DX         = 26;
+localparam OP_SET_DR_DY         = 27;
+localparam OP_SET_DG_DX         = 28;
+localparam OP_SET_DG_DY         = 29;
+localparam OP_SET_DB_DX         = 30;
+localparam OP_SET_DB_DY         = 31;
+localparam OP_CLEAR             = 32;
+localparam OP_DRAW              = 33;
+localparam OP_SWAP              = 34;
+localparam OP_SET_TEX_ADDR      = 35;
+localparam OP_SET_FB_ADDR       = 36;
 
 
 
 localparam OP_POS   = 24;
 localparam OP_SIZE  = 8;
-
-function logic signed [63:0] mul(logic signed [31:0] x, logic signed [31:0] y);
-    logic signed [63:0] x2, y2, mul2;
-    begin
-        x2 = {{32{x[31]}}, x};
-        y2 = {{32{y[31]}}, y};
-        mul = (x2 * y2) >>> 14;
-    end
-endfunction
-
-function logic signed [31:0] div(logic signed [31:0] x, logic signed [31:0] y);
-    logic signed [63:0] x2, y2, div2;
-    begin
-        x2 = {{32{x[31]}}, x};
-        y2 = {{32{y[31]}}, y};
-        div2 = (x2 << 14) / y2;
-        div = div2[31:0];
-    end
-endfunction
-
-function logic signed [31:0] clamp(logic signed [31:0] x);
-    if (x[31])
-        clamp = 32'd0;
-    else if (x[31:14] != 18'd0)
-        clamp = 32'd1 << 14;
-    else
-        clamp = x;
-endfunction
-
-function logic signed [31:0] wrap(logic signed [31:0] x);
-    if (x[31])
-        wrap = 32'd0;
-    else
-        wrap = {18'd0, x[13:0]};
-endfunction
-
-function logic signed [11:0] min(logic signed [11:0] a, logic signed [11:0] b);
-    min = (a <= b) ? a : b;
-endfunction
-
-function logic signed [11:0] max(logic signed [11:0] a, logic signed [11:0] b);
-    max = (a >= b) ? a : b;
-endfunction
-
-function logic signed [11:0] min3(logic signed [11:0] a, logic signed [11:0] b, logic signed [11:0] c);
-    min3 = min(a, min(b, c));
-endfunction
-
-function logic signed [11:0] max3(logic signed [11:0] a, logic signed [11:0] b, logic signed [11:0] c);
-    max3 = max(a, max(b, c));
-endfunction
 
 `endif // GRAPHITE_SVH

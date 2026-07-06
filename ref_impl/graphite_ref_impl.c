@@ -1,5 +1,5 @@
 // graphite_ref_impl.c
-// Copyright (c) 2021-2024 Daniel Cliche
+// Copyright (c) 2021-2026 Daniel Cliche
 // SPDX-License-Identifier: MIT
 
 #include <SDL.h>
@@ -14,8 +14,6 @@ static int screen_height = 240;
 static int screen_scale = 3;
 
 static SDL_Renderer* renderer;
-
-bool g_rasterizer_barycentric = true;
 
 void draw_pixel(int x, int y, int color) {
 
@@ -36,16 +34,11 @@ void draw_pixel(int x, int y, int color) {
 void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y,
                       bool depth_test, bool perspective_correct)
 {
-    if (g_rasterizer_barycentric) {
-        sw_draw_triangle_barycentric(p[0].x, p[0].y, t[0].w, t[0].u, t[0].v, c[0].x, c[0].y, c[0].z, c[0].w, p[1].x, p[1].y, t[1].w, t[1].u, t[1].v, c[1].x, c[1].y, c[1].z, c[1].w, p[2].x, p[2].y, t[2].w, t[2].u, t[2].v, c[2].x, c[2].y, c[2].z, c[2].w, (tex != NULL) ? true : false, clamp_s, clamp_t, depth_test, perspective_correct);
-    } else {
-        sw_draw_triangle_standard(p[0].x, p[0].y, t[0].w, t[0].u, t[0].v, c[0].x, c[0].y, c[0].z, c[0].w, p[1].x, p[1].y, t[1].w, t[1].u, t[1].v, c[1].x, c[1].y, c[1].z, c[1].w, p[2].x, p[2].y, t[2].w, t[2].u, t[2].v, c[2].x, c[2].y, c[2].z, c[2].w, (tex != NULL) ? true : false, clamp_s, clamp_t, depth_test, perspective_correct);
-    }
+    sw_draw_triangle_standard(p[0].x, p[0].y, t[0].w, t[0].u, t[0].v, c[0].x, c[0].y, c[0].z, c[0].w, p[1].x, p[1].y, t[1].w, t[1].u, t[1].v, c[1].x, c[1].y, c[1].z, c[1].w, p[2].x, p[2].y, t[2].w, t[2].u, t[2].v, c[2].x, c[2].y, c[2].z, c[2].w, (tex != NULL) ? true : false, clamp_s, clamp_t, depth_test, perspective_correct);
 }
 
 int main() {
     sw_init_rasterizer_standard(screen_width, screen_height, draw_pixel);
-    sw_init_rasterizer_barycentric(screen_width, screen_height, draw_pixel);
 
     SDL_Init(SDL_INIT_VIDEO);
 
@@ -106,11 +99,7 @@ int main() {
     while (!quit) {
         SDL_SetRenderDrawColor(renderer, 50, 50, 50, SDL_ALPHA_OPAQUE);
         SDL_RenderClear(renderer);
-        if (g_rasterizer_barycentric) {
-            sw_clear_depth_buffer_barycentric();
-        } else {
-            sw_clear_depth_buffer_standard();
-        }
+        sw_clear_depth_buffer_standard();
 
         //
         // camera
@@ -148,7 +137,7 @@ int main() {
 
         for(fx32 x = FX(0.0); x < FX(120.0f); x+=FX(10.0f)) {
             v1.x = x, v1.y = FX(140.0f), v1.z = FX(1.0f), v1.w = FX(1.0f);
-            draw_line(v0, v1, (vec2d){FX(0.0f), FX(0.0f), FX(0.0f)}, (vec2d){FX(0.0f), FX(0.0f), FX(0.0f)}, c0, c0, FX(1.0f), NULL, true, true, 0, 0, perspective_correct);
+            draw_line(v0, v1, (vec2d){FX(0.0f), FX(0.0f), FX(1.0f)}, (vec2d){FX(0.0f), FX(0.0f), FX(1.0f)}, c0, c0, FX(1.0f), NULL, true, true, 0, 0, perspective_correct);
         }
 
         // Draw model
@@ -233,14 +222,6 @@ int main() {
                         if (scale > 1.0f)
                             scale -= 1.0f;
                         break;                        
-                    case SDL_SCANCODE_BACKSLASH:
-                        g_rasterizer_barycentric = !g_rasterizer_barycentric;
-                        if (g_rasterizer_barycentric) {
-                            printf("Barycentric\n");
-                        } else {
-                            printf("Standard\n");
-                        }
-                        break;
                     default:
                         // do nothing
                         break;
@@ -254,7 +235,6 @@ int main() {
     SDL_DestroyWindow(window);
     SDL_Quit();
 
-    sw_dispose_rasterizer_barycentric();
     sw_dispose_rasterizer_standard();
 
     return 0;

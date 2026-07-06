@@ -1,5 +1,5 @@
 // graphite.c
-// Copyright (c) 2021-2024 Daniel Cliche
+// Copyright (c) 2021-2026 Daniel Cliche
 // SPDX-License-Identifier: MIT
 
 // Ref.: One Lone Coder's 3D Graphics Engine tutorial available on YouTube
@@ -499,9 +499,35 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
     // define the line between the two points
     vec3d line = vector_sub(&v1, &v0);
 
-    // find the normal vector of this line
-    vec3d normal = (vec3d){-line.y, line.x, FX(0.0f), FX(0.0f)};
-    normal = vector_normalize(&normal);
+    // find the normal vector of this line using fixed point math, dynamically scaling
+    // to avoid overflow when the line is very long in screen space.
+    fx32 dx = line.x;
+    fx32 dy = line.y;
+
+    fx32 abs_dx = dx < 0 ? -dx : dx;
+    fx32 abs_dy = dy < 0 ? -dy : dy;
+    fx32 max_val = abs_dx > abs_dy ? abs_dx : abs_dy;
+
+    int shift = 0;
+    while (max_val > FX(100.0f)) {
+        max_val >>= 1;
+        shift++;
+    }
+
+    fx32 sdx = dx >> shift;
+    fx32 sdy = dy >> shift;
+    fx32 len = SQRT(MUL(sdx, sdx) + MUL(sdy, sdy));
+
+    vec3d normal;
+    if (len > FX(0.0f)) {
+        normal.x = DIV(-sdy, len);
+        normal.y = DIV(sdx, len);
+    } else {
+        normal.x = FX(0.0f);
+        normal.y = FX(0.0f);
+    }
+    normal.z = FX(0.0f);
+    normal.w = FX(0.0f);
 
     vec3d miter = vector_mul(&normal, thickness);
 
@@ -874,6 +900,36 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 t->p[1] = tp;
                 t->t[1] = tt;
                 t->c[1] = tc;
+            }
+
+            if (perspective_correct) {
+                fx32 w0 = DIV(FX(1.0f), t->t[0].w);
+                fx32 w1 = DIV(FX(1.0f), t->t[1].w);
+                fx32 w2 = DIV(FX(1.0f), t->t[2].w);
+
+                t->t[0].u = MUL(t->t[0].u, w0);
+                t->t[1].u = MUL(t->t[1].u, w1);
+                t->t[2].u = MUL(t->t[2].u, w2);
+
+                t->t[0].v = MUL(t->t[0].v, w0);
+                t->t[1].v = MUL(t->t[1].v, w1);
+                t->t[2].v = MUL(t->t[2].v, w2);
+
+                t->c[0].x = MUL(t->c[0].x, w0);
+                t->c[1].x = MUL(t->c[1].x, w1);
+                t->c[2].x = MUL(t->c[2].x, w2);
+
+                t->c[0].y = MUL(t->c[0].y, w0);
+                t->c[1].y = MUL(t->c[1].y, w1);
+                t->c[2].y = MUL(t->c[2].y, w2);
+
+                t->c[0].z = MUL(t->c[0].z, w0);
+                t->c[1].z = MUL(t->c[1].z, w1);
+                t->c[2].z = MUL(t->c[2].z, w2);
+
+                t->c[0].w = MUL(t->c[0].w, w0);
+                t->c[1].w = MUL(t->c[1].w, w1);
+                t->c[2].w = MUL(t->c[2].w, w2);
             }
 
             // rasterize triangle

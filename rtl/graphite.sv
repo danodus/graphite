@@ -47,9 +47,12 @@ module graphite #(
     logic [31:0] raster_vram_addr;
     logic [15:0] raster_vram_data_out;
 
-    logic signed [31:0] vv00, vv01, vv02, vv10, vv11, vv12, vv20, vv21, vv22;
-    logic signed [31:0] c00, c01, c02, c10, c11, c12, c20, c21, c22;
-    logic signed [31:0] st00, st01, st10, st11, st20, st21;
+    logic [15:0] min_x, max_x, max_y, start_x, start_y;
+    logic signed [31:0] E01_start, E12_start, E20_start;
+    logic signed [31:0] step_e01_x, step_e01_y, step_e12_x, step_e12_y, step_e20_x, step_e20_y;
+    logic signed [31:0] start_w_inv, start_s, start_t, start_r, start_g, start_b;
+    logic signed [31:0] dw_dx, dw_dy, ds_dx, ds_dy, dt_dx, dt_dy;
+    logic signed [31:0] dr_dx, dr_dy, dg_dx, dg_dy, db_dx, db_dy;
     logic [31:0] fb_address, texture_address, back_rel_address, depth_rel_address;
     logic is_textured, is_clamp_s, is_clamp_t, is_depth_test, is_perspective_correct;
     logic [2:0] texture_width_scale, texture_height_scale;
@@ -77,13 +80,12 @@ module graphite #(
         .core_vram_mask_o(core_vram_mask),
         .core_vram_addr_o(core_vram_addr),
         .core_vram_data_out_o(core_vram_data_out),
-        .vv00_o(vv00), .vv01_o(vv01), .vv02_o(vv02),
-        .vv10_o(vv10), .vv11_o(vv11), .vv12_o(vv12),
-        .vv20_o(vv20), .vv21_o(vv21), .vv22_o(vv22),
-        .c00_o(c00), .c01_o(c01), .c02_o(c02),
-        .c10_o(c10), .c11_o(c11), .c12_o(c12),
-        .c20_o(c20), .c21_o(c21), .c22_o(c22),
-        .st00_o(st00), .st01_o(st01), .st10_o(st10), .st11_o(st11), .st20_o(st20), .st21_o(st21),
+        .min_x_o(min_x), .max_x_o(max_x), .max_y_o(max_y), .start_x_o(start_x), .start_y_o(start_y),
+        .E01_start_o(E01_start), .E12_start_o(E12_start), .E20_start_o(E20_start),
+        .step_e01_x_o(step_e01_x), .step_e01_y_o(step_e01_y), .step_e12_x_o(step_e12_x), .step_e12_y_o(step_e12_y), .step_e20_x_o(step_e20_x), .step_e20_y_o(step_e20_y),
+        .start_w_inv_o(start_w_inv), .start_s_o(start_s), .start_t_o(start_t), .start_r_o(start_r), .start_g_o(start_g), .start_b_o(start_b),
+        .dw_dx_o(dw_dx), .dw_dy_o(dw_dy), .ds_dx_o(ds_dx), .ds_dy_o(ds_dy), .dt_dx_o(dt_dx), .dt_dy_o(dt_dy),
+        .dr_dx_o(dr_dx), .dr_dy_o(dr_dy), .dg_dx_o(dg_dx), .dg_dy_o(dg_dy), .db_dx_o(db_dx), .db_dy_o(db_dy),
         .fb_address_o(fb_address), .texture_address_o(texture_address),
         .back_rel_address_o(back_rel_address), .depth_rel_address_o(depth_rel_address),
         .is_textured_o(is_textured), .is_clamp_s_o(is_clamp_s), .is_clamp_t_o(is_clamp_t),
@@ -91,42 +93,93 @@ module graphite #(
         .texture_width_scale_o(texture_width_scale), .texture_height_scale_o(texture_height_scale)
     );
 
+    logic tex_req;
+    logic [31:0] tex_addr;
+    logic tex_ack;
+    logic [31:0] tex_rdata;
+
+    logic fb_req;
+    logic [31:0] fb_addr;
+    logic [31:0] fb_wdata;
+    logic fb_ack;
+
+    logic zb_req;
+    logic zb_we;
+    logic [31:0] zb_addr;
+    logic [15:0] zb_wdata;
+    logic zb_ack;
+    logic [15:0] zb_rdata;
+
     graphite_rasterizer #(
-        .FB_WIDTH(FB_WIDTH),
-        .FB_HEIGHT(FB_HEIGHT),
-        .TEXTURE_WIDTH(TEXTURE_WIDTH),
-        .TEXTURE_HEIGHT(TEXTURE_HEIGHT)
+        .FB_WIDTH(FB_WIDTH)
     ) rasterizer (
         .clk(clk),
-        .reset_i(reset_i),
-        .ce_i(ce_i),
-        .start_i(raster_start),
-        .vv00_i(vv00), .vv01_i(vv01), .vv02_i(vv02),
-        .vv10_i(vv10), .vv11_i(vv11), .vv12_i(vv12),
-        .vv20_i(vv20), .vv21_i(vv21), .vv22_i(vv22),
-        .c00_i(c00), .c01_i(c01), .c02_i(c02),
-        .c10_i(c10), .c11_i(c11), .c12_i(c12),
-        .c20_i(c20), .c21_i(c21), .c22_i(c22),
-        .st00_i(st00), .st01_i(st01), .st10_i(st10), .st11_i(st11), .st20_i(st20), .st21_i(st21),
-        .fb_address_i(fb_address), .texture_address_i(texture_address),
-        .back_rel_address_i(back_rel_address), .depth_rel_address_i(depth_rel_address),
-        .is_textured_i(is_textured), .is_clamp_s_i(is_clamp_s), .is_clamp_t_i(is_clamp_t),
-        .is_depth_test_i(is_depth_test), .is_perspective_correct_i(is_perspective_correct),
-        .texture_width_scale_i(texture_width_scale), .texture_height_scale_i(texture_height_scale),
-        .vram_data_in_i(vram_data_in_i),
-        .busy_o(raster_busy),
-        .fs_busy_o(fs_busy),
-        .vram_sel_o(raster_vram_sel),
-        .vram_wr_o(raster_vram_wr),
-        .vram_mask_o(raster_vram_mask),
-        .vram_addr_o(raster_vram_addr),
-        .vram_data_out_o(raster_vram_data_out)
+        .rst_n(!reset_i),
+        .start(raster_start),
+        .busy(raster_busy),
+        .enable_texture(is_textured),
+        .min_x(min_x), .max_x(max_x), .max_y(max_y), .start_x(start_x), .start_y(start_y),
+        .E01_start(E01_start), .E12_start(E12_start), .E20_start(E20_start),
+        .step_e01_x(step_e01_x), .step_e01_y(step_e01_y), .step_e12_x(step_e12_x), .step_e12_y(step_e12_y), .step_e20_x(step_e20_x), .step_e20_y(step_e20_y),
+        .start_w_inv(start_w_inv), .start_s(start_s), .start_t(start_t), .start_r(start_r), .start_g(start_g), .start_b(start_b),
+        .dw_dx(dw_dx), .dw_dy(dw_dy), .ds_dx(ds_dx), .ds_dy(ds_dy), .dt_dx(dt_dx), .dt_dy(dt_dy),
+        .dr_dx(dr_dx), .dr_dy(dr_dy), .dg_dx(dg_dx), .dg_dy(dg_dy), .db_dx(db_dx), .db_dy(db_dy),
+        .tex_req(tex_req), .tex_addr(tex_addr), .tex_ack(tex_ack), .tex_rdata(tex_rdata),
+        .fb_req(fb_req), .fb_addr(fb_addr), .fb_wdata(fb_wdata), .fb_ack(fb_ack),
+        .zb_req(zb_req), .zb_we(zb_we), .zb_addr(zb_addr), .zb_wdata(zb_wdata), .zb_ack(zb_ack), .zb_rdata(zb_rdata)
     );
 
-    assign vram_sel_o = fs_busy ? raster_vram_sel : core_vram_sel;
-    assign vram_wr_o = fs_busy ? raster_vram_wr : core_vram_wr;
-    assign vram_mask_o = fs_busy ? raster_vram_mask : core_vram_mask;
-    assign vram_addr_o = fs_busy ? raster_vram_addr : core_vram_addr;
-    assign vram_data_out_o = fs_busy ? raster_vram_data_out : core_vram_data_out;
+    // Rasterizer VRAM arbiter
+    logic [15:0] fb_wdata_565;
+    assign fb_wdata_565 = {fb_wdata[23:19], fb_wdata[15:10], fb_wdata[7:3]};
+
+    assign tex_rdata = {8'h00, 
+                        vram_data_in_i[15:11], vram_data_in_i[15:13],
+                        vram_data_in_i[10:5], vram_data_in_i[10:9],
+                        vram_data_in_i[4:0], vram_data_in_i[4:2]};
+    assign zb_rdata = vram_data_in_i;
+
+    always_comb begin
+        raster_vram_sel = 0;
+        raster_vram_wr = 0;
+        raster_vram_mask = 4'hF;
+        raster_vram_addr = 0;
+        raster_vram_data_out = 0;
+        zb_ack = 0;
+        tex_ack = 0;
+        fb_ack = 0;
+
+        if (zb_req && !zb_we) begin
+            raster_vram_sel = 1;
+            raster_vram_wr = 0;
+            raster_vram_addr = fb_address + depth_rel_address + zb_addr;
+            zb_ack = 1;
+        end else if (tex_req) begin
+            raster_vram_sel = 1;
+            raster_vram_wr = 0;
+            raster_vram_addr = texture_address + tex_addr;
+            tex_ack = 1;
+        end else if (zb_req && zb_we) begin
+            raster_vram_sel = 1;
+            raster_vram_wr = 1;
+            raster_vram_addr = fb_address + depth_rel_address + zb_addr;
+            raster_vram_data_out = zb_wdata;
+            zb_ack = 1;
+        end else if (fb_req) begin
+            raster_vram_sel = 1;
+            raster_vram_wr = 1;
+            raster_vram_addr = fb_address + back_rel_address + fb_addr;
+            raster_vram_data_out = fb_wdata_565;
+            fb_ack = 1;
+        end
+    end
+
+    assign fs_busy = 0; // Legacy signal
+    
+    assign vram_sel_o = raster_vram_sel | core_vram_sel;
+    assign vram_wr_o = raster_vram_wr | core_vram_wr;
+    assign vram_mask_o = raster_vram_sel ? raster_vram_mask : core_vram_mask;
+    assign vram_addr_o = raster_vram_sel ? raster_vram_addr : core_vram_addr;
+    assign vram_data_out_o = raster_vram_sel ? raster_vram_data_out : core_vram_data_out;
 
 endmodule

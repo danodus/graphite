@@ -1,5 +1,5 @@
 // graphite.h
-// Copyright (c) 2021-2024 Daniel Cliche
+// Copyright (c) 2021-2026 Daniel Cliche
 // SPDX-License-Identifier: MIT
 
 #ifndef GRAPHITE_H
@@ -30,7 +30,7 @@
 
 typedef int32_t fx32;
 
-#define SCALE 14
+#define SCALE 16
 
 #define FX(x) ((fx32)_FLOAT_TO_FIXED(x, SCALE))
 #define FXI(x) ((fx32)_INT_TO_FIXED(x, SCALE))

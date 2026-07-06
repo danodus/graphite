@@ -1,7 +1,7 @@
 VERILATOR = verilator
 
 LDFLAGS := -LDFLAGS "$(shell sdl2-config --libs)"
-CFLAGS := -CFLAGS "-std=c++14 $(shell sdl2-config --cflags) -g -I ../../../common -DFIXED_POINT=1"
+CFLAGS := -CFLAGS "-std=c++14 $(shell sdl2-config --cflags) -g -I ../../../common -DFIXED_POINT=1" -Wno-TIMESCALEMOD
 
 SRC := ../../common/graphite.c ../../common/cube.c ../../common/teapot.c ../../common/tex32x32.c ../../common/tex64x64.c ../../common/tex32x64.c ../../common/tex256x2048.c
 
@@ -11,8 +11,8 @@ clean:
 	rm -rf obj_dir
 	rm -f golden_capture.tga
 
-RTL := top.sv ../graphite.sv ../graphite_command_processor.sv ../graphite_rasterizer.sv \
-       ../graphite_fragment_shader.sv ../reciprocal.sv ../div.sv
+RTL := top.sv ../graphite.sv ../graphite_command_processor.sv ../graphite_rasterizer.v \
+       ../reciprocal_lerp.v
 
 sim: $(RTL) sim_main.cpp $(SRC) ../../common/graphite.h ../../common/cube.h ../../common/teapot.h
 	$(VERILATOR) -cc --exe $(CFLAGS) $(LDFLAGS) $(RTL) sim_main.cpp $(SRC) -I..
