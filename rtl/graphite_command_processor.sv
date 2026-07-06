@@ -413,8 +413,10 @@ module graphite_command_processor #(
                 if (core_vram_addr < fb_address + back_rel_address + FB_WIDTH * FB_HEIGHT - 1)
                     core_vram_addr <= core_vram_addr + 1;
                 else begin
-                    clear_o <= 1'b0;
-                    state   <= WAIT_COMMAND;
+                    clear_o       <= 1'b0;
+                    core_vram_sel <= 1'b0;
+                    core_vram_wr  <= 1'b0;
+                    state         <= WAIT_COMMAND;
                 end
             end
 
@@ -422,8 +424,10 @@ module graphite_command_processor #(
                 if (core_vram_addr < fb_address + 3 * FB_WIDTH * FB_HEIGHT - 1)
                     core_vram_addr <= core_vram_addr + 1;
                 else begin
-                    clear_o <= 1'b0;
-                    state   <= WAIT_COMMAND;
+                    clear_o       <= 1'b0;
+                    core_vram_sel <= 1'b0;
+                    core_vram_wr  <= 1'b0;
+                    state         <= WAIT_COMMAND;
                 end
             end
         endcase

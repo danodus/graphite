@@ -118,6 +118,7 @@ module graphite #(
         .start(raster_start),
         .busy(raster_busy),
         .enable_texture(is_textured),
+        .enable_depth_test(is_depth_test),
         .min_x(min_x), .max_x(max_x), .max_y(max_y), .start_x(start_x), .start_y(start_y),
         .E01_start(E01_start), .E12_start(E12_start), .E20_start(E20_start),
         .step_e01_x(step_e01_x), .step_e01_y(step_e01_y), .step_e12_x(step_e12_x), .step_e12_y(step_e12_y), .step_e20_x(step_e20_x), .step_e20_y(step_e20_y),

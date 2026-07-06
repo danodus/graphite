@@ -11,6 +11,7 @@ module graphite_rasterizer #(
     // Control
     input  wire         start,
     input  wire         enable_texture,
+    input  wire         enable_depth_test,
     output wire         busy,
 
     // Bounding Box
@@ -295,7 +296,7 @@ module graphite_rasterizer #(
         end
     end
     wire [15:0] current_zb_depth = (zb_ack && !zb_we) ? zb_rdata : latched_zb_rdata;
-    wire z_pass = 1'b1;//(p4_depth_16 < current_zb_depth);
+    wire z_pass = !enable_depth_test || (p4_depth_16 < current_zb_depth);
 
     // =========================================================================
     // Pipeline Stage 5 (Early-Z Compare & Texture Fetch)
@@ -360,10 +361,8 @@ module graphite_rasterizer #(
             if (!mem_stall) begin
                 if (p_r5_valid) begin
                     fb_addr  <= ({16'b0, p_r5_y} * FB_WIDTH) + {16'b0, p_r5_x};
-                    // TODO: Restore this
-                    // fb_wdata <= enable_texture ? {8'b0, blend_r[7:0], blend_g[7:0], blend_b[7:0]}
-                    //                            : {8'b0, p_r5_clamped_r, p_r5_clamped_g, p_r5_clamped_b};
-                    fb_wdata <= {8'b0, 24'hFFFFFF};
+                    fb_wdata <= enable_texture ? {8'b0, blend_r[7:0], blend_g[7:0], blend_b[7:0]}
+                                               : {8'b0, p_r5_clamped_r, p_r5_clamped_g, p_r5_clamped_b};
                     fb_req   <= 1'b1;
                 end else begin
                     fb_req   <= 1'b0;
@@ -385,7 +384,7 @@ module graphite_rasterizer #(
             zb_wdata <= 16'd0;
         end else begin
             if (!mem_stall) begin
-                if (p_r5_valid) begin
+                if (p_r5_valid && enable_depth_test) begin
                     // Stage 6 Write
                     zb_addr  <= ({16'b0, p_r5_y} * FB_WIDTH) + {16'b0, p_r5_x};
                     zb_wdata <= p_r5_depth_16;

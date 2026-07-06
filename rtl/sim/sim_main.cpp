@@ -73,9 +73,9 @@ extern uint16_t tex64x64[];
 extern uint16_t tex32x32[];
 extern uint16_t tex32x64[];
 extern uint16_t tex256x2048[];
-uint16_t *tex = tex256x2048;
-#define TEXTURE_WIDTH 256
-#define TEXTURE_HEIGHT 2048
+uint16_t *tex = tex32x32;
+#define TEXTURE_WIDTH 32
+#define TEXTURE_HEIGHT 32
 
 typedef int32_t fixed16;
 #define TO_FIXED(x)          ((fixed16)std::round((x) * 65536.0f))
@@ -84,11 +84,6 @@ typedef int32_t fixed16;
 #define FIXED_MUL(a, b)      ((fixed16)(((int64_t)(a) * (b)) >> 16))
 #define FIXED_DIV(a, b)      ((fixed16)(((int64_t)(a) << 16) / (b)))
 #define FIXED_CEIL_HALF(x)   (((x) + 0x7FFF) >> 16)
-
-struct Vertex {
-    fixed16 x, y, w; // Added homogeneous coordinates depth metric (W)
-    fixed16 s, t, r, g, b;
-};
 
 struct Vertex2 {
     int16_t x, y; // 12.4 fixed-point format
@@ -198,9 +193,9 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
 {
 
     Vertex2 v0, v1, v2;
-    v0.x = p[0].x >> 12; v0.y = p[0].y >> 12; v0.w = p[0].w; v0.s = t[0].u; v0.t = t[0].v; v0.r = c[0].x; v0.g = c[0].y; v0.b = c[0].z;
-    v1.x = p[1].x >> 12; v1.y = p[1].y >> 12; v1.w = p[1].w; v1.s = t[1].u; v1.t = t[1].v; v1.r = c[1].x; v1.g = c[1].y; v1.b = c[1].z;
-    v2.x = p[2].x >> 12; v2.y = p[2].y >> 12; v2.w = p[2].w; v2.s = t[2].u; v2.t = t[2].v; v2.r = c[2].x; v2.g = c[2].y; v2.b = c[2].z;
+    v0.x = p[0].x >> 12; v0.y = p[0].y >> 12; v0.w = t[0].w; v0.s = MUL(t[0].u, FXI(TEXTURE_WIDTH)); v0.t = MUL(t[0].v, FXI(TEXTURE_HEIGHT)); v0.r = MUL(c[0].x, FXI(255)); v0.g = MUL(c[0].y, FXI(255)); v0.b = MUL(c[0].z, FXI(255));
+    v1.x = p[1].x >> 12; v1.y = p[1].y >> 12; v1.w = t[1].w; v1.s = MUL(t[1].u, FXI(TEXTURE_WIDTH)); v1.t = MUL(t[1].v, FXI(TEXTURE_HEIGHT)); v1.r = MUL(c[1].x, FXI(255)); v1.g = MUL(c[1].y, FXI(255)); v1.b = MUL(c[1].z, FXI(255));
+    v2.x = p[2].x >> 12; v2.y = p[2].y >> 12; v2.w = t[2].w; v2.s = MUL(t[2].u, FXI(TEXTURE_WIDTH)); v2.t = MUL(t[2].v, FXI(TEXTURE_HEIGHT)); v2.r = MUL(c[2].x, FXI(255)); v2.g = MUL(c[2].y, FXI(255)); v2.b = MUL(c[2].z, FXI(255));
 
     if (v0.y > v1.y) std::swap(v0, v1);
     if (v0.y > v2.y) std::swap(v0, v2);
@@ -212,9 +207,9 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     if (det == 0) return; 
 
     // SOLVE HIGH-PRECISION GRADIENTS
-    fixed16 w0_inv = (fixed16)(((int64_t)1 << 40) / v0.w);
-    fixed16 w1_inv = (fixed16)(((int64_t)1 << 40) / v1.w);
-    fixed16 w2_inv = (fixed16)(((int64_t)1 << 40) / v2.w);
+    fixed16 w0_inv = v0.w;
+    fixed16 w1_inv = v1.w;
+    fixed16 w2_inv = v2.w;
 
     fixed16 s0_w = FIXED_MUL(v0.s, w0_inv); fixed16 s1_w = FIXED_MUL(v1.s, w1_inv); fixed16 s2_w = FIXED_MUL(v2.s, w2_inv);
     fixed16 t0_w = FIXED_MUL(v0.t, w0_inv); fixed16 t1_w = FIXED_MUL(v1.t, w1_inv); fixed16 t2_w = FIXED_MUL(v2.t, w2_inv);
@@ -262,17 +257,17 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     int32_t dv_dx   = (int32_t)(raw_dv_dx   >> 14);
     int32_t dv_dy   = (int32_t)(raw_dt_dy   >> 14);
 
-    int32_t start_r = (int32_t)(raw_start_r >> 16);
-    int32_t dr_dx   = (int32_t)(raw_dr_dx   >> 16);
-    int32_t dr_dy   = (int32_t)(raw_dr_dy   >> 16);
+    int32_t start_r = ((int32_t)(raw_start_r >> 20) << 8) >> 8;
+    int32_t dr_dx   = ((int32_t)(raw_dr_dx   >> 20) << 8) >> 8;
+    int32_t dr_dy   = ((int32_t)(raw_dr_dy   >> 20) << 8) >> 8;
 
-    int32_t start_g = (int32_t)(raw_start_g >> 16);
-    int32_t dg_dx   = (int32_t)(raw_dg_dx   >> 16);
-    int32_t dg_dy   = (int32_t)(raw_dg_dy   >> 16);
+    int32_t start_g = ((int32_t)(raw_start_g >> 20) << 8) >> 8;
+    int32_t dg_dx   = ((int32_t)(raw_dg_dx   >> 20) << 8) >> 8;
+    int32_t dg_dy   = ((int32_t)(raw_dg_dy   >> 20) << 8) >> 8;
 
-    int32_t start_b = (int32_t)(raw_start_b >> 16);
-    int32_t db_dx   = (int32_t)(raw_db_dx   >> 16);
-    int32_t db_dy   = (int32_t)(raw_db_dy   >> 16);
+    int32_t start_b = ((int32_t)(raw_start_b >> 20) << 8) >> 8;
+    int32_t db_dx   = ((int32_t)(raw_db_dx   >> 20) << 8) >> 8;
+    int32_t db_dy   = ((int32_t)(raw_db_dy   >> 20) << 8) >> 8;
 
     // Rasterizer Bounding Box & Pineda Edges setup
     bool sign_bit = det > 0;
