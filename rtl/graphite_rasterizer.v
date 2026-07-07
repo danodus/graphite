@@ -12,6 +12,8 @@ module graphite_rasterizer #(
     input  wire         start,
     input  wire         enable_texture,
     input  wire         enable_depth_test,
+    input  wire [2:0]   texture_width_scale,
+    input  wire [2:0]   texture_height_scale,
     output wire         busy,
 
     // Bounding Box
@@ -284,7 +286,16 @@ module graphite_rasterizer #(
     wire [7:0] p4_clamped_g = p4_true_g[31] ? 8'h00 : (|p4_true_g[30:24] ? 8'hFF : p4_true_g[23:16]);
     wire [7:0] p4_clamped_b = p4_true_b[31] ? 8'h00 : (|p4_true_b[30:24] ? 8'hFF : p4_true_b[23:16]);
 
-    wire [31:0] p4_tex_addr = {18'b0, p4_true_v[21:16], p4_true_u[21:16], 2'b00};
+    wire [11:0] u_mask = (12'd1 << (5 + texture_width_scale)) - 12'd1;
+    wire [11:0] v_mask = (12'd1 << (5 + texture_height_scale)) - 12'd1;
+    
+    wire [11:0] u_wrapped = p4_true_u[27:16] & u_mask;
+    wire [11:0] v_wrapped = p4_true_v[27:16] & v_mask;
+
+    // Shift V by the texture width and add U
+    wire [23:0] tex_offset = ({12'd0, v_wrapped} << (5 + texture_width_scale)) | {12'd0, u_wrapped};
+
+    wire [31:0] p4_tex_addr = {8'b0, tex_offset};
 
     // Latched ZB data for Depth Test
     reg [15:0] latched_zb_rdata;

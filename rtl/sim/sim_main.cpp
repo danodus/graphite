@@ -73,9 +73,11 @@ extern uint16_t tex64x64[];
 extern uint16_t tex32x32[];
 extern uint16_t tex32x64[];
 extern uint16_t tex256x2048[];
-uint16_t *tex = tex32x32;
-#define TEXTURE_WIDTH 32
-#define TEXTURE_HEIGHT 32
+uint16_t *tex = tex64x64;
+#define TEXTURE_SCALE_X 1
+#define TEXTURE_SCALE_Y 1
+#define TEXTURE_WIDTH (32 << TEXTURE_SCALE_X)
+#define TEXTURE_HEIGHT (32 << TEXTURE_SCALE_Y)
 
 typedef int32_t fixed16;
 #define TO_FIXED(x)          ((fixed16)std::round((x) * 65536.0f))
@@ -191,11 +193,13 @@ static inline int64_t solve_gradient_high(int64_t det, fixed16 termA, int32_t fa
 void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y,
                       bool depth_test, bool perspective_correct)                      
 {
+    uint32_t texture_width = 32 << texture_scale_x;
+    uint32_t texture_height = 32 << texture_scale_y;
 
     Vertex2 v0, v1, v2;
-    v0.x = p[0].x >> 12; v0.y = p[0].y >> 12; v0.w = t[0].w; v0.s = MUL(t[0].u, FXI(TEXTURE_WIDTH)); v0.t = MUL(t[0].v, FXI(TEXTURE_HEIGHT)); v0.r = MUL(c[0].x, FXI(255)); v0.g = MUL(c[0].y, FXI(255)); v0.b = MUL(c[0].z, FXI(255));
-    v1.x = p[1].x >> 12; v1.y = p[1].y >> 12; v1.w = t[1].w; v1.s = MUL(t[1].u, FXI(TEXTURE_WIDTH)); v1.t = MUL(t[1].v, FXI(TEXTURE_HEIGHT)); v1.r = MUL(c[1].x, FXI(255)); v1.g = MUL(c[1].y, FXI(255)); v1.b = MUL(c[1].z, FXI(255));
-    v2.x = p[2].x >> 12; v2.y = p[2].y >> 12; v2.w = t[2].w; v2.s = MUL(t[2].u, FXI(TEXTURE_WIDTH)); v2.t = MUL(t[2].v, FXI(TEXTURE_HEIGHT)); v2.r = MUL(c[2].x, FXI(255)); v2.g = MUL(c[2].y, FXI(255)); v2.b = MUL(c[2].z, FXI(255));
+    v0.x = p[0].x >> 12; v0.y = p[0].y >> 12; v0.w = t[0].w; v0.s = MUL(t[0].u, FXI(texture_width)); v0.t = MUL(t[0].v, FXI(texture_height)); v0.r = MUL(c[0].x, FXI(255)); v0.g = MUL(c[0].y, FXI(255)); v0.b = MUL(c[0].z, FXI(255));
+    v1.x = p[1].x >> 12; v1.y = p[1].y >> 12; v1.w = t[1].w; v1.s = MUL(t[1].u, FXI(texture_width)); v1.t = MUL(t[1].v, FXI(texture_height)); v1.r = MUL(c[1].x, FXI(255)); v1.g = MUL(c[1].y, FXI(255)); v1.b = MUL(c[1].z, FXI(255));
+    v2.x = p[2].x >> 12; v2.y = p[2].y >> 12; v2.w = t[2].w; v2.s = MUL(t[2].u, FXI(texture_width)); v2.t = MUL(t[2].v, FXI(texture_height)); v2.r = MUL(c[2].x, FXI(255)); v2.g = MUL(c[2].y, FXI(255)); v2.b = MUL(c[2].z, FXI(255));
 
     if (v0.y > v1.y) std::swap(v0, v1);
     if (v0.y > v2.y) std::swap(v0, v2);
@@ -319,9 +323,6 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
 
 
     struct Command cmd;
-
-    printf("DRAW: min_x=%d, max_x=%d, start_y=%d, max_y=%d\n", min_x, max_x, start_y, max_y);
-
 
     auto push_16 = [&](uint32_t op, int32_t val) {
         cmd.opcode = op;
@@ -597,7 +598,7 @@ int main(int argc, char** argv, char** env) {
     bool wireframe = false;
     size_t nb_lights = 0;
     bool gouraud_shading = false;
-    bool textured = false;
+    bool textured = true;
     bool clamp_s = false;
     bool clamp_t = false;
     bool perspective_correct = true;
@@ -672,7 +673,7 @@ int main(int argc, char** argv, char** env) {
                 // Draw cube
                 texture_t dummy_texture;
                 draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, current_model, &mat_world, gouraud_shading ? &mat_normal : NULL, &mat_proj, &mat_view, lights, nb_lights,
-                           wireframe, textured ? &dummy_texture : NULL, clamp_s, clamp_t, 3, 6, perspective_correct);
+                           wireframe, textured ? &dummy_texture : NULL, clamp_s, clamp_t, TEXTURE_SCALE_X, TEXTURE_SCALE_Y, perspective_correct);
 
                 swap();
             }

@@ -119,6 +119,8 @@ module graphite #(
         .busy(raster_busy),
         .enable_texture(is_textured),
         .enable_depth_test(is_depth_test),
+        .texture_width_scale(texture_width_scale),
+        .texture_height_scale(texture_height_scale),
         .min_x(min_x), .max_x(max_x), .max_y(max_y), .start_x(start_x), .start_y(start_y),
         .E01_start(E01_start), .E12_start(E12_start), .E20_start(E20_start),
         .step_e01_x(step_e01_x), .step_e01_y(step_e01_y), .step_e12_x(step_e12_x), .step_e12_y(step_e12_y), .step_e20_x(step_e20_x), .step_e20_y(step_e20_y),
@@ -134,10 +136,10 @@ module graphite #(
     logic [15:0] fb_wdata_565;
     assign fb_wdata_565 = {fb_wdata[23:19], fb_wdata[15:10], fb_wdata[7:3]};
 
-    assign tex_rdata = {8'h00, 
-                        vram_data_in_i[15:11], vram_data_in_i[15:13],
-                        vram_data_in_i[10:5], vram_data_in_i[10:9],
-                        vram_data_in_i[4:0], vram_data_in_i[4:2]};
+    assign tex_rdata = {vram_data_in_i[15:12], vram_data_in_i[15:12],
+                        vram_data_in_i[11:8], vram_data_in_i[11:8],
+                        vram_data_in_i[7:4], vram_data_in_i[7:4],
+                        vram_data_in_i[3:0], vram_data_in_i[3:0]};
     assign zb_rdata = vram_data_in_i;
 
     always_comb begin
