@@ -12,6 +12,8 @@ module graphite_rasterizer #(
     input  wire         start,
     input  wire         enable_texture,
     input  wire         enable_depth_test,
+    input  wire         clamp_s,
+    input  wire         clamp_t,
     input  wire [2:0]   texture_width_scale,
     input  wire [2:0]   texture_height_scale,
     output wire         busy,
@@ -286,14 +288,26 @@ module graphite_rasterizer #(
     wire [7:0] p4_clamped_g = p4_true_g[31] ? 8'h00 : (|p4_true_g[30:24] ? 8'hFF : p4_true_g[23:16]);
     wire [7:0] p4_clamped_b = p4_true_b[31] ? 8'h00 : (|p4_true_b[30:24] ? 8'hFF : p4_true_b[23:16]);
 
+    wire [11:0] u_int = p4_true_u[27:16];
+    wire [11:0] v_int = p4_true_v[27:16];
+
     wire [11:0] u_mask = (12'd1 << (5 + texture_width_scale)) - 12'd1;
     wire [11:0] v_mask = (12'd1 << (5 + texture_height_scale)) - 12'd1;
     
-    wire [11:0] u_wrapped = p4_true_u[27:16] & u_mask;
-    wire [11:0] v_wrapped = p4_true_v[27:16] & v_mask;
+    wire u_negative = p4_true_u[31];
+    wire u_overflow = (p4_true_u[30:16] > {3'b000, u_mask});
+    wire [11:0] u_clamped = u_negative ? 12'd0 : (u_overflow ? u_mask : u_int);
+    wire [11:0] u_wrapped = u_int & u_mask;
+    wire [11:0] u_final   = clamp_s ? u_clamped : u_wrapped;
+
+    wire v_negative = p4_true_v[31];
+    wire v_overflow = (p4_true_v[30:16] > {3'b000, v_mask});
+    wire [11:0] v_clamped = v_negative ? 12'd0 : (v_overflow ? v_mask : v_int);
+    wire [11:0] v_wrapped = v_int & v_mask;
+    wire [11:0] v_final   = clamp_t ? v_clamped : v_wrapped;
 
     // Shift V by the texture width and add U
-    wire [23:0] tex_offset = ({12'd0, v_wrapped} << (5 + texture_width_scale)) | {12'd0, u_wrapped};
+    wire [23:0] tex_offset = ({12'd0, v_final} << (5 + texture_width_scale)) | {12'd0, u_final};
 
     wire [31:0] p4_tex_addr = {8'b0, tex_offset};
 
