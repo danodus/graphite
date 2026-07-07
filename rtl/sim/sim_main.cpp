@@ -183,9 +183,13 @@ static void swap(fx32* a, fx32* b) {
     *b = c;
 }
 
+static inline int64_t mul_shr4(int64_t a, int64_t b) {
+    return a * (b >> 4) + ((a * (b & 15)) >> 4);
+}
+
 static inline int64_t solve_gradient_high(int64_t det, fixed16 termA, int32_t factorA, fixed16 termB, int32_t factorB) {
     int64_t num = (int64_t)termA * factorA - (int64_t)termB * factorB; 
-    return (int64_t)((((__int128)num) << 20) / det);
+    return (num / det) * 1048576LL + ((num % det) * 1048576LL) / det;
 }
 
 
@@ -242,12 +246,12 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     int64_t raw_dg_dy = solve_gradient_high(det, dg2,     dx1, dg1,     dx2);
     int64_t raw_db_dy = solve_gradient_high(det, db2,     dx1, db1,     dx2);
 
-    int64_t raw_start_w = ((int64_t)w0_inv << 16) - (int64_t)((( __int128)v0.x * raw_dw_dx) >> 4) - (int64_t)((( __int128)v0.y * raw_dw_dy) >> 4);
-    int64_t raw_start_s = ((int64_t)s0_w   << 16) - (int64_t)((( __int128)v0.x * raw_du_dx) >> 4) - (int64_t)((( __int128)v0.y * raw_ds_dy) >> 4);
-    int64_t raw_start_t = ((int64_t)t0_w   << 16) - (int64_t)((( __int128)v0.x * raw_dv_dx) >> 4) - (int64_t)((( __int128)v0.y * raw_dt_dy) >> 4);
-    int64_t raw_start_r = ((int64_t)r0_w   << 16) - (int64_t)((( __int128)v0.x * raw_dr_dx) >> 4) - (int64_t)((( __int128)v0.y * raw_dr_dy) >> 4);
-    int64_t raw_start_g = ((int64_t)g0_w   << 16) - (int64_t)((( __int128)v0.x * raw_dg_dx) >> 4) - (int64_t)((( __int128)v0.y * raw_dg_dy) >> 4);
-    int64_t raw_start_b = ((int64_t)b0_w   << 16) - (int64_t)((( __int128)v0.x * raw_db_dx) >> 4) - (int64_t)((( __int128)v0.y * raw_db_dy) >> 4);    
+    int64_t raw_start_w = ((int64_t)w0_inv << 16) - mul_shr4(v0.x, raw_dw_dx) - mul_shr4(v0.y, raw_dw_dy);
+    int64_t raw_start_s = ((int64_t)s0_w   << 16) - mul_shr4(v0.x, raw_du_dx) - mul_shr4(v0.y, raw_ds_dy);
+    int64_t raw_start_t = ((int64_t)t0_w   << 16) - mul_shr4(v0.x, raw_dv_dx) - mul_shr4(v0.y, raw_dt_dy);
+    int64_t raw_start_r = ((int64_t)r0_w   << 16) - mul_shr4(v0.x, raw_dr_dx) - mul_shr4(v0.y, raw_dr_dy);
+    int64_t raw_start_g = ((int64_t)g0_w   << 16) - mul_shr4(v0.x, raw_dg_dx) - mul_shr4(v0.y, raw_dg_dy);
+    int64_t raw_start_b = ((int64_t)b0_w   << 16) - mul_shr4(v0.x, raw_db_dx) - mul_shr4(v0.y, raw_db_dy);    
 
     int32_t start_w = (int32_t)(raw_start_w >> 2);
     int32_t dw_dx   = (int32_t)(raw_dw_dx   >> 2);

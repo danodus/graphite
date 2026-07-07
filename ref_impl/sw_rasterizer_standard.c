@@ -272,11 +272,15 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
 // -------------------------------------------------------------------------
 // HOST GEOMETRY SETUP UNIT (REALIGNED FOR 12.4 COORDINATES)
 // -------------------------------------------------------------------------
+static inline int64_t mul_shr4(int64_t a, int64_t b) {
+    return a * (b >> 4) + ((a * (b & 15)) >> 4);
+}
+
 static inline int64_t solve_gradient_high(int64_t det, fixed16 termA, int32_t factorA, fixed16 termB, int32_t factorB) {
     // term is 16.16, factor is 12.4 -> product represents a 28.20 format fixed point structure
     int64_t num = (int64_t)termA * factorA - (int64_t)termB * factorB; 
     // Shift left by 20 to set up 40 fractional bits. Dividing by the 8 fractional bits of det yields 32.32
-    return (int64_t)((((__int128)num) << 20) / det);
+    return (num / det) * 1048576LL + ((num % det) * 1048576LL) / det;
 }
 
 static void draw_triangle(Vertex v0a, Vertex v1a, Vertex v2a, bool texture_enabled, bool depth_test) {
@@ -333,12 +337,12 @@ static void draw_triangle(Vertex v0a, Vertex v1a, Vertex v2a, bool texture_enabl
     int64_t raw_db_dy = solve_gradient_high(det, db2,     dx1, db1,     dx2);
 
     // Multiplied by 12.4 instead of 16.16 -> Shifting right by 4 balances output to standard 32.32
-    int64_t raw_start_w = ((int64_t)w0_inv << 16) - (int64_t)((( __int128)v0.x * raw_dw_dx) >> 4) - (int64_t)((( __int128)v0.y * raw_dw_dy) >> 4);
-    int64_t raw_start_s = ((int64_t)s0_w   << 16) - (int64_t)((( __int128)v0.x * raw_du_dx) >> 4) - (int64_t)((( __int128)v0.y * raw_ds_dy) >> 4);
-    int64_t raw_start_t = ((int64_t)t0_w   << 16) - (int64_t)((( __int128)v0.x * raw_dv_dx) >> 4) - (int64_t)((( __int128)v0.y * raw_dt_dy) >> 4);
-    int64_t raw_start_r = ((int64_t)r0_w   << 16) - (int64_t)((( __int128)v0.x * raw_dr_dx) >> 4) - (int64_t)((( __int128)v0.y * raw_dr_dy) >> 4);
-    int64_t raw_start_g = ((int64_t)g0_w   << 16) - (int64_t)((( __int128)v0.x * raw_dg_dx) >> 4) - (int64_t)((( __int128)v0.y * raw_dg_dy) >> 4);
-    int64_t raw_start_b = ((int64_t)b0_w   << 16) - (int64_t)((( __int128)v0.x * raw_db_dx) >> 4) - (int64_t)((( __int128)v0.y * raw_db_dy) >> 4);    
+    int64_t raw_start_w = ((int64_t)w0_inv << 16) - mul_shr4(v0.x, raw_dw_dx) - mul_shr4(v0.y, raw_dw_dy);
+    int64_t raw_start_s = ((int64_t)s0_w   << 16) - mul_shr4(v0.x, raw_du_dx) - mul_shr4(v0.y, raw_ds_dy);
+    int64_t raw_start_t = ((int64_t)t0_w   << 16) - mul_shr4(v0.x, raw_dv_dx) - mul_shr4(v0.y, raw_dt_dy);
+    int64_t raw_start_r = ((int64_t)r0_w   << 16) - mul_shr4(v0.x, raw_dr_dx) - mul_shr4(v0.y, raw_dr_dy);
+    int64_t raw_start_g = ((int64_t)g0_w   << 16) - mul_shr4(v0.x, raw_dg_dx) - mul_shr4(v0.y, raw_dg_dy);
+    int64_t raw_start_b = ((int64_t)b0_w   << 16) - mul_shr4(v0.x, raw_db_dx) - mul_shr4(v0.y, raw_db_dy);    
 
     // -------------------------------------------------------------------------
     // DOWN-SHIFT & QUANTIZE PACKETS INTO NATIVE 32-BIT REGISTER TYPES
