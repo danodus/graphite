@@ -16,6 +16,7 @@
 
 module reciprocal_lut (
     input  wire        clk,        // Synchronous BRAM clock
+    input  wire        ce,         // Clock enable
     input  wire        stall,      // Stall input (from reciprocal_lerp)
     input  wire [7:0]  idx,        // 8-bit normalization interval index
     output reg  [31:0] base,       // 32-bit segment base anchor point
@@ -23,7 +24,7 @@ module reciprocal_lut (
 );
 
     // Inferred Block RAM Look-Up Table Structure
-    always @(posedge clk) if (!stall) begin
+    always @(posedge clk) if (ce && !stall) begin
         case (idx)
             8'h00: begin base <= 32'h40000000; slope <= 24'h3FC040; end
             8'h01: begin base <= 32'h3FC03FC0; slope <= 24'h3F41BC; end

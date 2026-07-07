@@ -4,6 +4,7 @@
 
 module reciprocal_lerp (
     input  wire         clk,
+    input  wire         ce,
     input  wire         rst_n,
     input  wire         stall,  // Freeze all pipeline registers when high
     input  wire [31:0]  z_inv,  // Input 2.30 fixed-point stream from span
@@ -63,7 +64,7 @@ module reciprocal_lerp (
             r1_lz_count <= 5'd0;
             r1_lut_idx  <= 8'd0;
             r1_frac     <= 23'd0;
-        end else if (!stall) begin
+        end else if (ce && !stall) begin
             r1_lz_count <= lz_count;
             r1_lut_idx  <= z_norm[30:23];
             r1_frac     <= z_norm[22:0];
@@ -83,6 +84,7 @@ module reciprocal_lerp (
 
     reciprocal_lut u_sst1_table (
         .clk  (clk),
+        .ce   (ce),
         .stall(stall),       // ← stall gate prevents lut_base from advancing
         .idx  (r1_lut_idx),
         .base (lut_base),
@@ -98,7 +100,7 @@ module reciprocal_lerp (
         if (!rst_n) begin
             r1b_lz_count <= 5'd0;
             r1b_frac     <= 23'd0;
-        end else if (!stall) begin
+        end else if (ce && !stall) begin
             r1b_lz_count <= r1_lz_count;
             r1b_frac     <= r1_frac;
         end
@@ -115,7 +117,7 @@ module reciprocal_lerp (
             r2_lz_count   <= 5'd0;
             r2_base       <= 32'd0;
             r2_delta_prod <= 47'd0;
-        end else if (!stall) begin
+        end else if (ce && !stall) begin
             r2_lz_count   <= r1b_lz_count;
             r2_base       <= lut_base;
             r2_delta_prod <= r1b_frac * lut_slope;
@@ -131,7 +133,7 @@ module reciprocal_lerp (
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             w_out <= 32'd0;
-        end else if (!stall) begin
+        end else if (ce && !stall) begin
             w_out <= w_expanded[52:21];
         end
     end

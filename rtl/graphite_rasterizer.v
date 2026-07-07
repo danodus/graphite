@@ -6,6 +6,7 @@ module graphite_rasterizer #(
     parameter FB_WIDTH = 640
 ) (
     input  wire         clk,
+    input  wire         ce,
     input  wire         rst_n,
 
     // Control
@@ -145,7 +146,7 @@ module graphite_rasterizer #(
             acc_w_inv <= 32'd0;
             acc_s <= 32'd0; acc_t <= 32'd0;
             acc_r <= 32'd0; acc_g <= 32'd0; acc_b <= 32'd0;
-        end else begin
+        end else if (ce) begin
             if (start && !busy) begin
                 scan_active <= 1'b1;
                 hit_inside_this_row <= 1'b0;
@@ -205,26 +206,28 @@ module graphite_rasterizer #(
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             p_r1_valid <= 1'b0; p_r2_valid <= 1'b0; p_r3_valid <= 1'b0;
-        end else if (start && !busy) begin
-            p_r1_valid <= 1'b0; p_r2_valid <= 1'b0; p_r3_valid <= 1'b0;
-        end else if (!stall) begin
-            p_r1_valid  <= scanner_valid;
-            p_r1_inside <= scanner_inside;
-            p_r1_x      <= scan_x;     p_r1_y      <= scan_y;
-            p_r1_s_w    <= scanner_s_w; p_r1_t_w    <= scanner_t_w;
-            p_r1_r_w    <= scanner_r_w; p_r1_g_w    <= scanner_g_w; p_r1_b_w    <= scanner_b_w;
+        end else if (ce) begin
+            if (start && !busy) begin
+                p_r1_valid <= 1'b0; p_r2_valid <= 1'b0; p_r3_valid <= 1'b0;
+            end else if (!stall) begin
+                p_r1_valid  <= scanner_valid;
+                p_r1_inside <= scanner_inside;
+                p_r1_x      <= scan_x;     p_r1_y      <= scan_y;
+                p_r1_s_w    <= scanner_s_w; p_r1_t_w    <= scanner_t_w;
+                p_r1_r_w    <= scanner_r_w; p_r1_g_w    <= scanner_g_w; p_r1_b_w    <= scanner_b_w;
 
-            p_r2_valid  <= p_r1_valid;
-            p_r2_inside <= p_r1_inside;
-            p_r2_x      <= p_r1_x;     p_r2_y      <= p_r1_y;
-            p_r2_s_w    <= p_r1_s_w;   p_r2_t_w    <= p_r1_t_w;
-            p_r2_r_w    <= p_r1_r_w;   p_r2_g_w    <= p_r1_g_w;   p_r2_b_w    <= p_r1_b_w;
+                p_r2_valid  <= p_r1_valid;
+                p_r2_inside <= p_r1_inside;
+                p_r2_x      <= p_r1_x;     p_r2_y      <= p_r1_y;
+                p_r2_s_w    <= p_r1_s_w;   p_r2_t_w    <= p_r1_t_w;
+                p_r2_r_w    <= p_r1_r_w;   p_r2_g_w    <= p_r1_g_w;   p_r2_b_w    <= p_r1_b_w;
 
-            p_r3_valid  <= p_r2_valid;
-            p_r3_inside <= p_r2_inside;
-            p_r3_x      <= p_r2_x;     p_r3_y      <= p_r2_y;
-            p_r3_s_w    <= p_r2_s_w;   p_r3_t_w    <= p_r2_t_w;
-            p_r3_r_w    <= p_r2_r_w;   p_r3_g_w    <= p_r2_g_w;   p_r3_b_w    <= p_r2_b_w;
+                p_r3_valid  <= p_r2_valid;
+                p_r3_inside <= p_r2_inside;
+                p_r3_x      <= p_r2_x;     p_r3_y      <= p_r2_y;
+                p_r3_s_w    <= p_r2_s_w;   p_r3_t_w    <= p_r2_t_w;
+                p_r3_r_w    <= p_r2_r_w;   p_r3_g_w    <= p_r2_g_w;   p_r3_b_w    <= p_r2_b_w;
+            end
         end
     end
 
@@ -234,6 +237,7 @@ module graphite_rasterizer #(
     wire [31:0] w_out;
     reciprocal_lerp u_perspective_recip (
         .clk   (clk),
+        .ce    (ce),
         .rst_n (rst_n),
         .stall (stall),
         .z_inv (scanner_zinv),
@@ -249,17 +253,19 @@ module graphite_rasterizer #(
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             p_r4_valid <= 1'b0;
-        end else if (start && !busy) begin
-            p_r4_valid <= 1'b0;
-        end else if (!mem_stall) begin
-            if (zb_collision) begin
+        end else if (ce) begin
+            if (start && !busy) begin
                 p_r4_valid <= 1'b0;
-            end else begin
-                p_r4_valid  <= p_r3_valid;
-                p_r4_inside <= p_r3_inside;
-                p_r4_x      <= p_r3_x;     p_r4_y      <= p_r3_y;
-                p_r4_s_w    <= p_r3_s_w;   p_r4_t_w    <= p_r3_t_w;
-                p_r4_r_w    <= p_r3_r_w;   p_r4_g_w    <= p_r3_g_w;   p_r4_b_w    <= p_r3_b_w;
+            end else if (!mem_stall) begin
+                if (zb_collision) begin
+                    p_r4_valid <= 1'b0;
+                end else begin
+                    p_r4_valid  <= p_r3_valid;
+                    p_r4_inside <= p_r3_inside;
+                    p_r4_x      <= p_r3_x;     p_r4_y      <= p_r3_y;
+                    p_r4_s_w    <= p_r3_s_w;   p_r4_t_w    <= p_r3_t_w;
+                    p_r4_r_w    <= p_r3_r_w;   p_r4_g_w    <= p_r3_g_w;   p_r4_b_w    <= p_r3_b_w;
+                end
             end
         end
     end
@@ -316,8 +322,10 @@ module graphite_rasterizer #(
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             latched_zb_rdata <= 16'h0000;
-        end else if (zb_ack && !zb_we) begin
-            latched_zb_rdata <= zb_rdata;
+        end else if (ce) begin
+            if (zb_ack && !zb_we) begin
+                latched_zb_rdata <= zb_rdata;
+            end
         end
     end
     wire [15:0] current_zb_depth = (zb_ack && !zb_we) ? zb_rdata : latched_zb_rdata;
@@ -335,26 +343,28 @@ module graphite_rasterizer #(
             p_r5_valid <= 1'b0;
             tex_req    <= 1'b0;
             tex_addr   <= 32'd0;
-        end else if (start && !busy) begin
-            p_r5_valid <= 1'b0;
-        end else begin
-            if (!mem_stall) begin
-                p_r5_valid     <= p_r4_valid && p_r4_inside && z_pass;
-                p_r5_x         <= p_r4_x;
-                p_r5_y         <= p_r4_y;
-                p_r5_depth_16  <= p4_depth_16;
-                p_r5_clamped_r <= p4_clamped_r;
-                p_r5_clamped_g <= p4_clamped_g;
-                p_r5_clamped_b <= p4_clamped_b;
+        end else if (ce) begin
+            if (start && !busy) begin
+                p_r5_valid <= 1'b0;
+            end else begin
+                if (!mem_stall) begin
+                    p_r5_valid     <= p_r4_valid && p_r4_inside && z_pass;
+                    p_r5_x         <= p_r4_x;
+                    p_r5_y         <= p_r4_y;
+                    p_r5_depth_16  <= p4_depth_16;
+                    p_r5_clamped_r <= p4_clamped_r;
+                    p_r5_clamped_g <= p4_clamped_g;
+                    p_r5_clamped_b <= p4_clamped_b;
 
-                if (p_r4_valid && p_r4_inside && z_pass) begin
-                    tex_addr <= p4_tex_addr;
-                    tex_req  <= 1'b1;
-                end else begin
-                    tex_req  <= 1'b0;
+                    if (p_r4_valid && p_r4_inside && z_pass) begin
+                        tex_addr <= p4_tex_addr;
+                        tex_req  <= 1'b1;
+                    end else begin
+                        tex_req  <= 1'b0;
+                    end
+                end else if (tex_ack) begin
+                    tex_req <= 1'b0;
                 end
-            end else if (tex_ack) begin
-                tex_req <= 1'b0;
             end
         end
     end
@@ -364,8 +374,10 @@ module graphite_rasterizer #(
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             latched_tex_rdata <= 32'd0;
-        end else if (tex_ack) begin
-            latched_tex_rdata <= tex_rdata;
+        end else if (ce) begin
+            if (tex_ack) begin
+                latched_tex_rdata <= tex_rdata;
+            end
         end
     end
     wire [31:0] current_tex_data = tex_ack ? tex_rdata : latched_tex_rdata;
@@ -382,7 +394,7 @@ module graphite_rasterizer #(
             fb_req   <= 1'b0;
             fb_addr  <= 32'd0;
             fb_wdata <= 32'd0;
-        end else begin
+        end else if (ce) begin
             if (!mem_stall) begin
                 if (p_r5_valid) begin
                     fb_addr  <= ({16'b0, p_r5_y} * FB_WIDTH) + {16'b0, p_r5_x};
@@ -407,7 +419,7 @@ module graphite_rasterizer #(
             zb_we    <= 1'b0;
             zb_addr  <= 32'd0;
             zb_wdata <= 16'd0;
-        end else begin
+        end else if (ce) begin
             if (!mem_stall) begin
                 if (p_r5_valid && enable_depth_test) begin
                     // Stage 6 Write

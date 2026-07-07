@@ -128,9 +128,24 @@ module graphite_command_processor #(
     assign core_vram_data_out_o = core_vram_data_out;
 
     always_ff @(posedge clk) begin
-        raster_start_o <= 1'b0;
-        if (ce_i) case (state)
-            WAIT_COMMAND: begin
+        if (reset_i) begin
+            swap_o            <= 1'b0;
+            core_vram_sel     <= 1'b0;
+            core_vram_wr      <= 1'b0;
+            clear_o           <= 1'b0;
+            fb_address        <= FB_ADDRESS;
+            front_rel_address <= 32'h0;
+            back_rel_address  <= FB_WIDTH * FB_HEIGHT;
+            depth_rel_address <= 2 * FB_WIDTH * FB_HEIGHT;
+            texture_address   <= FB_ADDRESS + 3 * FB_WIDTH * FB_HEIGHT;
+            state             <= WAIT_COMMAND;
+            texture_width_scale  <= 3'd0;
+            texture_height_scale <= 3'd0;
+            raster_start_o    <= 1'b0;
+        end else if (ce_i) begin
+            raster_start_o <= 1'b0;
+            case (state)
+                WAIT_COMMAND: begin
                 swap_o <= 1'b0;
                 if (cmd_axis_tvalid_i)
                     state <= PROCESS_COMMAND;
@@ -430,22 +445,7 @@ module graphite_command_processor #(
                     state         <= WAIT_COMMAND;
                 end
             end
-        endcase
-
-        if (reset_i) begin
-            swap_o            <= 1'b0;
-            core_vram_sel     <= 1'b0;
-            core_vram_wr      <= 1'b0;
-            clear_o           <= 1'b0;
-            fb_address        <= FB_ADDRESS;
-            front_rel_address <= 32'h0;
-            back_rel_address  <= FB_WIDTH * FB_HEIGHT;
-            depth_rel_address <= 2 * FB_WIDTH * FB_HEIGHT;
-            texture_address   <= FB_ADDRESS + 3 * FB_WIDTH * FB_HEIGHT;
-            state             <= WAIT_COMMAND;
-            texture_width_scale  <= 3'd0;
-            texture_height_scale <= 3'd0;
-            raster_start_o    <= 1'b0;
+            endcase
         end
     end
 

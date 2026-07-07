@@ -114,6 +114,7 @@ module graphite #(
         .FB_WIDTH(FB_WIDTH)
     ) rasterizer (
         .clk(clk),
+        .ce(ce_i),
         .rst_n(!reset_i),
         .start(raster_start),
         .busy(raster_busy),
