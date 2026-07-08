@@ -111,7 +111,8 @@ module graphite #(
     logic [15:0] zb_rdata;
 
     graphite_rasterizer #(
-        .FB_WIDTH(FB_WIDTH)
+        .FB_WIDTH(FB_WIDTH),
+        .FB_HEIGHT(FB_HEIGHT)
     ) rasterizer (
         .clk(clk),
         .ce(ce_i),

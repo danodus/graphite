@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 module graphite_rasterizer #(
-    parameter FB_WIDTH = 640
+    parameter FB_WIDTH = 640,
+    parameter FB_HEIGHT = 480
 ) (
     input  wire         clk,
     input  wire         ce,
@@ -102,7 +103,7 @@ module graphite_rasterizer #(
     reg signed [31:0] acc_r, acc_g, acc_b;
     reg hit_inside_this_row;
 
-    wire scanner_valid  = scan_active && (scan_y <= max_y) && (scan_y < 16'd480);
+    wire scanner_valid  = scan_active && (scan_y <= max_y) && (scan_y < FB_HEIGHT);
     wire scanner_inside = scanner_valid && (scan_x >= min_x) && (scan_x <= max_x) &&
                           !E01[31] && !E12[31] && !E20[31];
 
@@ -159,7 +160,7 @@ module graphite_rasterizer #(
                 acc_s <= start_s; acc_t <= start_t;
                 acc_r <= start_r; acc_g <= start_g; acc_b <= start_b;
             end else if (scan_active && !stall) begin
-                if (scan_y > max_y || scan_y >= 16'd480) begin
+                if (scan_y > max_y || scan_y >= FB_HEIGHT) begin
                     scan_active <= 1'b0;
                 end else if (scan_step_down) begin
                     scan_y   <= scan_y + 1'b1;
@@ -174,7 +175,7 @@ module graphite_rasterizer #(
                     acc_r <= {{8{next_r_down[23]}}, next_r_down[23:0]};
                     acc_g <= {{8{next_g_down[23]}}, next_g_down[23:0]};
                     acc_b <= {{8{next_b_down[23]}}, next_b_down[23:0]};
-                    if (scan_y + 1'b1 > max_y || scan_y + 1'b1 >= 16'd480)
+                    if (scan_y + 1'b1 > max_y || scan_y + 1'b1 >= FB_HEIGHT)
                         scan_active <= 1'b0;
                 end else begin
                     if (scanner_inside) hit_inside_this_row <= 1'b1;
