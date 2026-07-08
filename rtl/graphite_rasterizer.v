@@ -86,7 +86,8 @@ module graphite_rasterizer #(
     wire zb_collision = p_r5_valid && p_r3_valid && p_r3_inside;
     wire mem_stall = (zb_req && !zb_ack) || (tex_req && !tex_ack) || (fb_req && !fb_ack);
     wire pipe_stall = mem_stall || zb_collision;
-    wire stall = pipe_stall;
+    wire mult_stall;
+    wire stall = pipe_stall || mult_stall;
 
     // =========================================================================
     // Scanner Registers (boustrophedon scan)
@@ -256,7 +257,7 @@ module graphite_rasterizer #(
         end else if (ce) begin
             if (start && !busy) begin
                 p_r4_valid <= 1'b0;
-            end else if (!mem_stall) begin
+            end else if (!mem_stall && !mult_stall) begin
                 if (zb_collision) begin
                     p_r4_valid <= 1'b0;
                 end else begin
@@ -270,24 +271,88 @@ module graphite_rasterizer #(
         end
     end
 
-    // Combinatorial Attribute Recovery at Stage 4
-    wire signed [63:0] p4_prod_u = $signed(p_r4_s_w) * $signed(w_out);
-    wire signed [63:0] p4_prod_v = $signed(p_r4_t_w) * $signed(w_out);
-    wire signed [63:0] p4_prod_r = $signed(p_r4_r_w) * $signed(w_out);
-    wire signed [63:0] p4_prod_g = $signed(p_r4_g_w) * $signed(w_out);
-    wire signed [63:0] p4_prod_b = $signed(p_r4_b_w) * $signed(w_out);
-
-    wire signed [31:0] p4_true_u = p4_prod_u[55:24];
-    wire signed [31:0] p4_true_v = p4_prod_v[55:24];
-    wire signed [31:0] p4_true_r = p4_prod_r[55:24];
-    wire signed [31:0] p4_true_g = p4_prod_g[55:24];
-    wire signed [31:0] p4_true_b = p4_prod_b[55:24];
-
+    // Depth recovery
     reg [15:0] p4_depth_16;
     always @(*) begin
         if (w_out[31])                       p4_depth_16 = 16'h0000;
         else if (w_out[30:16] > 15'd20000)   p4_depth_16 = 16'd20000;
         else                                 p4_depth_16 = w_out[31:16];
+    end
+
+
+    // Latched ZB data for Depth Test
+    reg [15:0] latched_zb_rdata;
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            latched_zb_rdata <= 16'h0000;
+        end else if (ce) begin
+            if (zb_ack && !zb_we) begin
+                latched_zb_rdata <= zb_rdata;
+            end
+        end
+    end
+    wire [15:0] current_zb_depth = (zb_ack && !zb_we) ? zb_rdata : latched_zb_rdata;
+    wire z_pass = !enable_depth_test || (p4_depth_16 < current_zb_depth);
+
+    // =========================================================================
+    // Time-multiplexed Multipliers (Stage 4)
+    // =========================================================================
+    reg [1:0] mult_state;
+    assign mult_stall = p_r4_valid && p_r4_inside && z_pass && (mult_state != 2'd3);
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            mult_state <= 2'd0;
+        end else if (ce) begin
+            if (start && !busy) begin
+                mult_state <= 2'd0;
+            end else if (!mem_stall) begin
+                if (p_r4_valid && p_r4_inside && z_pass) begin
+                    if (mult_state == 2'd3) begin
+                        mult_state <= 2'd0;
+                    end else begin
+                        mult_state <= mult_state + 1'b1;
+                    end
+                end else begin
+                    mult_state <= 2'd0;
+                end
+            end
+        end
+    end
+
+    reg signed [31:0] mult_op_a1, mult_op_a2;
+    always @(*) begin
+        case (mult_state)
+            2'd0: begin mult_op_a1 = p_r4_s_w; mult_op_a2 = p_r4_t_w; end
+            2'd1: begin mult_op_a1 = p_r4_r_w; mult_op_a2 = p_r4_g_w; end
+            2'd2: begin mult_op_a1 = p_r4_b_w; mult_op_a2 = 32'd0;    end
+            default: begin mult_op_a1 = 32'd0; mult_op_a2 = 32'd0;    end
+        endcase
+    end
+
+    wire signed [63:0] mult_res1 = mult_op_a1 * $signed(w_out);
+    wire signed [63:0] mult_res2 = mult_op_a2 * $signed(w_out);
+
+    reg signed [31:0] p4_true_u, p4_true_v, p4_true_r, p4_true_g, p4_true_b;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            p4_true_u <= 32'd0; p4_true_v <= 32'd0;
+            p4_true_r <= 32'd0; p4_true_g <= 32'd0;
+            p4_true_b <= 32'd0;
+        end else if (ce) begin
+            if (!mem_stall && p_r4_valid && p_r4_inside && z_pass) begin
+                if (mult_state == 2'd0) begin
+                    p4_true_u <= mult_res1[55:24];
+                    p4_true_v <= mult_res2[55:24];
+                end else if (mult_state == 2'd1) begin
+                    p4_true_r <= mult_res1[55:24];
+                    p4_true_g <= mult_res2[55:24];
+                end else if (mult_state == 2'd2) begin
+                    p4_true_b <= mult_res1[55:24];
+                end
+            end
+        end
     end
 
     wire [7:0] p4_clamped_r = p4_true_r[31] ? 8'h00 : (|p4_true_r[30:24] ? 8'hFF : p4_true_r[23:16]);
@@ -317,19 +382,7 @@ module graphite_rasterizer #(
 
     wire [31:0] p4_tex_addr = {8'b0, tex_offset};
 
-    // Latched ZB data for Depth Test
-    reg [15:0] latched_zb_rdata;
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            latched_zb_rdata <= 16'h0000;
-        end else if (ce) begin
-            if (zb_ack && !zb_we) begin
-                latched_zb_rdata <= zb_rdata;
-            end
-        end
-    end
-    wire [15:0] current_zb_depth = (zb_ack && !zb_we) ? zb_rdata : latched_zb_rdata;
-    wire z_pass = !enable_depth_test || (p4_depth_16 < current_zb_depth);
+
 
     // =========================================================================
     // Pipeline Stage 5 (Early-Z Compare & Texture Fetch)
@@ -348,7 +401,7 @@ module graphite_rasterizer #(
                 p_r5_valid <= 1'b0;
             end else begin
                 if (!mem_stall) begin
-                    p_r5_valid     <= p_r4_valid && p_r4_inside && z_pass;
+                    p_r5_valid     <= p_r4_valid && p_r4_inside && z_pass && !mult_stall;
                     p_r5_x         <= p_r4_x;
                     p_r5_y         <= p_r4_y;
                     p_r5_depth_16  <= p4_depth_16;
@@ -356,7 +409,7 @@ module graphite_rasterizer #(
                     p_r5_clamped_g <= p4_clamped_g;
                     p_r5_clamped_b <= p4_clamped_b;
 
-                    if (p_r4_valid && p_r4_inside && z_pass) begin
+                    if (p_r4_valid && p_r4_inside && z_pass && !mult_stall) begin
                         tex_addr <= p4_tex_addr;
                         tex_req  <= 1'b1;
                     end else begin
@@ -427,7 +480,7 @@ module graphite_rasterizer #(
                     zb_wdata <= p_r5_depth_16;
                     zb_we    <= 1'b1;
                     zb_req   <= 1'b1;
-                end else if (p_r3_valid && p_r3_inside && !zb_collision) begin
+                end else if (p_r3_valid && p_r3_inside && !zb_collision && !mult_stall) begin
                     // Stage 3 Read
                     zb_addr  <= ({16'b0, p_r3_y} * FB_WIDTH) + {16'b0, p_r3_x};
                     zb_wdata <= 16'd0;
