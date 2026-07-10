@@ -6,6 +6,7 @@ module graphite_edge_setup #(
     parameter FB_WIDTH = 640
 ) (
     input  wire        clk,
+    input  wire        ce,
     input  wire        rst_n,
     input  wire        start,
     
@@ -83,6 +84,19 @@ module graphite_edge_setup #(
     
     reg r_sign;
 
+    reg state;
+
+    wire signed [15:0] mult_a0 = (state == 1'b0) ? px_minus_v0x : py_minus_v0y;
+    wire signed [15:0] mult_b0 = (state == 1'b0) ? dy01 : dx01;
+    wire signed [15:0] mult_a1 = (state == 1'b0) ? px_minus_v1x : py_minus_v1y;
+    wire signed [15:0] mult_b1 = (state == 1'b0) ? dy12 : dx12;
+    wire signed [15:0] mult_a2 = (state == 1'b0) ? px_minus_v2x : py_minus_v2y;
+    wire signed [15:0] mult_b2 = (state == 1'b0) ? dy20 : dx20;
+
+    wire signed [31:0] mult_res0 = mult_a0 * mult_b0;
+    wire signed [31:0] mult_res1 = mult_a1 * mult_b1;
+    wire signed [31:0] mult_res2 = mult_a2 * mult_b2;
+
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             p0_x_dy <= 32'd0; p0_y_dx <= 32'd0;
@@ -95,34 +109,40 @@ module graphite_edge_setup #(
             r_min_x <= 16'd0; r_max_x <= 16'd0; r_max_y <= 16'd0;
             r_start_x <= 16'd0; r_start_y <= 16'd0;
             r_sign <= 1'b0;
-        end else if (start) begin
-            p0_x_dy <= px_minus_v0x * dy01;
-            p0_y_dx <= py_minus_v0y * dx01;
-            p1_x_dy <= px_minus_v1x * dy12;
-            p1_y_dx <= py_minus_v1y * dx12;
-            p2_x_dy <= px_minus_v2x * dy20;
-            p2_y_dx <= py_minus_v2y * dx20;
-            
-            r_bias01 <= bias01;
-            r_bias12 <= bias12;
-            r_bias20 <= bias20;
+            state <= 1'b0;
+        end else if (ce) begin
+            if (start) begin
+                p0_x_dy <= mult_res0;
+                p1_x_dy <= mult_res1;
+                p2_x_dy <= mult_res2;
+                
+                r_bias01 <= bias01;
+                r_bias12 <= bias12;
+                r_bias20 <= bias20;
 
-            r_step_e01_x <= sign ? -({{12{dy01[15]}}, dy01, 4'd0}) :  ({{12{dy01[15]}}, dy01, 4'd0});
-            r_step_e01_y <= sign ?  ({{12{dx01[15]}}, dx01, 4'd0}) : -({{12{dx01[15]}}, dx01, 4'd0});
-            
-            r_step_e12_x <= sign ? -({{12{dy12[15]}}, dy12, 4'd0}) :  ({{12{dy12[15]}}, dy12, 4'd0});
-            r_step_e12_y <= sign ?  ({{12{dx12[15]}}, dx12, 4'd0}) : -({{12{dx12[15]}}, dx12, 4'd0});
-            
-            r_step_e20_x <= sign ? -({{12{dy20[15]}}, dy20, 4'd0}) :  ({{12{dy20[15]}}, dy20, 4'd0});
-            r_step_e20_y <= sign ?  ({{12{dx20[15]}}, dx20, 4'd0}) : -({{12{dx20[15]}}, dx20, 4'd0});
+                r_step_e01_x <= sign ? -({{12{dy01[15]}}, dy01, 4'd0}) :  ({{12{dy01[15]}}, dy01, 4'd0});
+                r_step_e01_y <= sign ?  ({{12{dx01[15]}}, dx01, 4'd0}) : -({{12{dx01[15]}}, dx01, 4'd0});
+                
+                r_step_e12_x <= sign ? -({{12{dy12[15]}}, dy12, 4'd0}) :  ({{12{dy12[15]}}, dy12, 4'd0});
+                r_step_e12_y <= sign ?  ({{12{dx12[15]}}, dx12, 4'd0}) : -({{12{dx12[15]}}, dx12, 4'd0});
+                
+                r_step_e20_x <= sign ? -({{12{dy20[15]}}, dy20, 4'd0}) :  ({{12{dy20[15]}}, dy20, 4'd0});
+                r_step_e20_y <= sign ?  ({{12{dx20[15]}}, dx20, 4'd0}) : -({{12{dx20[15]}}, dx20, 4'd0});
 
-            r_min_x <= min_x_clip;
-            r_max_x <= max_x_clip;
-            r_max_y <= v2_y >>> 4;
-            r_start_x <= min_x_clip;
-            r_start_y <= start_y_clip;
-            
-            r_sign <= sign;
+                r_min_x <= min_x_clip;
+                r_max_x <= max_x_clip;
+                r_max_y <= v2_y >>> 4;
+                r_start_x <= min_x_clip;
+                r_start_y <= start_y_clip;
+                
+                r_sign <= sign;
+                state <= 1'b1;
+            end else if (state == 1'b1) begin
+                p0_y_dx <= mult_res0;
+                p1_y_dx <= mult_res1;
+                p2_y_dx <= mult_res2;
+                state <= 1'b0;
+            end
         end
     end
 

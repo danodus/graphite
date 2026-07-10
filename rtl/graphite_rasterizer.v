@@ -88,6 +88,7 @@ module graphite_rasterizer #(
         .FB_WIDTH(FB_WIDTH)
     ) edge_setup_inst (
         .clk(clk),
+        .ce(ce),
         .rst_n(rst_n),
         .start(start && !busy),
         .v0_x(v0_x), .v0_y(v0_y),
@@ -103,6 +104,7 @@ module graphite_rasterizer #(
     );
 
     reg setup_active;
+    reg setup_active_r;
     wire mult_stall;
     wire stall = pipe_stall || mult_stall;
 
@@ -156,6 +158,7 @@ module graphite_rasterizer #(
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             setup_active <= 1'b0;
+            setup_active_r <= 1'b0;
             scan_active <= 1'b0;
             hit_inside_this_row <= 1'b0;
             scan_x      <= 16'd0;
@@ -165,7 +168,7 @@ module graphite_rasterizer #(
             acc_w_inv <= 32'd0;
             acc_s <= 32'd0; acc_t <= 32'd0;
             acc_r <= 32'd0; acc_g <= 32'd0; acc_b <= 32'd0;
-        end else begin
+        end else if (ce) begin
             if (start && !busy) begin
                 setup_active <= 1'b1;
                 // Capture these early since they don't depend on edge setup
@@ -174,6 +177,9 @@ module graphite_rasterizer #(
                 acc_r <= start_r; acc_g <= start_g; acc_b <= start_b;
             end else if (setup_active) begin
                 setup_active <= 1'b0;
+                setup_active_r <= 1'b1;
+            end else if (setup_active_r) begin
+                setup_active_r <= 1'b0;
                 scan_active <= 1'b1;
                 hit_inside_this_row <= 1'b0;
                 scan_x      <= start_x;
@@ -521,6 +527,6 @@ module graphite_rasterizer #(
     // =========================================================================
     // Busy Signal
     // =========================================================================
-    assign busy = setup_active || scan_active || p_r1_valid || p_r2_valid || p_r3_valid || p_r4_valid || p_r5_valid || fb_req;
+    assign busy = setup_active || setup_active_r || scan_active || p_r1_valid || p_r2_valid || p_r3_valid || p_r4_valid || p_r5_valid || fb_req;
 
 endmodule
