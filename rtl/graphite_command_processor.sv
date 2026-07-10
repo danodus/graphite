@@ -32,9 +32,8 @@ module graphite_command_processor #(
     output logic [31:0] core_vram_addr_o,
     output logic [15:0] core_vram_data_out_o,
 
-    output logic [15:0] min_x_o, max_x_o, max_y_o, start_x_o, start_y_o,
-    output logic signed [31:0] E01_start_o, E12_start_o, E20_start_o,
-    output logic signed [31:0] step_e01_x_o, step_e01_y_o, step_e12_x_o, step_e12_y_o, step_e20_x_o, step_e20_y_o,
+    output logic signed [15:0] v0_x_o, v0_y_o, v1_x_o, v1_y_o, v2_x_o, v2_y_o,
+    output logic sign_o,
     output logic signed [31:0] start_w_inv_o, start_s_o, start_t_o, start_r_o, start_g_o, start_b_o,
     output logic signed [31:0] dw_dx_o, dw_dy_o, ds_dx_o, ds_dy_o, dt_dx_o, dt_dy_o,
     output logic signed [31:0] dr_dx_o, dr_dy_o, dg_dx_o, dg_dy_o, db_dx_o, db_dy_o,
@@ -55,9 +54,8 @@ module graphite_command_processor #(
 
     enum { WAIT_COMMAND, PROCESS_COMMAND, WAIT_RASTER, SWAP0, CLEAR_FB0, CLEAR_DEPTH0 } state;
 
-    logic [15:0] min_x, max_x, max_y, start_x, start_y;
-    logic signed [31:0] E01_start, E12_start, E20_start;
-    logic signed [31:0] step_e01_x, step_e01_y, step_e12_x, step_e12_y, step_e20_x, step_e20_y;
+    logic signed [15:0] v0_x, v0_y, v1_x, v1_y, v2_x, v2_y;
+    logic sign_reg;
     logic signed [31:0] start_w_inv, start_s, start_t, start_r, start_g, start_b;
     logic signed [31:0] dw_dx, dw_dy, ds_dx, ds_dy, dt_dx, dt_dy;
     logic signed [31:0] dr_dx, dr_dy, dg_dx, dg_dy, db_dx, db_dy;
@@ -77,20 +75,13 @@ module graphite_command_processor #(
     assign front_addr_o = fb_address + front_rel_address;
     assign cmd_axis_tready_o = (state == WAIT_COMMAND) && !raster_busy_i;
 
-    assign min_x_o = min_x;
-    assign max_x_o = max_x;
-    assign max_y_o = max_y;
-    assign start_x_o = start_x;
-    assign start_y_o = start_y;
-    assign E01_start_o = E01_start;
-    assign E12_start_o = E12_start;
-    assign E20_start_o = E20_start;
-    assign step_e01_x_o = step_e01_x;
-    assign step_e01_y_o = step_e01_y;
-    assign step_e12_x_o = step_e12_x;
-    assign step_e12_y_o = step_e12_y;
-    assign step_e20_x_o = step_e20_x;
-    assign step_e20_y_o = step_e20_y;
+    assign v0_x_o = v0_x;
+    assign v0_y_o = v0_y;
+    assign v1_x_o = v1_x;
+    assign v1_y_o = v1_y;
+    assign v2_x_o = v2_x;
+    assign v2_y_o = v2_y;
+    assign sign_o = sign_reg;
     assign start_w_inv_o = start_w_inv;
     assign start_s_o = start_s;
     assign start_t_o = start_t;
@@ -153,87 +144,28 @@ module graphite_command_processor #(
 
             PROCESS_COMMAND: begin
                 case (cmd_axis_tdata_i[OP_POS+:OP_SIZE])
-                    OP_SET_MIN_X: begin
-                        min_x <= cmd_axis_tdata_i[15:0];
+                    OP_SET_V0_X: begin
+                        v0_x <= cmd_axis_tdata_i[15:0];
                         state <= WAIT_COMMAND;
                     end
-                    OP_SET_MAX_X: begin
-                        max_x <= cmd_axis_tdata_i[15:0];
+                    OP_SET_V0_Y: begin
+                        v0_y <= cmd_axis_tdata_i[15:0];
                         state <= WAIT_COMMAND;
                     end
-                    OP_SET_MAX_Y: begin
-                        max_y <= cmd_axis_tdata_i[15:0];
+                    OP_SET_V1_X: begin
+                        v1_x <= cmd_axis_tdata_i[15:0];
                         state <= WAIT_COMMAND;
                     end
-                    OP_SET_START_X: begin
-                        start_x <= cmd_axis_tdata_i[15:0];
+                    OP_SET_V1_Y: begin
+                        v1_y <= cmd_axis_tdata_i[15:0];
                         state <= WAIT_COMMAND;
                     end
-                    OP_SET_START_Y: begin
-                        start_y <= cmd_axis_tdata_i[15:0];
+                    OP_SET_V2_X: begin
+                        v2_x <= cmd_axis_tdata_i[15:0];
                         state <= WAIT_COMMAND;
                     end
-                    OP_SET_E01_START: begin
-                        if (cmd_axis_tdata_i[16])
-                            E01_start[31:16] <= cmd_axis_tdata_i[15:0];
-                        else
-                            E01_start[15:0] <= cmd_axis_tdata_i[15:0];
-                        state <= WAIT_COMMAND;
-                    end
-                    OP_SET_E12_START: begin
-                        if (cmd_axis_tdata_i[16])
-                            E12_start[31:16] <= cmd_axis_tdata_i[15:0];
-                        else
-                            E12_start[15:0] <= cmd_axis_tdata_i[15:0];
-                        state <= WAIT_COMMAND;
-                    end
-                    OP_SET_E20_START: begin
-                        if (cmd_axis_tdata_i[16])
-                            E20_start[31:16] <= cmd_axis_tdata_i[15:0];
-                        else
-                            E20_start[15:0] <= cmd_axis_tdata_i[15:0];
-                        state <= WAIT_COMMAND;
-                    end
-                    OP_SET_STEP_E01_X: begin
-                        if (cmd_axis_tdata_i[16])
-                            step_e01_x[31:16] <= cmd_axis_tdata_i[15:0];
-                        else
-                            step_e01_x[15:0] <= cmd_axis_tdata_i[15:0];
-                        state <= WAIT_COMMAND;
-                    end
-                    OP_SET_STEP_E01_Y: begin
-                        if (cmd_axis_tdata_i[16])
-                            step_e01_y[31:16] <= cmd_axis_tdata_i[15:0];
-                        else
-                            step_e01_y[15:0] <= cmd_axis_tdata_i[15:0];
-                        state <= WAIT_COMMAND;
-                    end
-                    OP_SET_STEP_E12_X: begin
-                        if (cmd_axis_tdata_i[16])
-                            step_e12_x[31:16] <= cmd_axis_tdata_i[15:0];
-                        else
-                            step_e12_x[15:0] <= cmd_axis_tdata_i[15:0];
-                        state <= WAIT_COMMAND;
-                    end
-                    OP_SET_STEP_E12_Y: begin
-                        if (cmd_axis_tdata_i[16])
-                            step_e12_y[31:16] <= cmd_axis_tdata_i[15:0];
-                        else
-                            step_e12_y[15:0] <= cmd_axis_tdata_i[15:0];
-                        state <= WAIT_COMMAND;
-                    end
-                    OP_SET_STEP_E20_X: begin
-                        if (cmd_axis_tdata_i[16])
-                            step_e20_x[31:16] <= cmd_axis_tdata_i[15:0];
-                        else
-                            step_e20_x[15:0] <= cmd_axis_tdata_i[15:0];
-                        state <= WAIT_COMMAND;
-                    end
-                    OP_SET_STEP_E20_Y: begin
-                        if (cmd_axis_tdata_i[16])
-                            step_e20_y[31:16] <= cmd_axis_tdata_i[15:0];
-                        else
-                            step_e20_y[15:0] <= cmd_axis_tdata_i[15:0];
+                    OP_SET_V2_Y: begin
+                        v2_y <= cmd_axis_tdata_i[15:0];
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_START_W_INV: begin
@@ -377,8 +309,9 @@ module graphite_command_processor #(
                         is_clamp_s             <= cmd_axis_tdata_i[2];
                         is_depth_test          <= cmd_axis_tdata_i[3];
                         is_perspective_correct <= cmd_axis_tdata_i[4];
-                        texture_width_scale    <= cmd_axis_tdata_i[7:5];
-                        texture_height_scale   <= cmd_axis_tdata_i[10:8];
+                        sign_reg               <= cmd_axis_tdata_i[5];
+                        texture_width_scale    <= cmd_axis_tdata_i[8:6];
+                        texture_height_scale   <= cmd_axis_tdata_i[11:9];
                         raster_start_o <= 1'b1;
                         state <= WAIT_RASTER;
                     end

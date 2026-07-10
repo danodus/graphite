@@ -25,43 +25,35 @@
 #define WINDOW_SCALE 3
 #define VRAM_SIZE   (16*1024*1024)
 
-#define OP_SET_MIN_X 0
-#define OP_SET_MAX_X 1
-#define OP_SET_MAX_Y 2
-#define OP_SET_START_X 3
-#define OP_SET_START_Y 4
-#define OP_SET_E01_START 5
-#define OP_SET_E12_START 6
-#define OP_SET_E20_START 7
-#define OP_SET_STEP_E01_X 8
-#define OP_SET_STEP_E01_Y 9
-#define OP_SET_STEP_E12_X 10
-#define OP_SET_STEP_E12_Y 11
-#define OP_SET_STEP_E20_X 12
-#define OP_SET_STEP_E20_Y 13
-#define OP_SET_START_W_INV 14
-#define OP_SET_START_S 15
-#define OP_SET_START_T 16
-#define OP_SET_START_R 17
-#define OP_SET_START_G 18
-#define OP_SET_START_B 19
-#define OP_SET_DW_DX 20
-#define OP_SET_DW_DY 21
-#define OP_SET_DS_DX 22
-#define OP_SET_DS_DY 23
-#define OP_SET_DT_DX 24
-#define OP_SET_DT_DY 25
-#define OP_SET_DR_DX 26
-#define OP_SET_DR_DY 27
-#define OP_SET_DG_DX 28
-#define OP_SET_DG_DY 29
-#define OP_SET_DB_DX 30
-#define OP_SET_DB_DY 31
-#define OP_CLEAR 32
-#define OP_DRAW 33
-#define OP_SWAP 34
-#define OP_SET_TEX_ADDR 35
-#define OP_SET_FB_ADDR 36
+#define OP_SET_V0_X 0
+#define OP_SET_V0_Y 1
+#define OP_SET_V1_X 2
+#define OP_SET_V1_Y 3
+#define OP_SET_V2_X 4
+#define OP_SET_V2_Y 5
+#define OP_SET_START_W_INV 6
+#define OP_SET_START_S 7
+#define OP_SET_START_T 8
+#define OP_SET_START_R 9
+#define OP_SET_START_G 10
+#define OP_SET_START_B 11
+#define OP_SET_DW_DX 12
+#define OP_SET_DW_DY 13
+#define OP_SET_DS_DX 14
+#define OP_SET_DS_DY 15
+#define OP_SET_DT_DX 16
+#define OP_SET_DT_DY 17
+#define OP_SET_DR_DX 18
+#define OP_SET_DR_DY 19
+#define OP_SET_DG_DX 20
+#define OP_SET_DG_DY 21
+#define OP_SET_DB_DX 22
+#define OP_SET_DB_DY 23
+#define OP_CLEAR 24
+#define OP_DRAW 25
+#define OP_SWAP 26
+#define OP_SET_TEX_ADDR 27
+#define OP_SET_FB_ADDR 28
 
 #if FIXED_POINT
 #define PARAM(x) (x)
@@ -291,32 +283,10 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     if (max_y >= FB_HEIGHT) max_y = FB_HEIGHT - 1;
     if (start_y < 0) start_y = 0;    
 
-    int32_t step_e01_x = sign * ((int32_t)(v1.y - v0.y) << 4);
-    int32_t step_e01_y = -sign * ((int32_t)(v1.x - v0.x) << 4);
-    int32_t step_e12_x = sign * ((int32_t)(v2.y - v1.y) << 4);
-    int32_t step_e12_y = -sign * ((int32_t)(v2.x - v1.x) << 4);
-    int32_t step_e20_x = sign * ((int32_t)(v0.y - v2.y) << 4);
-    int32_t step_e20_y = -sign * ((int32_t)(v0.x - v2.x) << 4);
-
-    int32_t bias01, bias12, bias20;
-    if (sign == -1) {
-        bias01 = (dy1 > 0 || (dy1 == 0 && dx1 < 0)) ? 0 : -1;
-        bias12 = ((v2.y - v1.y) > 0 || ((v2.y - v1.y) == 0 && (v2.x - v1.x) < 0)) ? 0 : -1;
-        bias20 = ((v0.y - v2.y) > 0 || ((v0.y - v2.y) == 0 && (v0.x - v2.x) < 0)) ? 0 : -1;
-    } else {
-        bias01 = (dy1 > 0 || (dy1 == 0 && dx1 < 0)) ? -1 : 0;
-        bias12 = ((v2.y - v1.y) > 0 || ((v2.y - v1.y) == 0 && (v2.x - v1.x) < 0)) ? -1 : 0;
-        bias20 = ((v0.y - v2.y) > 0 || ((v0.y - v2.y) == 0 && (v0.x - v2.x) < 0)) ? -1 : 0;
-    }    
+    // Hardware setup unit will handle bounding box and edge equation initialization
 
     int curr_x = min_x;
     int curr_y = start_y;
-    int32_t p_x = (curr_x << 4) + 8;
-    int32_t p_y = (curr_y << 4) + 8;
-
-    int32_t E01 = sign * ((p_x - v0.x) * dy1 - (p_y - v0.y) * dx1) + bias01;
-    int32_t E12 = sign * ((p_x - v1.x) * (v2.y - v1.y) - (p_y - v1.y) * (v2.x - v1.x)) + bias12;
-    int32_t E20 = sign * ((p_x - v2.x) * (v0.y - v2.y) - (p_y - v2.y) * (v0.x - v2.x)) + bias20;
 
     int32_t acc_w_inv = start_w + (int32_t)(((int64_t)curr_x * dw_dx) + ((int64_t)curr_y * dw_dy) + (dw_dx >> 1) + (dw_dy >> 1));
     int32_t acc_u_w   = start_s + (int32_t)(((int64_t)curr_x * du_dx) + ((int64_t)curr_y * du_dy) + (du_dx >> 1) + (du_dy >> 1));
@@ -342,22 +312,12 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
         g_commands.push_back(cmd);
     };
 
-    push_16(OP_SET_MIN_X, min_x);
-    push_16(OP_SET_MAX_X, max_x);
-    push_16(OP_SET_MAX_Y, max_y);
-    push_16(OP_SET_START_X, curr_x);
-    push_16(OP_SET_START_Y, curr_y);
-
-    push_32(OP_SET_E01_START, E01);
-    push_32(OP_SET_E12_START, E12);
-    push_32(OP_SET_E20_START, E20);
-    
-    push_32(OP_SET_STEP_E01_X, step_e01_x);
-    push_32(OP_SET_STEP_E01_Y, step_e01_y);
-    push_32(OP_SET_STEP_E12_X, step_e12_x);
-    push_32(OP_SET_STEP_E12_Y, step_e12_y);
-    push_32(OP_SET_STEP_E20_X, step_e20_x);
-    push_32(OP_SET_STEP_E20_Y, step_e20_y);
+    push_16(OP_SET_V0_X, v0.x);
+    push_16(OP_SET_V0_Y, v0.y);
+    push_16(OP_SET_V1_X, v1.x);
+    push_16(OP_SET_V1_Y, v1.y);
+    push_16(OP_SET_V2_X, v2.x);
+    push_16(OP_SET_V2_Y, v2.y);
 
     push_32(OP_SET_START_W_INV, acc_w_inv);
     push_32(OP_SET_START_S, acc_u_w);
@@ -382,10 +342,11 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     cmd.opcode = OP_DRAW;
 
     cmd.param = (depth_test ? 0b01000 : 0b00000) | (clamp_s ? 0b00100 : 0b00000) | (clamp_t ? 0b00010 : 0b00000) |
-              ((tex != NULL) ? 0b00001 : 0b00000) | (perspective_correct ? 0b10000 : 0b00000);
+              ((tex != NULL) ? 0b00001 : 0b00000) | (perspective_correct ? 0b10000 : 0b00000) |
+              (sign_bit ? 0b100000 : 0b000000);
 
-    cmd.param |= texture_scale_x << 5;
-    cmd.param |= texture_scale_y << 8;
+    cmd.param |= texture_scale_x << 6;
+    cmd.param |= texture_scale_y << 9;
 
     g_commands.push_back(cmd);
 }

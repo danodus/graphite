@@ -20,25 +20,14 @@ module graphite_rasterizer #(
     input  wire [2:0]   texture_height_scale,
     output wire         busy,
 
-    // Bounding Box
-    input  wire [15:0]  min_x,
-    input  wire [15:0]  max_x,
-    input  wire [15:0]  max_y,
-    input  wire [15:0]  start_x,
-    input  wire [15:0]  start_y,
-
-    // Edge Equations Initial Values
-    input  wire signed [31:0] E01_start,
-    input  wire signed [31:0] E12_start,
-    input  wire signed [31:0] E20_start,
-
-    // Edge Step Deltas
-    input  wire signed [31:0] step_e01_x,
-    input  wire signed [31:0] step_e01_y,
-    input  wire signed [31:0] step_e12_x,
-    input  wire signed [31:0] step_e12_y,
-    input  wire signed [31:0] step_e20_x,
-    input  wire signed [31:0] step_e20_y,
+    // Vertices
+    input  wire signed [15:0] v0_x,
+    input  wire signed [15:0] v0_y,
+    input  wire signed [15:0] v1_x,
+    input  wire signed [15:0] v1_y,
+    input  wire signed [15:0] v2_x,
+    input  wire signed [15:0] v2_y,
+    input  wire sign,
 
     // Initial Packed Attributes at (start_x, start_y)
     input  wire signed [31:0] start_w_inv,
@@ -87,6 +76,33 @@ module graphite_rasterizer #(
     wire zb_collision = p_r5_valid && p_r3_valid && p_r3_inside;
     wire mem_stall = (zb_req && !zb_ack) || (tex_req && !tex_ack) || (fb_req && !fb_ack);
     wire pipe_stall = mem_stall || zb_collision;
+
+    // =========================================================================
+    // Edge Setup Unit (1-cycle delay)
+    // =========================================================================
+    wire [15:0] min_x, max_x, max_y, start_x, start_y;
+    wire signed [31:0] E01_start, E12_start, E20_start;
+    wire signed [31:0] step_e01_x, step_e01_y, step_e12_x, step_e12_y, step_e20_x, step_e20_y;
+
+    graphite_edge_setup #(
+        .FB_WIDTH(FB_WIDTH)
+    ) edge_setup_inst (
+        .clk(clk),
+        .rst_n(rst_n),
+        .start(start && !busy),
+        .v0_x(v0_x), .v0_y(v0_y),
+        .v1_x(v1_x), .v1_y(v1_y),
+        .v2_x(v2_x), .v2_y(v2_y),
+        .sign(sign),
+        .min_x(min_x), .max_x(max_x), .max_y(max_y),
+        .start_x(start_x), .start_y(start_y),
+        .E01_start(E01_start), .E12_start(E12_start), .E20_start(E20_start),
+        .step_e01_x(step_e01_x), .step_e01_y(step_e01_y),
+        .step_e12_x(step_e12_x), .step_e12_y(step_e12_y),
+        .step_e20_x(step_e20_x), .step_e20_y(step_e20_y)
+    );
+
+    reg setup_active;
     wire mult_stall;
     wire stall = pipe_stall || mult_stall;
 
@@ -139,6 +155,7 @@ module graphite_rasterizer #(
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
+            setup_active <= 1'b0;
             scan_active <= 1'b0;
             hit_inside_this_row <= 1'b0;
             scan_x      <= 16'd0;
@@ -148,17 +165,21 @@ module graphite_rasterizer #(
             acc_w_inv <= 32'd0;
             acc_s <= 32'd0; acc_t <= 32'd0;
             acc_r <= 32'd0; acc_g <= 32'd0; acc_b <= 32'd0;
-        end else if (ce) begin
+        end else begin
             if (start && !busy) begin
+                setup_active <= 1'b1;
+                // Capture these early since they don't depend on edge setup
+                acc_w_inv <= start_w_inv;
+                acc_s <= start_s; acc_t <= start_t;
+                acc_r <= start_r; acc_g <= start_g; acc_b <= start_b;
+            end else if (setup_active) begin
+                setup_active <= 1'b0;
                 scan_active <= 1'b1;
                 hit_inside_this_row <= 1'b0;
                 scan_x      <= start_x;
                 scan_y      <= start_y;
                 scan_dir    <= 2'sd1;
                 E01 <= E01_start; E12 <= E12_start; E20 <= E20_start;
-                acc_w_inv <= start_w_inv;
-                acc_s <= start_s; acc_t <= start_t;
-                acc_r <= start_r; acc_g <= start_g; acc_b <= start_b;
             end else if (scan_active && !stall) begin
                 if (scan_y > max_y || scan_y >= FB_HEIGHT) begin
                     scan_active <= 1'b0;
@@ -500,6 +521,6 @@ module graphite_rasterizer #(
     // =========================================================================
     // Busy Signal
     // =========================================================================
-    assign busy = scan_active || p_r1_valid || p_r2_valid || p_r3_valid || p_r4_valid || p_r5_valid || fb_req;
+    assign busy = setup_active || scan_active || p_r1_valid || p_r2_valid || p_r3_valid || p_r4_valid || p_r5_valid || fb_req;
 
 endmodule

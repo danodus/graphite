@@ -47,9 +47,8 @@ module graphite #(
     logic [31:0] raster_vram_addr;
     logic [15:0] raster_vram_data_out;
 
-    logic [15:0] min_x, max_x, max_y, start_x, start_y;
-    logic signed [31:0] E01_start, E12_start, E20_start;
-    logic signed [31:0] step_e01_x, step_e01_y, step_e12_x, step_e12_y, step_e20_x, step_e20_y;
+    logic signed [15:0] v0_x, v0_y, v1_x, v1_y, v2_x, v2_y;
+    logic sign;
     logic signed [31:0] start_w_inv, start_s, start_t, start_r, start_g, start_b;
     logic signed [31:0] dw_dx, dw_dy, ds_dx, ds_dy, dt_dx, dt_dy;
     logic signed [31:0] dr_dx, dr_dy, dg_dx, dg_dy, db_dx, db_dy;
@@ -80,9 +79,8 @@ module graphite #(
         .core_vram_mask_o(core_vram_mask),
         .core_vram_addr_o(core_vram_addr),
         .core_vram_data_out_o(core_vram_data_out),
-        .min_x_o(min_x), .max_x_o(max_x), .max_y_o(max_y), .start_x_o(start_x), .start_y_o(start_y),
-        .E01_start_o(E01_start), .E12_start_o(E12_start), .E20_start_o(E20_start),
-        .step_e01_x_o(step_e01_x), .step_e01_y_o(step_e01_y), .step_e12_x_o(step_e12_x), .step_e12_y_o(step_e12_y), .step_e20_x_o(step_e20_x), .step_e20_y_o(step_e20_y),
+        .v0_x_o(v0_x), .v0_y_o(v0_y), .v1_x_o(v1_x), .v1_y_o(v1_y), .v2_x_o(v2_x), .v2_y_o(v2_y),
+        .sign_o(sign),
         .start_w_inv_o(start_w_inv), .start_s_o(start_s), .start_t_o(start_t), .start_r_o(start_r), .start_g_o(start_g), .start_b_o(start_b),
         .dw_dx_o(dw_dx), .dw_dy_o(dw_dy), .ds_dx_o(ds_dx), .ds_dy_o(ds_dy), .dt_dx_o(dt_dx), .dt_dy_o(dt_dy),
         .dr_dx_o(dr_dx), .dr_dy_o(dr_dy), .dg_dx_o(dg_dx), .dg_dy_o(dg_dy), .db_dx_o(db_dx), .db_dy_o(db_dy),
@@ -125,9 +123,8 @@ module graphite #(
         .clamp_t(is_clamp_t),
         .texture_width_scale(texture_width_scale),
         .texture_height_scale(texture_height_scale),
-        .min_x(min_x), .max_x(max_x), .max_y(max_y), .start_x(start_x), .start_y(start_y),
-        .E01_start(E01_start), .E12_start(E12_start), .E20_start(E20_start),
-        .step_e01_x(step_e01_x), .step_e01_y(step_e01_y), .step_e12_x(step_e12_x), .step_e12_y(step_e12_y), .step_e20_x(step_e20_x), .step_e20_y(step_e20_y),
+        .v0_x(v0_x), .v0_y(v0_y), .v1_x(v1_x), .v1_y(v1_y), .v2_x(v2_x), .v2_y(v2_y),
+        .sign(sign),
         .start_w_inv(start_w_inv), .start_s(start_s), .start_t(start_t), .start_r(start_r), .start_g(start_g), .start_b(start_b),
         .dw_dx(dw_dx), .dw_dy(dw_dy), .ds_dx(ds_dx), .ds_dy(ds_dy), .dt_dx(dt_dx), .dt_dy(dt_dy),
         .dr_dx(dr_dx), .dr_dy(dr_dy), .dg_dx(dg_dx), .dg_dy(dg_dy), .db_dx(db_dx), .db_dy(db_dy),
