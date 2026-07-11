@@ -782,7 +782,14 @@ int main(int argc, char** argv, char** env) {
                     for (int y = 0; y < FB_HEIGHT; ++y)
                         for (int x = 0; x < FB_WIDTH; ++x) {
                             // Green 6-bit
-                            uint16_t i = *d >> 10;
+                            uint32_t depth = *d > 20000 ? 20000 : *d;
+                            uint16_t i;
+                            if (depth == 20000) {
+                                i = 0; // Far background is black
+                            } else {
+                                // Create depth contour bands to easily see small depth gradients on the model
+                                i = (depth >> 1) & 63;
+                            }
                             *pp = (i << 5);
                             ++pp;
                             ++d;
