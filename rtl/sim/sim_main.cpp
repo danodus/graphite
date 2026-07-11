@@ -79,6 +79,12 @@ typedef int32_t fixed16;
 #define FIXED_DIV(a, b)      ((fixed16)(((int64_t)(a) << 16) / (b)))
 #define FIXED_CEIL_HALF(x)   (((x) + 0x7FFF) >> 16)
 
+#if FIXED_POINT
+#define FX32_TO_FIXED16(x) ((fixed16)(x))
+#else
+#define FX32_TO_FIXED16(x) ((fixed16)((x) * 65536.0f))
+#endif
+
 struct Vertex2 {
     int16_t x, y; // 12.4 fixed-point format
     fixed16 w; 
@@ -193,9 +199,9 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     uint32_t texture_height = 32 << texture_scale_y;
 
     Vertex2 v0, v1, v2;
-    v0.x = p[0].x >> 12; v0.y = p[0].y >> 12; v0.w = t[0].w; v0.s = MUL(t[0].u, FXI(texture_width)); v0.t = MUL(t[0].v, FXI(texture_height)); v0.r = MUL(c[0].x, FXI(255)); v0.g = MUL(c[0].y, FXI(255)); v0.b = MUL(c[0].z, FXI(255));
-    v1.x = p[1].x >> 12; v1.y = p[1].y >> 12; v1.w = t[1].w; v1.s = MUL(t[1].u, FXI(texture_width)); v1.t = MUL(t[1].v, FXI(texture_height)); v1.r = MUL(c[1].x, FXI(255)); v1.g = MUL(c[1].y, FXI(255)); v1.b = MUL(c[1].z, FXI(255));
-    v2.x = p[2].x >> 12; v2.y = p[2].y >> 12; v2.w = t[2].w; v2.s = MUL(t[2].u, FXI(texture_width)); v2.t = MUL(t[2].v, FXI(texture_height)); v2.r = MUL(c[2].x, FXI(255)); v2.g = MUL(c[2].y, FXI(255)); v2.b = MUL(c[2].z, FXI(255));
+    v0.x = FX32_TO_FIXED16(p[0].x) >> 12; v0.y = FX32_TO_FIXED16(p[0].y) >> 12; v0.w = FX32_TO_FIXED16(t[0].w); v0.s = FX32_TO_FIXED16(MUL(t[0].u, FXI(texture_width))); v0.t = FX32_TO_FIXED16(MUL(t[0].v, FXI(texture_height))); v0.r = FX32_TO_FIXED16(MUL(c[0].x, FXI(255))); v0.g = FX32_TO_FIXED16(MUL(c[0].y, FXI(255))); v0.b = FX32_TO_FIXED16(MUL(c[0].z, FXI(255)));
+    v1.x = FX32_TO_FIXED16(p[1].x) >> 12; v1.y = FX32_TO_FIXED16(p[1].y) >> 12; v1.w = FX32_TO_FIXED16(t[1].w); v1.s = FX32_TO_FIXED16(MUL(t[1].u, FXI(texture_width))); v1.t = FX32_TO_FIXED16(MUL(t[1].v, FXI(texture_height))); v1.r = FX32_TO_FIXED16(MUL(c[1].x, FXI(255))); v1.g = FX32_TO_FIXED16(MUL(c[1].y, FXI(255))); v1.b = FX32_TO_FIXED16(MUL(c[1].z, FXI(255)));
+    v2.x = FX32_TO_FIXED16(p[2].x) >> 12; v2.y = FX32_TO_FIXED16(p[2].y) >> 12; v2.w = FX32_TO_FIXED16(t[2].w); v2.s = FX32_TO_FIXED16(MUL(t[2].u, FXI(texture_width))); v2.t = FX32_TO_FIXED16(MUL(t[2].v, FXI(texture_height))); v2.r = FX32_TO_FIXED16(MUL(c[2].x, FXI(255))); v2.g = FX32_TO_FIXED16(MUL(c[2].y, FXI(255))); v2.b = FX32_TO_FIXED16(MUL(c[2].z, FXI(255)));
 
     if (v0.y > v1.y) std::swap(v0, v1);
     if (v0.y > v2.y) std::swap(v0, v2);

@@ -27,6 +27,12 @@ typedef int32_t fixed16;
 #define FIXED_HALF           0x8000
 #define FIXED_CEIL_HALF(x)   (((x) + 0x7FFF) >> 16)
 
+#if FIXED_POINT
+#define FX32_TO_FIXED16(x) ((fixed16)(x))
+#else
+#define FX32_TO_FIXED16(x) ((fixed16)((x) * 65536.0f))
+#endif
+
 // 16-bit integer far clipping plane depth limit
 #define Z_INFINITY_16        20000
 
@@ -385,8 +391,9 @@ void sw_draw_triangle_standard(fx32 x0, fx32 y0, fx32 w0, fx32 s0, fx32 t0, fx32
                       fx32 x2, fx32 y2, fx32 w2, fx32 s2, fx32 t2, fx32 r2, fx32 g2, fx32 b2, fx32 a2,
                       bool texture, bool clamp_s, bool clamp_t, bool depth_test, bool persp_correct) {
     Vertex v0, v1, v2;
-    v0.x = x0; v0.y = y0; v0.w = w0; v0.s = MUL(s0, FXI(TEX_WIDTH)); v0.t = MUL(t0, FXI(TEX_HEIGHT)); v0.r = MUL(r0, FXI(255)); v0.g = MUL(g0, FXI(255)); v0.b = MUL(b0, FXI(255));
-    v1.x = x1; v1.y = y1; v1.w = w1; v1.s = MUL(s1, FXI(TEX_WIDTH)); v1.t = MUL(t1, FXI(TEX_HEIGHT)); v1.r = MUL(r1, FXI(255)); v1.g = MUL(g1, FXI(255)); v1.b = MUL(b1, FXI(255));
-    v2.x = x2; v2.y = y2; v2.w = w2; v2.s = MUL(s2, FXI(TEX_WIDTH)); v2.t = MUL(t2, FXI(TEX_HEIGHT)); v2.r = MUL(r2, FXI(255)); v2.g = MUL(g2, FXI(255)); v2.b = MUL(b2, FXI(255));
+
+    v0.x = FX32_TO_FIXED16(x0); v0.y = FX32_TO_FIXED16(y0); v0.w = FX32_TO_FIXED16(w0); v0.s = FX32_TO_FIXED16(MUL(s0, FXI(TEX_WIDTH))); v0.t = FX32_TO_FIXED16(MUL(t0, FXI(TEX_HEIGHT))); v0.r = FX32_TO_FIXED16(MUL(r0, FXI(255))); v0.g = FX32_TO_FIXED16(MUL(g0, FXI(255))); v0.b = FX32_TO_FIXED16(MUL(b0, FXI(255)));
+    v1.x = FX32_TO_FIXED16(x1); v1.y = FX32_TO_FIXED16(y1); v1.w = FX32_TO_FIXED16(w1); v1.s = FX32_TO_FIXED16(MUL(s1, FXI(TEX_WIDTH))); v1.t = FX32_TO_FIXED16(MUL(t1, FXI(TEX_HEIGHT))); v1.r = FX32_TO_FIXED16(MUL(r1, FXI(255))); v1.g = FX32_TO_FIXED16(MUL(g1, FXI(255))); v1.b = FX32_TO_FIXED16(MUL(b1, FXI(255)));
+    v2.x = FX32_TO_FIXED16(x2); v2.y = FX32_TO_FIXED16(y2); v2.w = FX32_TO_FIXED16(w2); v2.s = FX32_TO_FIXED16(MUL(s2, FXI(TEX_WIDTH))); v2.t = FX32_TO_FIXED16(MUL(t2, FXI(TEX_HEIGHT))); v2.r = FX32_TO_FIXED16(MUL(r2, FXI(255))); v2.g = FX32_TO_FIXED16(MUL(g2, FXI(255))); v2.b = FX32_TO_FIXED16(MUL(b2, FXI(255)));
     draw_triangle(v0, v1, v2, texture, depth_test);
 }

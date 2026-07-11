@@ -6,7 +6,7 @@ SDL_CFLAGS	:= $(shell sdl2-config --cflags)
 
 #CFLAGS		:= -Os -std=c99 -Wall -Wextra -Werror $(SDL_CFLAGS)
 #CFLAGS		:= -Os -std=c99 $(SDL_CFLAGS) -I../common
-CFLAGS		:= -g -std=c99 $(SDL_CFLAGS) -I../common -DFIXED_POINT=1 -DRASTERIZER_FIXED_POINT=1
+CFLAGS		:= -g -std=c99 $(SDL_CFLAGS) -I../common -DFIXED_POINT=1
 
 SRC := graphite_ref_impl.c sw_rasterizer_standard.c ../common/graphite.c ../common/cube.c ../common/teapot.c ../common/tex32x32.c ../common/tex32x64.c ../common/tex256x2048.c
 

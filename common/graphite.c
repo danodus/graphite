@@ -499,6 +499,8 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
     // define the line between the two points
     vec3d line = vector_sub(&v1, &v0);
 
+#if FIXED_POINT
+
     // find the normal vector of this line using fixed point math, dynamically scaling
     // to avoid overflow when the line is very long in screen space.
     fx32 dx = line.x;
@@ -528,6 +530,14 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
     }
     normal.z = FX(0.0f);
     normal.w = FX(0.0f);
+
+#else
+
+    // find the normal vector of this line
+    vec3d normal = (vec3d){-line.y, line.x, FX(0.0f), FX(0.0f)};
+    normal = vector_normalize(&normal);
+
+#endif
 
     vec3d miter = vector_mul(&normal, thickness);
 
