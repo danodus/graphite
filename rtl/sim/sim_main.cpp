@@ -251,9 +251,9 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     int64_t raw_start_g = ((int64_t)g0_w   << 16) - mul_shr4(v0.x, raw_dg_dx) - mul_shr4(v0.y, raw_dg_dy);
     int64_t raw_start_b = ((int64_t)b0_w   << 16) - mul_shr4(v0.x, raw_db_dx) - mul_shr4(v0.y, raw_db_dy);    
 
-    int32_t start_w = (int32_t)(raw_start_w >> 2);
-    int32_t dw_dx   = (int32_t)(raw_dw_dx   >> 2);
-    int32_t dw_dy   = (int32_t)(raw_dw_dy   >> 2);
+    int32_t start_w = (int32_t)(raw_start_w >> 4);
+    int32_t dw_dx   = (int32_t)(raw_dw_dx   >> 4);
+    int32_t dw_dy   = (int32_t)(raw_dw_dy   >> 4);
 
     int32_t start_s = (int32_t)(raw_start_s >> 14);
     int32_t du_dx   = (int32_t)(raw_du_dx   >> 14);

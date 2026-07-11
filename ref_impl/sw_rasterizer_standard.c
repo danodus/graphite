@@ -170,7 +170,7 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
         if (inside) {
             hit_inside_this_row = true;
             // Convert customized hardware bits back into standard 16.16 for perspective division
-            fixed16 current_zinv = acc_w_inv >> 14; // 2.30  -> 16.16 (shift right 14)
+            fixed16 current_zinv = acc_w_inv >> 12; // 4.28  -> 16.16 (shift right 12)
             fixed16 current_u_w  = acc_u_w   >> 2;  // 14.18 -> 16.16 (shift right 2)
             fixed16 current_v_w  = acc_v_w   >> 2;  // 14.18 -> 16.16 (shift right 2)
             fixed16 current_r_w  = acc_r_w   << 4;  // 12.12 -> 16.16 (shift left 4)
@@ -353,10 +353,10 @@ static void draw_triangle(Vertex v0a, Vertex v1a, Vertex v2a, bool texture_enabl
     // -------------------------------------------------------------------------
     // DOWN-SHIFT & QUANTIZE PACKETS INTO NATIVE 32-BIT REGISTER TYPES
     // -------------------------------------------------------------------------
-    // W parameters pack into 2.30 format (Drop lowest 2 fractional bits from 32.32)
-    int32_t start_w = (int32_t)(raw_start_w >> 2);
-    int32_t dw_dx   = (int32_t)(raw_dw_dx   >> 2);
-    int32_t dw_dy   = (int32_t)(raw_dw_dy   >> 2);
+    // W parameters pack into 4.28 format (Drop lowest 4 fractional bits from 32.32)
+    int32_t start_w = (int32_t)(raw_start_w >> 4);
+    int32_t dw_dx   = (int32_t)(raw_dw_dx   >> 4);
+    int32_t dw_dy   = (int32_t)(raw_dw_dy   >> 4);
 
     // S, T parameters pack into 14.18 format (Drop lowest 14 fractional bits from 32.32)
     int32_t start_s = (int32_t)(raw_start_s >> 14);

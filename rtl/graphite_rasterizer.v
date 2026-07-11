@@ -141,7 +141,7 @@ module graphite_rasterizer #(
                           (scan_dir == -2'sd1 && scan_x <= min_x) ||
                           smart_turn_around;
 
-    wire signed [31:0] scanner_zinv = acc_w_inv >>> 14; 
+    wire signed [31:0] scanner_zinv = acc_w_inv >>> 12; 
     wire signed [31:0] scanner_s_w  = acc_s >>> 2;      
     wire signed [31:0] scanner_t_w  = acc_t >>> 2;
     wire signed [31:0] scanner_r_w  = acc_r <<< 4;      

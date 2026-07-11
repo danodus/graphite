@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define Z_NEAR  0.3     // near clipping plane
+#define Z_NEAR  0.125     // near clipping plane
 
 #define SORT_TRIANGLES 0
 
