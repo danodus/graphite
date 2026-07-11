@@ -77,34 +77,80 @@ module graphite_rasterizer #(
     wire mem_stall = (zb_req && !zb_ack) || (tex_req && !tex_ack) || (fb_req && !fb_ack);
     wire pipe_stall = mem_stall || zb_collision;
 
-    // =========================================================================
-    // Edge Setup Unit (1-cycle delay)
-    // =========================================================================
-    wire [15:0] min_x, max_x, max_y, start_x, start_y;
-    wire signed [31:0] E01_start, E12_start, E20_start;
-    wire signed [31:0] step_e01_x, step_e01_y, step_e12_x, step_e12_y, step_e20_x, step_e20_y;
+    wire signed [63:0] mult_res1;
+    wire signed [63:0] mult_res2;
 
-    graphite_edge_setup #(
-        .FB_WIDTH(FB_WIDTH)
-    ) edge_setup_inst (
-        .clk(clk),
-        .ce(ce),
-        .rst_n(rst_n),
-        .start(start && !busy),
-        .v0_x(v0_x), .v0_y(v0_y),
-        .v1_x(v1_x), .v1_y(v1_y),
-        .v2_x(v2_x), .v2_y(v2_y),
-        .sign(sign),
-        .min_x(min_x), .max_x(max_x), .max_y(max_y),
-        .start_x(start_x), .start_y(start_y),
-        .E01_start(E01_start), .E12_start(E12_start), .E20_start(E20_start),
-        .step_e01_x(step_e01_x), .step_e01_y(step_e01_y),
-        .step_e12_x(step_e12_x), .step_e12_y(step_e12_y),
-        .step_e20_x(step_e20_x), .step_e20_y(step_e20_y)
-    );
+    // =========================================================================
+    // Edge Setup Combinational Logic
+    // =========================================================================
+    wire signed [15:0] dx01 = v1_x - v0_x;
+    wire signed [15:0] dy01 = v1_y - v0_y;
+    wire signed [15:0] dx12 = v2_x - v1_x;
+    wire signed [15:0] dy12 = v2_y - v1_y;
+    wire signed [15:0] dx20 = v0_x - v2_x;
+    wire signed [15:0] dy20 = v0_y - v2_y;
+
+    wire bias01_is_neg1 = (sign == 1'b1) ? !(dy01 > 0 || (dy01 == 0 && dx01 < 0)) : (dy01 > 0 || (dy01 == 0 && dx01 < 0));
+    wire bias12_is_neg1 = (sign == 1'b1) ? !(dy12 > 0 || (dy12 == 0 && dx12 < 0)) : (dy12 > 0 || (dy12 == 0 && dx12 < 0));
+    wire bias20_is_neg1 = (sign == 1'b1) ? !(dy20 > 0 || (dy20 == 0 && dx20 < 0)) : (dy20 > 0 || (dy20 == 0 && dx20 < 0));
+    
+    wire signed [1:0] bias01 = bias01_is_neg1 ? -2'sd1 : 2'sd0;
+    wire signed [1:0] bias12 = bias12_is_neg1 ? -2'sd1 : 2'sd0;
+    wire signed [1:0] bias20 = bias20_is_neg1 ? -2'sd1 : 2'sd0;
+
+    wire signed [15:0] min_x_raw = (v0_x < v1_x) ? ((v0_x < v2_x) ? v0_x : v2_x) : ((v1_x < v2_x) ? v1_x : v2_x);
+    wire signed [15:0] max_x_raw = (v0_x > v1_x) ? ((v0_x > v2_x) ? v0_x : v2_x) : ((v1_x > v2_x) ? v1_x : v2_x);
+
+    wire signed [15:0] min_x_floor = min_x_raw >>> 4;
+    wire signed [15:0] max_x_floor = max_x_raw >>> 4;
+    
+    wire signed [15:0] min_x_clip = (min_x_floor < 0) ? 16'd0 : min_x_floor;
+    wire signed [15:0] max_x_clip = (max_x_floor >= FB_WIDTH) ? (FB_WIDTH - 1) : max_x_floor;
+
+    wire signed [15:0] start_y_raw = v0_y >>> 4;
+    wire signed [15:0] start_y_clip = (start_y_raw < 0) ? 16'd0 : start_y_raw;
+
+    wire signed [15:0] p_x = (min_x_clip <<< 4) + 16'd8;
+    wire signed [15:0] p_y = (start_y_clip <<< 4) + 16'd8;
+
+    wire signed [15:0] px_minus_v0x = p_x - v0_x;
+    wire signed [15:0] py_minus_v0y = p_y - v0_y;
+    wire signed [15:0] px_minus_v1x = p_x - v1_x;
+    wire signed [15:0] py_minus_v1y = p_y - v1_y;
+    wire signed [15:0] px_minus_v2x = p_x - v2_x;
+    wire signed [15:0] py_minus_v2y = p_y - v2_y;
+
+    wire [15:0] min_x = min_x_clip;
+    wire [15:0] max_x = max_x_clip;
+    wire [15:0] max_y = v2_y >>> 4;
+    wire [15:0] start_x = min_x_clip;
+    wire [15:0] start_y = start_y_clip;
+
+    wire signed [31:0] step_e01_x = sign ? -({{12{dy01[15]}}, dy01, 4'd0}) :  ({{12{dy01[15]}}, dy01, 4'd0});
+    wire signed [31:0] step_e01_y = sign ?  ({{12{dx01[15]}}, dx01, 4'd0}) : -({{12{dx01[15]}}, dx01, 4'd0});
+    wire signed [31:0] step_e12_x = sign ? -({{12{dy12[15]}}, dy12, 4'd0}) :  ({{12{dy12[15]}}, dy12, 4'd0});
+    wire signed [31:0] step_e12_y = sign ?  ({{12{dx12[15]}}, dx12, 4'd0}) : -({{12{dx12[15]}}, dx12, 4'd0});
+    wire signed [31:0] step_e20_x = sign ? -({{12{dy20[15]}}, dy20, 4'd0}) :  ({{12{dy20[15]}}, dy20, 4'd0});
+    wire signed [31:0] step_e20_y = sign ?  ({{12{dx20[15]}}, dx20, 4'd0}) : -({{12{dx20[15]}}, dx20, 4'd0});
+
+    reg signed [31:0] p0_x_dy, p0_y_dx;
+    reg signed [31:0] p1_x_dy, p1_y_dx;
+    reg signed [31:0] p2_x_dy, p2_y_dx;
+
+    wire signed [31:0] diff01 = p0_x_dy - p0_y_dx;
+    wire signed [31:0] diff12 = p1_x_dy - p1_y_dx;
+    wire signed [31:0] diff20 = p2_x_dy - p2_y_dx;
+    
+    wire signed [31:0] bias01_ext = {{30{bias01[1]}}, bias01};
+    wire signed [31:0] bias12_ext = {{30{bias12[1]}}, bias12};
+    wire signed [31:0] bias20_ext = {{30{bias20[1]}}, bias20};
+
+    wire signed [31:0] E01_start = sign ? (-diff01 + bias01_ext) : (diff01 + bias01_ext);
+    wire signed [31:0] E12_start = sign ? (-diff12 + bias12_ext) : (diff12 + bias12_ext);
+    wire signed [31:0] E20_start = sign ? (-diff20 + bias20_ext) : (diff20 + bias20_ext);
 
     reg setup_active;
-    reg setup_active_r;
+    reg [1:0] setup_state;
     wire mult_stall;
     wire stall = pipe_stall || mult_stall;
 
@@ -158,7 +204,7 @@ module graphite_rasterizer #(
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             setup_active <= 1'b0;
-            setup_active_r <= 1'b0;
+            setup_state <= 2'd0;
             scan_active <= 1'b0;
             hit_inside_this_row <= 1'b0;
             scan_x      <= 16'd0;
@@ -168,24 +214,39 @@ module graphite_rasterizer #(
             acc_w_inv <= 32'd0;
             acc_s <= 32'd0; acc_t <= 32'd0;
             acc_r <= 32'd0; acc_g <= 32'd0; acc_b <= 32'd0;
+            p0_x_dy <= 32'd0; p0_y_dx <= 32'd0;
+            p1_x_dy <= 32'd0; p1_y_dx <= 32'd0;
+            p2_x_dy <= 32'd0; p2_y_dx <= 32'd0;
         end else if (ce) begin
             if (start && !busy) begin
                 setup_active <= 1'b1;
+                setup_state <= 2'd0;
                 // Capture these early since they don't depend on edge setup
                 acc_w_inv <= start_w_inv;
                 acc_s <= start_s; acc_t <= start_t;
                 acc_r <= start_r; acc_g <= start_g; acc_b <= start_b;
             end else if (setup_active) begin
-                setup_active <= 1'b0;
-                setup_active_r <= 1'b1;
-            end else if (setup_active_r) begin
-                setup_active_r <= 1'b0;
-                scan_active <= 1'b1;
-                hit_inside_this_row <= 1'b0;
-                scan_x      <= start_x;
-                scan_y      <= start_y;
-                scan_dir    <= 2'sd1;
-                E01 <= E01_start; E12 <= E12_start; E20 <= E20_start;
+                if (setup_state == 2'd0) begin
+                    p0_x_dy <= mult_res1[31:0];
+                    p0_y_dx <= mult_res2[31:0];
+                    setup_state <= 2'd1;
+                end else if (setup_state == 2'd1) begin
+                    p1_x_dy <= mult_res1[31:0];
+                    p1_y_dx <= mult_res2[31:0];
+                    setup_state <= 2'd2;
+                end else if (setup_state == 2'd2) begin
+                    p2_x_dy <= mult_res1[31:0];
+                    p2_y_dx <= mult_res2[31:0];
+                    setup_state <= 2'd3;
+                end else if (setup_state == 2'd3) begin
+                    setup_active <= 1'b0;
+                    scan_active <= 1'b1;
+                    hit_inside_this_row <= 1'b0;
+                    scan_x      <= start_x;
+                    scan_y      <= start_y;
+                    scan_dir    <= 2'sd1;
+                    E01 <= E01_start; E12 <= E12_start; E20 <= E20_start;
+                end
             end else if (scan_active && !stall) begin
                 if (scan_y > max_y || scan_y >= FB_HEIGHT) begin
                     scan_active <= 1'b0;
@@ -348,18 +409,49 @@ module graphite_rasterizer #(
         end
     end
 
-    reg signed [31:0] mult_op_a1, mult_op_a2;
+    reg signed [31:0] mult_op_a1, mult_op_b1;
+    reg signed [31:0] mult_op_a2, mult_op_b2;
+
     always @(*) begin
-        case (mult_state)
-            2'd0: begin mult_op_a1 = p_r4_s_w; mult_op_a2 = p_r4_t_w; end
-            2'd1: begin mult_op_a1 = p_r4_r_w; mult_op_a2 = p_r4_g_w; end
-            2'd2: begin mult_op_a1 = p_r4_b_w; mult_op_a2 = 32'd0;    end
-            default: begin mult_op_a1 = 32'd0; mult_op_a2 = 32'd0;    end
-        endcase
+        if (setup_active) begin
+            case (setup_state)
+                2'd0: begin
+                    mult_op_a1 = {{16{px_minus_v0x[15]}}, px_minus_v0x};
+                    mult_op_b1 = {{16{dy01[15]}}, dy01};
+                    mult_op_a2 = {{16{py_minus_v0y[15]}}, py_minus_v0y};
+                    mult_op_b2 = {{16{dx01[15]}}, dx01};
+                end
+                2'd1: begin
+                    mult_op_a1 = {{16{px_minus_v1x[15]}}, px_minus_v1x};
+                    mult_op_b1 = {{16{dy12[15]}}, dy12};
+                    mult_op_a2 = {{16{py_minus_v1y[15]}}, py_minus_v1y};
+                    mult_op_b2 = {{16{dx12[15]}}, dx12};
+                end
+                2'd2: begin
+                    mult_op_a1 = {{16{px_minus_v2x[15]}}, px_minus_v2x};
+                    mult_op_b1 = {{16{dy20[15]}}, dy20};
+                    mult_op_a2 = {{16{py_minus_v2y[15]}}, py_minus_v2y};
+                    mult_op_b2 = {{16{dx20[15]}}, dx20};
+                end
+                default: begin
+                    mult_op_a1 = 32'd0; mult_op_b1 = 32'd0;
+                    mult_op_a2 = 32'd0; mult_op_b2 = 32'd0;
+                end
+            endcase
+        end else begin
+            mult_op_b1 = $signed(w_out);
+            mult_op_b2 = $signed(w_out);
+            case (mult_state)
+                2'd0: begin mult_op_a1 = p_r4_s_w; mult_op_a2 = p_r4_t_w; end
+                2'd1: begin mult_op_a1 = p_r4_r_w; mult_op_a2 = p_r4_g_w; end
+                2'd2: begin mult_op_a1 = p_r4_b_w; mult_op_a2 = 32'd0;    end
+                default: begin mult_op_a1 = 32'd0; mult_op_a2 = 32'd0;    end
+            endcase
+        end
     end
 
-    wire signed [63:0] mult_res1 = mult_op_a1 * $signed(w_out);
-    wire signed [63:0] mult_res2 = mult_op_a2 * $signed(w_out);
+    assign mult_res1 = mult_op_a1 * mult_op_b1;
+    assign mult_res2 = mult_op_a2 * mult_op_b2;
 
     reg signed [31:0] p4_true_u, p4_true_v, p4_true_r, p4_true_g, p4_true_b;
 
@@ -527,6 +619,6 @@ module graphite_rasterizer #(
     // =========================================================================
     // Busy Signal
     // =========================================================================
-    assign busy = setup_active || setup_active_r || scan_active || p_r1_valid || p_r2_valid || p_r3_valid || p_r4_valid || p_r5_valid || fb_req;
+    assign busy = setup_active || scan_active || p_r1_valid || p_r2_valid || p_r3_valid || p_r4_valid || p_r5_valid || fb_req;
 
 endmodule
