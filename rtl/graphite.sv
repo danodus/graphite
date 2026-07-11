@@ -52,8 +52,9 @@ module graphite #(
     logic signed [31:0] start_w_inv, start_s, start_t, start_r, start_g, start_b;
     logic signed [31:0] dw_dx, dw_dy, ds_dx, ds_dy, dt_dx, dt_dy;
     logic signed [31:0] dr_dx, dr_dy, dg_dx, dg_dy, db_dx, db_dy;
+    logic signed [31:0] start_q, dq_dx, dq_dy;
     logic [31:0] fb_address, texture_address, back_rel_address, depth_rel_address;
-    logic is_textured, is_clamp_s, is_clamp_t, is_depth_test, is_perspective_correct;
+    logic is_textured, is_clamp_s, is_clamp_t, is_depth_test, is_perspective_correct, enable_shadow_map;
     logic [2:0] texture_width_scale, texture_height_scale;
 
     graphite_command_processor #(
@@ -84,10 +85,12 @@ module graphite #(
         .start_w_inv_o(start_w_inv), .start_s_o(start_s), .start_t_o(start_t), .start_r_o(start_r), .start_g_o(start_g), .start_b_o(start_b),
         .dw_dx_o(dw_dx), .dw_dy_o(dw_dy), .ds_dx_o(ds_dx), .ds_dy_o(ds_dy), .dt_dx_o(dt_dx), .dt_dy_o(dt_dy),
         .dr_dx_o(dr_dx), .dr_dy_o(dr_dy), .dg_dx_o(dg_dx), .dg_dy_o(dg_dy), .db_dx_o(db_dx), .db_dy_o(db_dy),
+        .start_q_o(start_q), .dq_dx_o(dq_dx), .dq_dy_o(dq_dy),
         .fb_address_o(fb_address), .texture_address_o(texture_address),
         .back_rel_address_o(back_rel_address), .depth_rel_address_o(depth_rel_address),
         .is_textured_o(is_textured), .is_clamp_s_o(is_clamp_s), .is_clamp_t_o(is_clamp_t),
         .is_depth_test_o(is_depth_test), .is_perspective_correct_o(is_perspective_correct),
+        .enable_shadow_map_o(enable_shadow_map),
         .texture_width_scale_o(texture_width_scale), .texture_height_scale_o(texture_height_scale)
     );
 
@@ -118,6 +121,7 @@ module graphite #(
         .start(raster_start),
         .busy(raster_busy),
         .enable_texture(is_textured),
+        .enable_shadow_map(enable_shadow_map),
         .enable_depth_test(is_depth_test),
         .clamp_s(is_clamp_s),
         .clamp_t(is_clamp_t),
@@ -125,9 +129,10 @@ module graphite #(
         .texture_height_scale(texture_height_scale),
         .v0_x(v0_x), .v0_y(v0_y), .v1_x(v1_x), .v1_y(v1_y), .v2_x(v2_x), .v2_y(v2_y),
         .sign(sign),
-        .start_w_inv(start_w_inv), .start_s(start_s), .start_t(start_t), .start_r(start_r), .start_g(start_g), .start_b(start_b),
+        .start_w_inv(start_w_inv), .start_s(start_s), .start_t(start_t), .start_r(start_r), .start_g(start_g), .start_b(start_b), .start_q(start_q),
         .dw_dx(dw_dx), .dw_dy(dw_dy), .ds_dx(ds_dx), .ds_dy(ds_dy), .dt_dx(dt_dx), .dt_dy(dt_dy),
         .dr_dx(dr_dx), .dr_dy(dr_dy), .dg_dx(dg_dx), .dg_dy(dg_dy), .db_dx(db_dx), .db_dy(db_dy),
+        .dq_dx(dq_dx), .dq_dy(dq_dy),
         .tex_req(tex_req), .tex_addr(tex_addr), .tex_ack(tex_ack), .tex_rdata(tex_rdata),
         .fb_req(fb_req), .fb_addr(fb_addr), .fb_wdata(fb_wdata), .fb_ack(fb_ack),
         .zb_req(zb_req), .zb_we(zb_we), .zb_addr(zb_addr), .zb_wdata(zb_wdata), .zb_ack(zb_ack), .zb_rdata(zb_rdata)

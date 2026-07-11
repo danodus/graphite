@@ -13,6 +13,7 @@ module graphite_rasterizer #(
     // Control
     input  wire         start,
     input  wire         enable_texture,
+    input  wire         enable_shadow_map,
     input  wire         enable_depth_test,
     input  wire         clamp_s,
     input  wire         clamp_t,
@@ -44,6 +45,8 @@ module graphite_rasterizer #(
     input  wire signed [31:0] dr_dx, dr_dy,
     input  wire signed [31:0] dg_dx, dg_dy,
     input  wire signed [31:0] db_dx, db_dy,
+    input  wire signed [31:0] start_q,
+    input  wire signed [31:0] dq_dx, dq_dy,
 
     // Texture Memory Interface (Read-Only)
     output reg         tex_req,
@@ -117,7 +120,7 @@ module graphite_rasterizer #(
     reg signed [1:0]  scan_dir;
     reg signed [31:0] E01, E12, E20;
     reg signed [31:0] acc_w_inv;
-    reg signed [31:0] acc_s, acc_t;
+    reg signed [31:0] acc_s, acc_t, acc_q;
     reg signed [31:0] acc_r, acc_g, acc_b;
     reg hit_inside_this_row;
 
@@ -144,6 +147,7 @@ module graphite_rasterizer #(
     wire signed [31:0] scanner_zinv = acc_w_inv >>> 14; 
     wire signed [31:0] scanner_s_w  = acc_s >>> 2;      
     wire signed [31:0] scanner_t_w  = acc_t >>> 2;
+    wire signed [31:0] scanner_q_w  = acc_q >>> 2;
     wire signed [31:0] scanner_r_w  = acc_r <<< 4;      
     wire signed [31:0] scanner_g_w  = acc_g <<< 4;
     wire signed [31:0] scanner_b_w  = acc_b <<< 4;
@@ -166,14 +170,14 @@ module graphite_rasterizer #(
             scan_dir    <= 2'sd1;
             E01 <= 32'd0; E12 <= 32'd0; E20 <= 32'd0;
             acc_w_inv <= 32'd0;
-            acc_s <= 32'd0; acc_t <= 32'd0;
+            acc_s <= 32'd0; acc_t <= 32'd0; acc_q <= 32'd0;
             acc_r <= 32'd0; acc_g <= 32'd0; acc_b <= 32'd0;
         end else if (ce) begin
             if (start && !busy) begin
                 setup_active <= 1'b1;
                 // Capture these early since they don't depend on edge setup
                 acc_w_inv <= start_w_inv;
-                acc_s <= start_s; acc_t <= start_t;
+                acc_s <= start_s; acc_t <= start_t; acc_q <= start_q;
                 acc_r <= start_r; acc_g <= start_g; acc_b <= start_b;
             end else if (setup_active) begin
                 setup_active <= 1'b0;
@@ -199,6 +203,7 @@ module graphite_rasterizer #(
                     acc_w_inv <= acc_w_inv + dw_dy;
                     acc_s <= acc_s + ds_dy;
                     acc_t <= acc_t + dt_dy;
+                    acc_q <= acc_q + dq_dy;
                     acc_r <= {{8{next_r_down[23]}}, next_r_down[23:0]};
                     acc_g <= {{8{next_g_down[23]}}, next_g_down[23:0]};
                     acc_b <= {{8{next_b_down[23]}}, next_b_down[23:0]};
@@ -213,6 +218,7 @@ module graphite_rasterizer #(
                     acc_w_inv <= acc_w_inv + ((scan_dir == 2'sd1) ? dw_dx : -dw_dx);
                     acc_s <= acc_s + ((scan_dir == 2'sd1) ? ds_dx : -ds_dx);
                     acc_t <= acc_t + ((scan_dir == 2'sd1) ? dt_dx : -dt_dx);
+                    acc_q <= acc_q + ((scan_dir == 2'sd1) ? dq_dx : -dq_dx);
                     acc_r <= {{8{next_r_horiz[23]}}, next_r_horiz[23:0]};
                     acc_g <= {{8{next_g_horiz[23]}}, next_g_horiz[23:0]};
                     acc_b <= {{8{next_b_horiz[23]}}, next_b_horiz[23:0]};
@@ -228,6 +234,7 @@ module graphite_rasterizer #(
     reg [15:0] p_r1_y, p_r2_y, p_r3_y;
     reg signed [31:0] p_r1_s_w, p_r2_s_w, p_r3_s_w;
     reg signed [31:0] p_r1_t_w, p_r2_t_w, p_r3_t_w;
+    reg signed [31:0] p_r1_q_w, p_r2_q_w, p_r3_q_w;
     reg signed [31:0] p_r1_r_w, p_r2_r_w, p_r3_r_w;
     reg signed [31:0] p_r1_g_w, p_r2_g_w, p_r3_g_w;
     reg signed [31:0] p_r1_b_w, p_r2_b_w, p_r3_b_w;
@@ -242,19 +249,19 @@ module graphite_rasterizer #(
                 p_r1_valid  <= scanner_valid;
                 p_r1_inside <= scanner_inside;
                 p_r1_x      <= scan_x;     p_r1_y      <= scan_y;
-                p_r1_s_w    <= scanner_s_w; p_r1_t_w    <= scanner_t_w;
+                p_r1_s_w    <= scanner_s_w; p_r1_t_w    <= scanner_t_w; p_r1_q_w <= scanner_q_w;
                 p_r1_r_w    <= scanner_r_w; p_r1_g_w    <= scanner_g_w; p_r1_b_w    <= scanner_b_w;
 
                 p_r2_valid  <= p_r1_valid;
                 p_r2_inside <= p_r1_inside;
                 p_r2_x      <= p_r1_x;     p_r2_y      <= p_r1_y;
-                p_r2_s_w    <= p_r1_s_w;   p_r2_t_w    <= p_r1_t_w;
+                p_r2_s_w    <= p_r1_s_w;   p_r2_t_w    <= p_r1_t_w;   p_r2_q_w <= p_r1_q_w;
                 p_r2_r_w    <= p_r1_r_w;   p_r2_g_w    <= p_r1_g_w;   p_r2_b_w    <= p_r1_b_w;
 
                 p_r3_valid  <= p_r2_valid;
                 p_r3_inside <= p_r2_inside;
                 p_r3_x      <= p_r2_x;     p_r3_y      <= p_r2_y;
-                p_r3_s_w    <= p_r2_s_w;   p_r3_t_w    <= p_r2_t_w;
+                p_r3_s_w    <= p_r2_s_w;   p_r3_t_w    <= p_r2_t_w;   p_r3_q_w <= p_r2_q_w;
                 p_r3_r_w    <= p_r2_r_w;   p_r3_g_w    <= p_r2_g_w;   p_r3_b_w    <= p_r2_b_w;
             end
         end
@@ -277,7 +284,7 @@ module graphite_rasterizer #(
     // Pipeline Stage 4 (Perspective Multiply & Depth Test Setup)
     // =========================================================================
     reg [15:0] p_r4_x, p_r4_y;
-    reg signed [31:0] p_r4_s_w, p_r4_t_w, p_r4_r_w, p_r4_g_w, p_r4_b_w;
+    reg signed [31:0] p_r4_s_w, p_r4_t_w, p_r4_q_w, p_r4_r_w, p_r4_g_w, p_r4_b_w;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -292,7 +299,7 @@ module graphite_rasterizer #(
                     p_r4_valid  <= p_r3_valid;
                     p_r4_inside <= p_r3_inside;
                     p_r4_x      <= p_r3_x;     p_r4_y      <= p_r3_y;
-                    p_r4_s_w    <= p_r3_s_w;   p_r4_t_w    <= p_r3_t_w;
+                    p_r4_s_w    <= p_r3_s_w;   p_r4_t_w    <= p_r3_t_w;   p_r4_q_w <= p_r3_q_w;
                     p_r4_r_w    <= p_r3_r_w;   p_r4_g_w    <= p_r3_g_w;   p_r4_b_w    <= p_r3_b_w;
                 end
             end
@@ -353,7 +360,7 @@ module graphite_rasterizer #(
         case (mult_state)
             2'd0: begin mult_op_a1 = p_r4_s_w; mult_op_a2 = p_r4_t_w; end
             2'd1: begin mult_op_a1 = p_r4_r_w; mult_op_a2 = p_r4_g_w; end
-            2'd2: begin mult_op_a1 = p_r4_b_w; mult_op_a2 = 32'd0;    end
+            2'd2: begin mult_op_a1 = p_r4_b_w; mult_op_a2 = p_r4_q_w; end
             default: begin mult_op_a1 = 32'd0; mult_op_a2 = 32'd0;    end
         endcase
     end
@@ -361,11 +368,11 @@ module graphite_rasterizer #(
     wire signed [63:0] mult_res1 = mult_op_a1 * $signed(w_out);
     wire signed [63:0] mult_res2 = mult_op_a2 * $signed(w_out);
 
-    reg signed [31:0] p4_true_u, p4_true_v, p4_true_r, p4_true_g, p4_true_b;
+    reg signed [31:0] p4_true_u, p4_true_v, p4_true_q, p4_true_r, p4_true_g, p4_true_b;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            p4_true_u <= 32'd0; p4_true_v <= 32'd0;
+            p4_true_u <= 32'd0; p4_true_v <= 32'd0; p4_true_q <= 32'd0;
             p4_true_r <= 32'd0; p4_true_g <= 32'd0;
             p4_true_b <= 32'd0;
         end else if (ce) begin
@@ -378,6 +385,7 @@ module graphite_rasterizer #(
                     p4_true_g <= mult_res2[55:24];
                 end else if (mult_state == 2'd2) begin
                     p4_true_b <= mult_res1[55:24];
+                    p4_true_q <= mult_res2[55:24];
                 end
             end
         end
@@ -418,6 +426,7 @@ module graphite_rasterizer #(
     reg [15:0] p_r5_x, p_r5_y;
     reg [15:0] p_r5_depth_16;
     reg [7:0]  p_r5_clamped_r, p_r5_clamped_g, p_r5_clamped_b;
+    reg signed [31:0] p_r5_true_q;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -436,6 +445,7 @@ module graphite_rasterizer #(
                     p_r5_clamped_r <= p4_clamped_r;
                     p_r5_clamped_g <= p4_clamped_g;
                     p_r5_clamped_b <= p4_clamped_b;
+                    p_r5_true_q    <= p4_true_q;
 
                     if (p_r4_valid && p_r4_inside && z_pass && !mult_stall) begin
                         tex_addr <= p4_tex_addr;
@@ -470,6 +480,11 @@ module graphite_rasterizer #(
     wire [15:0] blend_g = ({8'b0, current_tex_data[15:8]}  * {8'b0, p_r5_clamped_g}) >> 8;
     wire [15:0] blend_b = ({8'b0, current_tex_data[7:0]}   * {8'b0, p_r5_clamped_b}) >> 8;
 
+    wire shadow_test = p_r5_true_q > {8'b0, current_tex_data[23:16], 8'b0};
+    wire [7:0] shadow_r = shadow_test ? (p_r5_clamped_r >> 1) : p_r5_clamped_r;
+    wire [7:0] shadow_g = shadow_test ? (p_r5_clamped_g >> 1) : p_r5_clamped_g;
+    wire [7:0] shadow_b = shadow_test ? (p_r5_clamped_b >> 1) : p_r5_clamped_b;
+
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             fb_req   <= 1'b0;
@@ -479,8 +494,11 @@ module graphite_rasterizer #(
             if (!mem_stall) begin
                 if (p_r5_valid) begin
                     fb_addr  <= ({16'b0, p_r5_y} * FB_WIDTH) + {16'b0, p_r5_x};
-                    fb_wdata <= enable_texture ? {8'b0, blend_r[7:0], blend_g[7:0], blend_b[7:0]}
-                                               : {8'b0, p_r5_clamped_r, p_r5_clamped_g, p_r5_clamped_b};
+                    if (enable_shadow_map)
+                        fb_wdata <= {8'b0, shadow_r, shadow_g, shadow_b};
+                    else
+                        fb_wdata <= enable_texture ? {8'b0, blend_r[7:0], blend_g[7:0], blend_b[7:0]}
+                                                   : {8'b0, p_r5_clamped_r, p_r5_clamped_g, p_r5_clamped_b};
                     fb_req   <= 1'b1;
                 end else begin
                     fb_req   <= 1'b0;

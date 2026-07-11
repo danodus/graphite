@@ -160,4 +160,8 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 mat4x4* mat_normal, mat4x4* mat_projection, mat4x4* mat_view, light_t* lights, size_t nb_lights, bool is_wireframe, texture_t* texture,
                 bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y, bool perspective_correct);
 
+void draw_model_ext(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
+                mat4x4* mat_normal, mat4x4* mat_projection, mat4x4* mat_view, light_t* lights, size_t nb_lights, bool is_wireframe, texture_t* texture,
+                bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y, bool perspective_correct, mat4x4* mat_light_view_proj, bool depth_only);
+
 #endif

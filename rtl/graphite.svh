@@ -36,6 +36,9 @@ localparam OP_DRAW              = 25;
 localparam OP_SWAP              = 26;
 localparam OP_SET_TEX_ADDR      = 27;
 localparam OP_SET_FB_ADDR       = 28;
+localparam OP_SET_START_Q       = 29;
+localparam OP_SET_DQ_DX         = 30;
+localparam OP_SET_DQ_DY         = 31;
 
 
 

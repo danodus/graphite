@@ -37,6 +37,7 @@ module graphite_command_processor #(
     output logic signed [31:0] start_w_inv_o, start_s_o, start_t_o, start_r_o, start_g_o, start_b_o,
     output logic signed [31:0] dw_dx_o, dw_dy_o, ds_dx_o, ds_dy_o, dt_dx_o, dt_dy_o,
     output logic signed [31:0] dr_dx_o, dr_dy_o, dg_dx_o, dg_dy_o, db_dx_o, db_dy_o,
+    output logic signed [31:0] start_q_o, dq_dx_o, dq_dy_o,
 
     output logic [31:0] fb_address_o,
     output logic [31:0] texture_address_o,
@@ -48,6 +49,7 @@ module graphite_command_processor #(
     output logic is_clamp_t_o,
     output logic is_depth_test_o,
     output logic is_perspective_correct_o,
+    output logic enable_shadow_map_o,
     output logic [2:0] texture_width_scale_o,
     output logic [2:0] texture_height_scale_o
 );
@@ -56,15 +58,16 @@ module graphite_command_processor #(
 
     logic signed [15:0] v0_x, v0_y, v1_x, v1_y, v2_x, v2_y;
     logic sign_reg;
-    logic signed [31:0] start_w_inv, start_s, start_t, start_r, start_g, start_b;
+    logic signed [31:0] start_w_inv, start_s, start_t, start_r, start_g, start_b, start_q;
     logic signed [31:0] dw_dx, dw_dy, ds_dx, ds_dy, dt_dx, dt_dy;
     logic signed [31:0] dr_dx, dr_dy, dg_dx, dg_dy, db_dx, db_dy;
+    logic signed [31:0] dq_dx, dq_dy;
 
     logic [31:0] fb_address, texture_address;
     logic [31:0] front_rel_address, back_rel_address, depth_rel_address;
     logic [31:0] texture_write_address;
 
-    logic is_textured, is_clamp_s, is_clamp_t, is_depth_test, is_perspective_correct;
+    logic is_textured, is_clamp_s, is_clamp_t, is_depth_test, is_perspective_correct, enable_shadow_map;
     logic [2:0] texture_width_scale, texture_height_scale;
 
     logic core_vram_sel, core_vram_wr;
@@ -72,7 +75,16 @@ module graphite_command_processor #(
     logic [31:0] core_vram_addr;
     logic [15:0] core_vram_data_out;
 
-    assign front_addr_o = fb_address + front_rel_address;
+    logic [31:0] display_address;
+    always_ff @(posedge clk) begin
+        if (reset_i) begin
+            display_address <= FB_ADDRESS;
+        end else if (state == WAIT_COMMAND && cmd_axis_tvalid_i && (cmd_axis_tdata_i[31:24] == OP_SWAP)) begin
+            display_address <= fb_address;
+        end
+    end
+
+    assign front_addr_o = display_address + front_rel_address;
     assign cmd_axis_tready_o = (state == WAIT_COMMAND) && !raster_busy_i;
 
     assign v0_x_o = v0_x;
@@ -100,6 +112,9 @@ module graphite_command_processor #(
     assign dg_dy_o = dg_dy;
     assign db_dx_o = db_dx;
     assign db_dy_o = db_dy;
+    assign start_q_o = start_q;
+    assign dq_dx_o = dq_dx;
+    assign dq_dy_o = dq_dy;
     assign fb_address_o = fb_address;
     assign texture_address_o = texture_address;
     assign back_rel_address_o = back_rel_address;
@@ -109,6 +124,7 @@ module graphite_command_processor #(
     assign is_clamp_t_o = is_clamp_t;
     assign is_depth_test_o = is_depth_test;
     assign is_perspective_correct_o = is_perspective_correct;
+    assign enable_shadow_map_o = enable_shadow_map;
     assign texture_width_scale_o = texture_width_scale;
     assign texture_height_scale_o = texture_height_scale;
 
@@ -294,6 +310,27 @@ module graphite_command_processor #(
                             db_dy[15:0] <= cmd_axis_tdata_i[15:0];
                         state <= WAIT_COMMAND;
                     end
+                    OP_SET_START_Q: begin
+                        if (cmd_axis_tdata_i[16])
+                            start_q[31:16] <= cmd_axis_tdata_i[15:0];
+                        else
+                            start_q[15:0] <= cmd_axis_tdata_i[15:0];
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_DQ_DX: begin
+                        if (cmd_axis_tdata_i[16])
+                            dq_dx[31:16] <= cmd_axis_tdata_i[15:0];
+                        else
+                            dq_dx[15:0] <= cmd_axis_tdata_i[15:0];
+                        state <= WAIT_COMMAND;
+                    end
+                    OP_SET_DQ_DY: begin
+                        if (cmd_axis_tdata_i[16])
+                            dq_dy[31:16] <= cmd_axis_tdata_i[15:0];
+                        else
+                            dq_dy[15:0] <= cmd_axis_tdata_i[15:0];
+                        state <= WAIT_COMMAND;
+                    end
                     OP_CLEAR: begin
                         core_vram_addr     <= fb_address + ((cmd_axis_tdata_i[16] == 0) ? back_rel_address : 32'(2 * FB_WIDTH * FB_HEIGHT));
                         core_vram_data_out <= cmd_axis_tdata_i[15:0];
@@ -312,6 +349,7 @@ module graphite_command_processor #(
                         sign_reg               <= cmd_axis_tdata_i[5];
                         texture_width_scale    <= cmd_axis_tdata_i[8:6];
                         texture_height_scale   <= cmd_axis_tdata_i[11:9];
+                        enable_shadow_map      <= cmd_axis_tdata_i[12];
                         raster_start_o <= 1'b1;
                         state <= WAIT_RASTER;
                     end
@@ -338,8 +376,8 @@ module graphite_command_processor #(
                             fb_address[31:16] <= cmd_axis_tdata_i[15:0];
                         else
                             fb_address[15:0] <= cmd_axis_tdata_i[15:0];
-                        front_rel_address <= 32'h0;
-                        back_rel_address  <= cmd_axis_tdata_i[17] ? 32'h0 : FB_WIDTH * FB_HEIGHT;
+                        // Do NOT clobber front_rel_address and back_rel_address here.
+                        // They are managed by OP_SWAP for double buffering.
                         state <= WAIT_COMMAND;
                     end
                     default:

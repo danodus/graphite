@@ -54,6 +54,9 @@
 #define OP_SWAP 26
 #define OP_SET_TEX_ADDR 27
 #define OP_SET_FB_ADDR 28
+#define OP_SET_START_Q 29
+#define OP_SET_DQ_DX 30
+#define OP_SET_DQ_DY 31
 
 #if FIXED_POINT
 #define PARAM(x) (x)
@@ -82,7 +85,7 @@ typedef int32_t fixed16;
 struct Vertex2 {
     int16_t x, y; // 12.4 fixed-point format
     fixed16 w; 
-    fixed16 s, t;
+    fixed16 s, t, q;
     fixed16 r, g, b; 
 };
 
@@ -186,16 +189,16 @@ static inline int64_t solve_gradient_high(int64_t det, fixed16 termA, int32_t fa
 
 
 
-void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y,
+void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], fixed16 q[3], texture_t* tex, bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y,
                       bool depth_test, bool perspective_correct)                      
 {
     uint32_t texture_width = 32 << texture_scale_x;
     uint32_t texture_height = 32 << texture_scale_y;
 
     Vertex2 v0, v1, v2;
-    v0.x = p[0].x >> 12; v0.y = p[0].y >> 12; v0.w = t[0].w; v0.s = MUL(t[0].u, FXI(texture_width)); v0.t = MUL(t[0].v, FXI(texture_height)); v0.r = MUL(c[0].x, FXI(255)); v0.g = MUL(c[0].y, FXI(255)); v0.b = MUL(c[0].z, FXI(255));
-    v1.x = p[1].x >> 12; v1.y = p[1].y >> 12; v1.w = t[1].w; v1.s = MUL(t[1].u, FXI(texture_width)); v1.t = MUL(t[1].v, FXI(texture_height)); v1.r = MUL(c[1].x, FXI(255)); v1.g = MUL(c[1].y, FXI(255)); v1.b = MUL(c[1].z, FXI(255));
-    v2.x = p[2].x >> 12; v2.y = p[2].y >> 12; v2.w = t[2].w; v2.s = MUL(t[2].u, FXI(texture_width)); v2.t = MUL(t[2].v, FXI(texture_height)); v2.r = MUL(c[2].x, FXI(255)); v2.g = MUL(c[2].y, FXI(255)); v2.b = MUL(c[2].z, FXI(255));
+    v0.x = p[0].x >> 12; v0.y = p[0].y >> 12; v0.w = t[0].w; v0.s = MUL(t[0].u, FXI(texture_width)); v0.t = MUL(t[0].v, FXI(texture_height)); v0.r = MUL(c[0].x, FXI(255)); v0.g = MUL(c[0].y, FXI(255)); v0.b = MUL(c[0].z, FXI(255)); v0.q = q[0];
+    v1.x = p[1].x >> 12; v1.y = p[1].y >> 12; v1.w = t[1].w; v1.s = MUL(t[1].u, FXI(texture_width)); v1.t = MUL(t[1].v, FXI(texture_height)); v1.r = MUL(c[1].x, FXI(255)); v1.g = MUL(c[1].y, FXI(255)); v1.b = MUL(c[1].z, FXI(255)); v1.q = q[1];
+    v2.x = p[2].x >> 12; v2.y = p[2].y >> 12; v2.w = t[2].w; v2.s = MUL(t[2].u, FXI(texture_width)); v2.t = MUL(t[2].v, FXI(texture_height)); v2.r = MUL(c[2].x, FXI(255)); v2.g = MUL(c[2].y, FXI(255)); v2.b = MUL(c[2].z, FXI(255)); v2.q = q[2];
 
     if (v0.y > v1.y) std::swap(v0, v1);
     if (v0.y > v2.y) std::swap(v0, v2);
@@ -213,6 +216,7 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
 
     fixed16 s0_w = FIXED_MUL(v0.s, w0_inv); fixed16 s1_w = FIXED_MUL(v1.s, w1_inv); fixed16 s2_w = FIXED_MUL(v2.s, w2_inv);
     fixed16 t0_w = FIXED_MUL(v0.t, w0_inv); fixed16 t1_w = FIXED_MUL(v1.t, w1_inv); fixed16 t2_w = FIXED_MUL(v2.t, w2_inv);
+    fixed16 q0_w = FIXED_MUL(v0.q, w0_inv); fixed16 q1_w = FIXED_MUL(v1.q, w1_inv); fixed16 q2_w = FIXED_MUL(v2.q, w2_inv);
     fixed16 r0_w = FIXED_MUL(v0.r, w0_inv); fixed16 r1_w = FIXED_MUL(v1.r, w1_inv); fixed16 r2_w = FIXED_MUL(v2.r, w2_inv);
     fixed16 g0_w = FIXED_MUL(v0.g, w0_inv); fixed16 g1_w = FIXED_MUL(v1.g, w1_inv); fixed16 g2_w = FIXED_MUL(v2.g, w2_inv);
     fixed16 b0_w = FIXED_MUL(v0.b, w0_inv); fixed16 b1_w = FIXED_MUL(v1.b, w1_inv); fixed16 b2_w = FIXED_MUL(v2.b, w2_inv);
@@ -220,6 +224,7 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     fixed16 dw_inv1 = w1_inv - w0_inv; fixed16 dw_inv2 = w2_inv - w0_inv;
     fixed16 ds1 = s1_w - s0_w;         fixed16 ds2 = s2_w - s0_w;
     fixed16 dt1 = t1_w - t0_w;         fixed16 dt2 = t2_w - t0_w;
+    fixed16 dq1 = q1_w - q0_w;         fixed16 dq2 = q2_w - q0_w;
     fixed16 dr1 = r1_w - r0_w;         fixed16 dr2 = r2_w - r0_w;
     fixed16 dg1 = g1_w - g0_w;         fixed16 dg2 = g2_w - g0_w;
     fixed16 db1 = b1_w - b0_w;         fixed16 db2 = b2_w - b0_w;
@@ -227,6 +232,7 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     int64_t raw_dw_dx = solve_gradient_high(det, dw_inv1, dy2, dw_inv2, dy1);
     int64_t raw_du_dx = solve_gradient_high(det, ds1,     dy2, ds2,     dy1);
     int64_t raw_dv_dx = solve_gradient_high(det, dt1,     dy2, dt2,     dy1);
+    int64_t raw_dq_dx = solve_gradient_high(det, dq1,     dy2, dq2,     dy1);
     int64_t raw_dr_dx = solve_gradient_high(det, dr1,     dy2, dr2,     dy1);
     int64_t raw_dg_dx = solve_gradient_high(det, dg1,     dy2, dg2,     dy1);
     int64_t raw_db_dx = solve_gradient_high(det, db1,     dy2, db2,     dy1);
@@ -234,6 +240,7 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     int64_t raw_dw_dy = solve_gradient_high(det, dw_inv2, dx1, dw_inv1, dx2);
     int64_t raw_ds_dy = solve_gradient_high(det, ds2,     dx1, ds1,     dx2);
     int64_t raw_dt_dy = solve_gradient_high(det, dt2,     dx1, dt1,     dx2);
+    int64_t raw_dq_dy = solve_gradient_high(det, dq2,     dx1, dq1,     dx2);
     int64_t raw_dr_dy = solve_gradient_high(det, dr2,     dx1, dr1,     dx2);
     int64_t raw_dg_dy = solve_gradient_high(det, dg2,     dx1, dg1,     dx2);
     int64_t raw_db_dy = solve_gradient_high(det, db2,     dx1, db1,     dx2);
@@ -241,6 +248,7 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     int64_t raw_start_w = ((int64_t)w0_inv << 16) - mul_shr4(v0.x, raw_dw_dx) - mul_shr4(v0.y, raw_dw_dy);
     int64_t raw_start_s = ((int64_t)s0_w   << 16) - mul_shr4(v0.x, raw_du_dx) - mul_shr4(v0.y, raw_ds_dy);
     int64_t raw_start_t = ((int64_t)t0_w   << 16) - mul_shr4(v0.x, raw_dv_dx) - mul_shr4(v0.y, raw_dt_dy);
+    int64_t raw_start_q = ((int64_t)q0_w   << 16) - mul_shr4(v0.x, raw_dq_dx) - mul_shr4(v0.y, raw_dq_dy);
     int64_t raw_start_r = ((int64_t)r0_w   << 16) - mul_shr4(v0.x, raw_dr_dx) - mul_shr4(v0.y, raw_dr_dy);
     int64_t raw_start_g = ((int64_t)g0_w   << 16) - mul_shr4(v0.x, raw_dg_dx) - mul_shr4(v0.y, raw_dg_dy);
     int64_t raw_start_b = ((int64_t)b0_w   << 16) - mul_shr4(v0.x, raw_db_dx) - mul_shr4(v0.y, raw_db_dy);    
@@ -248,6 +256,10 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     int32_t start_w = (int32_t)(raw_start_w >> 2);
     int32_t dw_dx   = (int32_t)(raw_dw_dx   >> 2);
     int32_t dw_dy   = (int32_t)(raw_dw_dy   >> 2);
+
+    int32_t start_q = (int32_t)(raw_start_q >> 2);
+    int32_t dq_dx   = (int32_t)(raw_dq_dx   >> 2);
+    int32_t dq_dy   = (int32_t)(raw_dq_dy   >> 2);
 
     int32_t start_s = (int32_t)(raw_start_s >> 14);
     int32_t du_dx   = (int32_t)(raw_du_dx   >> 14);
@@ -289,6 +301,7 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     int curr_y = start_y;
 
     int32_t acc_w_inv = start_w + (int32_t)(((int64_t)curr_x * dw_dx) + ((int64_t)curr_y * dw_dy) + (dw_dx >> 1) + (dw_dy >> 1));
+    int32_t acc_q_w   = start_q + (int32_t)(((int64_t)curr_x * dq_dx) + ((int64_t)curr_y * dq_dy) + (dq_dx >> 1) + (dq_dy >> 1));
     int32_t acc_u_w   = start_s + (int32_t)(((int64_t)curr_x * du_dx) + ((int64_t)curr_y * du_dy) + (du_dx >> 1) + (du_dy >> 1));
     int32_t acc_v_w   = start_t + (int32_t)(((int64_t)curr_x * dv_dx) + ((int64_t)curr_y * dv_dy) + (dv_dx >> 1) + (dv_dy >> 1));
     int32_t acc_r_w   = start_r + (int32_t)(((int64_t)curr_x * dr_dx) + ((int64_t)curr_y * dr_dy) + (dr_dx >> 1) + (dr_dy >> 1));
@@ -320,6 +333,7 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     push_16(OP_SET_V2_Y, v2.y);
 
     push_32(OP_SET_START_W_INV, acc_w_inv);
+    push_32(OP_SET_START_Q, acc_q_w);
     push_32(OP_SET_START_S, acc_u_w);
     push_32(OP_SET_START_T, acc_v_w);
     push_32(OP_SET_START_R, acc_r_w);
@@ -328,6 +342,8 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
 
     push_32(OP_SET_DW_DX, dw_dx);
     push_32(OP_SET_DW_DY, dw_dy);
+    push_32(OP_SET_DQ_DX, dq_dx);
+    push_32(OP_SET_DQ_DY, dq_dy);
     push_32(OP_SET_DS_DX, du_dx);
     push_32(OP_SET_DS_DY, du_dy);
     push_32(OP_SET_DT_DX, dv_dx);

@@ -18,7 +18,7 @@
 
 #define MAX_NB_TRIANGLES    16      // maximum number of triangles produced by the clipping
 
-void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y,
+void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], fx32 q[3], texture_t* tex, bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y,
                       bool depth_test, bool perspective_correct);
 
 vec3d matrix_multiply_vector(mat4x4* m, vec3d* i) {
@@ -554,7 +554,8 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
         {c1.x, c1.y, c1.z, c1.w}
     };
 
-    xd_draw_triangle(pp0, tt0, cc0, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, false, perspective_correct);
+    fx32 qq[3] = {0, 0, 0};
+    xd_draw_triangle(pp0, tt0, cc0, qq, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, false, perspective_correct);
 
     vec3d pp1[3] = {
         {vv1.x, vv1.y, vv1.z, FX(0.0)},
@@ -574,12 +575,12 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
         {c1.x, c1.y, c1.z, c1.w}
     };    
 
-    xd_draw_triangle(pp1, tt1, cc1, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, false, perspective_correct);
+    xd_draw_triangle(pp1, tt1, cc1, qq, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, false, perspective_correct);
 }
 
-void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
+void draw_model_ext(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
                 mat4x4* mat_normal, mat4x4* mat_proj, mat4x4* mat_view, light_t* lights, size_t nb_lights, bool is_wireframe, texture_t* texture,
-                bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y, bool perspective_correct) {
+                bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y, bool perspective_correct, mat4x4* mat_light_view_proj, bool depth_only) {
     size_t triangle_to_raster_index = 0;
 
     // draw faces
@@ -715,6 +716,24 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                 }
             }
 
+
+            // Convert world space to light space to generate shadow map coordinates
+            triangle_t tri_light;
+            if (mat_light_view_proj != NULL) {
+                tri_light.p[0] = matrix_multiply_vector(mat_light_view_proj, &tri_transformed.p[0]);
+                tri_light.p[1] = matrix_multiply_vector(mat_light_view_proj, &tri_transformed.p[1]);
+                tri_light.p[2] = matrix_multiply_vector(mat_light_view_proj, &tri_transformed.p[2]);
+
+                for (int j = 0; j < 3; j++) {
+                    fx32 recip_w = DIV(FX(1.0f), tri_light.p[j].w);
+                    fx32 nx = MUL(tri_light.p[j].x, recip_w);
+                    fx32 ny = MUL(tri_light.p[j].y, recip_w);
+                    tri_transformed.t[j].u = MUL(nx + FX(1.0f), FX(0.5f)); 
+                    tri_transformed.t[j].v = MUL(-ny + FX(1.0f), FX(0.5f)); 
+                    tri_transformed.t[j].w = MUL(tri_light.p[j].z, recip_w); 
+                }
+            }
+
             // convert world space to view space
             tri_viewed.p[0] = matrix_multiply_vector(mat_view, &tri_transformed.p[0]);
             tri_viewed.p[1] = matrix_multiply_vector(mat_view, &tri_transformed.p[1]);
@@ -778,9 +797,26 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                     tri_projected.c[2].w = MUL(tri_projected.c[2].w, recip_w[2]);
                 }
 
+
                 tri_projected.t[0].w = recip_w[0];
                 tri_projected.t[1].w = recip_w[1];
                 tri_projected.t[2].w = recip_w[2];
+
+                if (mat_light_view_proj != NULL) {
+                    tri_projected.t[0].w = tri_transformed.t[0].w;
+                    tri_projected.t[1].w = tri_transformed.t[1].w;
+                    tri_projected.t[2].w = tri_transformed.t[2].w;
+                }
+
+                if (depth_only) {
+                    for (int j = 0; j < 3; j++) {
+                        fx32 q = tri_projected.p[j].z;
+                        fx32 color_val = MUL(q + FX(1.0f), FX(0.5f));
+                        tri_projected.c[j].x = color_val;
+                        tri_projected.c[j].y = color_val;
+                        tri_projected.c[j].z = color_val;
+                    }
+                }
 
                 // scale into view
                 tri_projected.p[0] = vector_mul(&tri_projected.p[0], recip_w[0]);
@@ -953,8 +989,14 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                           (vec3d){t->c[2].x, t->c[2].y, t->c[2].z, t->c[2].w},
                           (vec3d){t->c[0].x, t->c[0].y, t->c[0].z, t->c[0].w}, FX(1.0f), texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, perspective_correct);
             } else {
-                xd_draw_triangle(t->p, t->t, t->c, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, true, perspective_correct);
+                fx32 qq[3] = {t->t[0].w, t->t[1].w, t->t[2].w};
+                xd_draw_triangle(t->p, t->t, t->c, qq, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, true, perspective_correct);
             }
         }
     }
+}
+void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
+                mat4x4* mat_normal, mat4x4* mat_proj, mat4x4* mat_view, light_t* lights, size_t nb_lights, bool is_wireframe, texture_t* texture,
+                bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y, bool perspective_correct) {
+    draw_model_ext(viewport_width, viewport_height, vec_camera, model, mat_world, mat_normal, mat_proj, mat_view, lights, nb_lights, is_wireframe, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, perspective_correct, NULL, false);
 }
