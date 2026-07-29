@@ -14,6 +14,7 @@ module graphite_rasterizer #(
     input  wire         start,
     input  wire         enable_texture,
     input  wire         enable_depth_test,
+    input  wire         enable_perspective_correct,
     input  wire         clamp_s,
     input  wire         clamp_t,
     input  wire [2:0]   texture_width_scale,
@@ -387,7 +388,7 @@ module graphite_rasterizer #(
     // Time-multiplexed Multipliers (Stage 4)
     // =========================================================================
     reg [1:0] mult_state;
-    assign mult_stall = p_r4_valid && p_r4_inside && z_pass && (mult_state != 2'd3);
+    assign mult_stall = p_r4_valid && p_r4_inside && z_pass && (mult_state != 2'd3) && enable_perspective_correct;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -396,7 +397,7 @@ module graphite_rasterizer #(
             if (start && !busy) begin
                 mult_state <= 2'd0;
             end else if (!mem_stall) begin
-                if (p_r4_valid && p_r4_inside && z_pass) begin
+                if (p_r4_valid && p_r4_inside && z_pass && enable_perspective_correct) begin
                     if (mult_state == 2'd3) begin
                         mult_state <= 2'd0;
                     end else begin
@@ -453,6 +454,8 @@ module graphite_rasterizer #(
     assign mult_res1 = mult_op_a1 * mult_op_b1;
     assign mult_res2 = mult_op_a2 * mult_op_b2;
 
+    // Affine path bypasses these registers: stage 5 advances the same cycle the
+    // pixel reaches stage 4, so a registered sample would lag by one pixel.
     reg signed [31:0] p4_true_u, p4_true_v, p4_true_r, p4_true_g, p4_true_b;
 
     always @(posedge clk or negedge rst_n) begin
@@ -461,7 +464,7 @@ module graphite_rasterizer #(
             p4_true_r <= 32'd0; p4_true_g <= 32'd0;
             p4_true_b <= 32'd0;
         end else if (ce) begin
-            if (!mem_stall && p_r4_valid && p_r4_inside && z_pass) begin
+            if (!mem_stall && p_r4_valid && p_r4_inside && z_pass && enable_perspective_correct) begin
                 if (mult_state == 2'd0) begin
                     p4_true_u <= mult_res1[55:24];
                     p4_true_v <= mult_res2[55:24];
@@ -475,24 +478,30 @@ module graphite_rasterizer #(
         end
     end
 
-    wire [7:0] p4_clamped_r = p4_true_r[31] ? 8'h00 : (|p4_true_r[30:24] ? 8'hFF : p4_true_r[23:16]);
-    wire [7:0] p4_clamped_g = p4_true_g[31] ? 8'h00 : (|p4_true_g[30:24] ? 8'hFF : p4_true_g[23:16]);
-    wire [7:0] p4_clamped_b = p4_true_b[31] ? 8'h00 : (|p4_true_b[30:24] ? 8'hFF : p4_true_b[23:16]);
+    wire signed [31:0] attr_u = enable_perspective_correct ? p4_true_u : p_r4_s_w;
+    wire signed [31:0] attr_v = enable_perspective_correct ? p4_true_v : p_r4_t_w;
+    wire signed [31:0] attr_r = enable_perspective_correct ? p4_true_r : p_r4_r_w;
+    wire signed [31:0] attr_g = enable_perspective_correct ? p4_true_g : p_r4_g_w;
+    wire signed [31:0] attr_b = enable_perspective_correct ? p4_true_b : p_r4_b_w;
 
-    wire [11:0] u_int = p4_true_u[27:16];
-    wire [11:0] v_int = p4_true_v[27:16];
+    wire [7:0] p4_clamped_r = attr_r[31] ? 8'h00 : (|attr_r[30:24] ? 8'hFF : attr_r[23:16]);
+    wire [7:0] p4_clamped_g = attr_g[31] ? 8'h00 : (|attr_g[30:24] ? 8'hFF : attr_g[23:16]);
+    wire [7:0] p4_clamped_b = attr_b[31] ? 8'h00 : (|attr_b[30:24] ? 8'hFF : attr_b[23:16]);
+
+    wire [11:0] u_int = attr_u[27:16];
+    wire [11:0] v_int = attr_v[27:16];
 
     wire [11:0] u_mask = (12'd1 << (5 + texture_width_scale)) - 12'd1;
     wire [11:0] v_mask = (12'd1 << (5 + texture_height_scale)) - 12'd1;
     
-    wire u_negative = p4_true_u[31];
-    wire u_overflow = (p4_true_u[30:16] > {3'b000, u_mask});
+    wire u_negative = attr_u[31];
+    wire u_overflow = (attr_u[30:16] > {3'b000, u_mask});
     wire [11:0] u_clamped = u_negative ? 12'd0 : (u_overflow ? u_mask : u_int);
     wire [11:0] u_wrapped = u_int & u_mask;
     wire [11:0] u_final   = clamp_s ? u_clamped : u_wrapped;
 
-    wire v_negative = p4_true_v[31];
-    wire v_overflow = (p4_true_v[30:16] > {3'b000, v_mask});
+    wire v_negative = attr_v[31];
+    wire v_overflow = (attr_v[30:16] > {3'b000, v_mask});
     wire [11:0] v_clamped = v_negative ? 12'd0 : (v_overflow ? v_mask : v_int);
     wire [11:0] v_wrapped = v_int & v_mask;
     wire [11:0] v_final   = clamp_t ? v_clamped : v_wrapped;

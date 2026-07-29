@@ -119,6 +119,7 @@ module graphite #(
         .busy(raster_busy),
         .enable_texture(is_textured),
         .enable_depth_test(is_depth_test),
+        .enable_perspective_correct(is_perspective_correct),
         .clamp_s(is_clamp_s),
         .clamp_t(is_clamp_t),
         .texture_width_scale(texture_width_scale),

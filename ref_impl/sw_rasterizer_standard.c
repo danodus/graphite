@@ -80,7 +80,7 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
                               int32_t start_w, int32_t start_s, int32_t start_t, int32_t start_r, int32_t start_g, int32_t start_b,
                               int32_t dw_dx, int32_t ds_dx, int32_t dt_dx, int32_t dr_dx, int32_t dg_dx, int32_t db_dx,
                               int32_t dw_dy, int32_t ds_dy, int32_t dt_dy, int32_t dr_dy, int32_t dg_dy, int32_t db_dy, bool sign_bit,
-                              bool texture_enabled, bool depth_test) {
+                              bool texture_enabled, bool depth_test, bool perspective_correct) {
     
     // -------------------------------------------------------------------------
     // 1. WINDING ORIENTATION
@@ -189,11 +189,11 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
             if (!depth_test || depth_16 < g_depth_buffer[buf_idx]) {
                 if (depth_test) g_depth_buffer[buf_idx] = depth_16;
 
-                fixed16 true_u = (fixed16)(((int64_t)current_u_w * current_w) >> 24);
-                fixed16 true_v = (fixed16)(((int64_t)current_v_w * current_w) >> 24);
-                fixed16 true_r = (fixed16)(((int64_t)current_r_w * current_w) >> 24);
-                fixed16 true_g = (fixed16)(((int64_t)current_g_w * current_w) >> 24);
-                fixed16 true_b = (fixed16)(((int64_t)current_b_w * current_w) >> 24);
+                fixed16 true_u = perspective_correct ? (fixed16)(((int64_t)current_u_w * current_w) >> 24) : current_u_w;
+                fixed16 true_v = perspective_correct ? (fixed16)(((int64_t)current_v_w * current_w) >> 24) : current_v_w;
+                fixed16 true_r = perspective_correct ? (fixed16)(((int64_t)current_r_w * current_w) >> 24) : current_r_w;
+                fixed16 true_g = perspective_correct ? (fixed16)(((int64_t)current_g_w * current_w) >> 24) : current_g_w;
+                fixed16 true_b = perspective_correct ? (fixed16)(((int64_t)current_b_w * current_w) >> 24) : current_b_w;
 
                 int tex_u = FIXED_TO_INT(true_u) & (TEX_WIDTH - 1);
                 int tex_v = FIXED_TO_INT(true_v) & (TEX_HEIGHT - 1);
@@ -289,7 +289,7 @@ static inline int64_t solve_gradient_high(int64_t det, fixed16 termA, int32_t fa
     return (num / det) * 1048576LL + ((num % det) * 1048576LL) / det;
 }
 
-static void draw_triangle(Vertex v0a, Vertex v1a, Vertex v2a, bool texture_enabled, bool depth_test) {
+static void draw_triangle(Vertex v0a, Vertex v1a, Vertex v2a, bool texture_enabled, bool depth_test, bool perspective_correct) {
 
     Vertex2 v0, v1, v2;
 
@@ -313,11 +313,11 @@ static void draw_triangle(Vertex v0a, Vertex v1a, Vertex v2a, bool texture_enabl
     fixed16 w1_inv = v1.w;
     fixed16 w2_inv = v2.w;
 
-    fixed16 s0_w = FIXED_MUL(v0.s, w0_inv); fixed16 s1_w = FIXED_MUL(v1.s, w1_inv); fixed16 s2_w = FIXED_MUL(v2.s, w2_inv);
-    fixed16 t0_w = FIXED_MUL(v0.t, w0_inv); fixed16 t1_w = FIXED_MUL(v1.t, w1_inv); fixed16 t2_w = FIXED_MUL(v2.t, w2_inv);
-    fixed16 r0_w = FIXED_MUL(v0.r, w0_inv); fixed16 r1_w = FIXED_MUL(v1.r, w1_inv); fixed16 r2_w = FIXED_MUL(v2.r, w2_inv);
-    fixed16 g0_w = FIXED_MUL(v0.g, w0_inv); fixed16 g1_w = FIXED_MUL(v1.g, w1_inv); fixed16 g2_w = FIXED_MUL(v2.g, w2_inv);
-    fixed16 b0_w = FIXED_MUL(v0.b, w0_inv); fixed16 b1_w = FIXED_MUL(v1.b, w1_inv); fixed16 b2_w = FIXED_MUL(v2.b, w2_inv);
+    fixed16 s0_w = perspective_correct ? FIXED_MUL(v0.s, w0_inv) : v0.s; fixed16 s1_w = perspective_correct ? FIXED_MUL(v1.s, w1_inv) : v1.s; fixed16 s2_w = perspective_correct ? FIXED_MUL(v2.s, w2_inv) : v2.s;
+    fixed16 t0_w = perspective_correct ? FIXED_MUL(v0.t, w0_inv) : v0.t; fixed16 t1_w = perspective_correct ? FIXED_MUL(v1.t, w1_inv) : v1.t; fixed16 t2_w = perspective_correct ? FIXED_MUL(v2.t, w2_inv) : v2.t;
+    fixed16 r0_w = perspective_correct ? FIXED_MUL(v0.r, w0_inv) : v0.r; fixed16 r1_w = perspective_correct ? FIXED_MUL(v1.r, w1_inv) : v1.r; fixed16 r2_w = perspective_correct ? FIXED_MUL(v2.r, w2_inv) : v2.r;
+    fixed16 g0_w = perspective_correct ? FIXED_MUL(v0.g, w0_inv) : v0.g; fixed16 g1_w = perspective_correct ? FIXED_MUL(v1.g, w1_inv) : v1.g; fixed16 g2_w = perspective_correct ? FIXED_MUL(v2.g, w2_inv) : v2.g;
+    fixed16 b0_w = perspective_correct ? FIXED_MUL(v0.b, w0_inv) : v0.b; fixed16 b1_w = perspective_correct ? FIXED_MUL(v1.b, w1_inv) : v1.b; fixed16 b2_w = perspective_correct ? FIXED_MUL(v2.b, w2_inv) : v2.b;
 
     // Compute hyper-attribute deltas relative to top anchor vertex (v0)
     fixed16 dw_inv1 = w1_inv - w0_inv; fixed16 dw_inv2 = w2_inv - w0_inv;
@@ -383,7 +383,7 @@ static void draw_triangle(Vertex v0a, Vertex v1a, Vertex v2a, bool texture_enabl
 
     draw_triangle_serpentine_ras(v0, v1, v2, start_w, start_s, start_t, start_r, start_g, start_b, 
                              dw_dx, du_dx, dv_dx, dr_dx, dg_dx, db_dx, 
-                             dw_dy, du_dy, dv_dy, dr_dy, dg_dy, db_dy, det > 0, texture_enabled, depth_test);
+                             dw_dy, du_dy, dv_dy, dr_dy, dg_dy, db_dy, det > 0, texture_enabled, depth_test, perspective_correct);
 }
 
 void sw_draw_triangle_standard(fx32 x0, fx32 y0, fx32 w0, fx32 s0, fx32 t0, fx32 r0, fx32 g0, fx32 b0, fx32 a0,
@@ -395,5 +395,5 @@ void sw_draw_triangle_standard(fx32 x0, fx32 y0, fx32 w0, fx32 s0, fx32 t0, fx32
     v0.x = FX32_TO_FIXED16(x0); v0.y = FX32_TO_FIXED16(y0); v0.w = FX32_TO_FIXED16(w0); v0.s = FX32_TO_FIXED16(MUL(s0, FXI(TEX_WIDTH))); v0.t = FX32_TO_FIXED16(MUL(t0, FXI(TEX_HEIGHT))); v0.r = FX32_TO_FIXED16(MUL(r0, FXI(255))); v0.g = FX32_TO_FIXED16(MUL(g0, FXI(255))); v0.b = FX32_TO_FIXED16(MUL(b0, FXI(255)));
     v1.x = FX32_TO_FIXED16(x1); v1.y = FX32_TO_FIXED16(y1); v1.w = FX32_TO_FIXED16(w1); v1.s = FX32_TO_FIXED16(MUL(s1, FXI(TEX_WIDTH))); v1.t = FX32_TO_FIXED16(MUL(t1, FXI(TEX_HEIGHT))); v1.r = FX32_TO_FIXED16(MUL(r1, FXI(255))); v1.g = FX32_TO_FIXED16(MUL(g1, FXI(255))); v1.b = FX32_TO_FIXED16(MUL(b1, FXI(255)));
     v2.x = FX32_TO_FIXED16(x2); v2.y = FX32_TO_FIXED16(y2); v2.w = FX32_TO_FIXED16(w2); v2.s = FX32_TO_FIXED16(MUL(s2, FXI(TEX_WIDTH))); v2.t = FX32_TO_FIXED16(MUL(t2, FXI(TEX_HEIGHT))); v2.r = FX32_TO_FIXED16(MUL(r2, FXI(255))); v2.g = FX32_TO_FIXED16(MUL(g2, FXI(255))); v2.b = FX32_TO_FIXED16(MUL(b2, FXI(255)));
-    draw_triangle(v0, v1, v2, texture, depth_test);
+    draw_triangle(v0, v1, v2, texture, depth_test, persp_correct);
 }

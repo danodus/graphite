@@ -20,7 +20,7 @@ The documentation is available here: https://danodus.github.io/graphite/
 
 (*) Extract and add the `bin` directory to the path.
 
-Note: Tested with `oss-cad-suite-darwin-arm64-20240810`.
+Note: Tested with `oss-cad-suite-darwin-arm64-20260512`.
 
 ## Simulation
 
@@ -36,4 +36,5 @@ make run
 - Press TAB to enable/disable the wireframe mode;
 - Press T to enable/disable texture mapping;
 - Press L to increase the number of directional lights;
-- Press G to enable/disable Gouraud shading.
+- Press G to enable/disable Gouraud shading;
+- Press P to enable/disable perspective correction.

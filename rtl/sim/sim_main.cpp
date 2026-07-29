@@ -217,11 +217,11 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     fixed16 w1_inv = v1.w;
     fixed16 w2_inv = v2.w;
 
-    fixed16 s0_w = FIXED_MUL(v0.s, w0_inv); fixed16 s1_w = FIXED_MUL(v1.s, w1_inv); fixed16 s2_w = FIXED_MUL(v2.s, w2_inv);
-    fixed16 t0_w = FIXED_MUL(v0.t, w0_inv); fixed16 t1_w = FIXED_MUL(v1.t, w1_inv); fixed16 t2_w = FIXED_MUL(v2.t, w2_inv);
-    fixed16 r0_w = FIXED_MUL(v0.r, w0_inv); fixed16 r1_w = FIXED_MUL(v1.r, w1_inv); fixed16 r2_w = FIXED_MUL(v2.r, w2_inv);
-    fixed16 g0_w = FIXED_MUL(v0.g, w0_inv); fixed16 g1_w = FIXED_MUL(v1.g, w1_inv); fixed16 g2_w = FIXED_MUL(v2.g, w2_inv);
-    fixed16 b0_w = FIXED_MUL(v0.b, w0_inv); fixed16 b1_w = FIXED_MUL(v1.b, w1_inv); fixed16 b2_w = FIXED_MUL(v2.b, w2_inv);
+    fixed16 s0_w = perspective_correct ? FIXED_MUL(v0.s, w0_inv) : v0.s; fixed16 s1_w = perspective_correct ? FIXED_MUL(v1.s, w1_inv) : v1.s; fixed16 s2_w = perspective_correct ? FIXED_MUL(v2.s, w2_inv) : v2.s;
+    fixed16 t0_w = perspective_correct ? FIXED_MUL(v0.t, w0_inv) : v0.t; fixed16 t1_w = perspective_correct ? FIXED_MUL(v1.t, w1_inv) : v1.t; fixed16 t2_w = perspective_correct ? FIXED_MUL(v2.t, w2_inv) : v2.t;
+    fixed16 r0_w = perspective_correct ? FIXED_MUL(v0.r, w0_inv) : v0.r; fixed16 r1_w = perspective_correct ? FIXED_MUL(v1.r, w1_inv) : v1.r; fixed16 r2_w = perspective_correct ? FIXED_MUL(v2.r, w2_inv) : v2.r;
+    fixed16 g0_w = perspective_correct ? FIXED_MUL(v0.g, w0_inv) : v0.g; fixed16 g1_w = perspective_correct ? FIXED_MUL(v1.g, w1_inv) : v1.g; fixed16 g2_w = perspective_correct ? FIXED_MUL(v2.g, w2_inv) : v2.g;
+    fixed16 b0_w = perspective_correct ? FIXED_MUL(v0.b, w0_inv) : v0.b; fixed16 b1_w = perspective_correct ? FIXED_MUL(v1.b, w1_inv) : v1.b; fixed16 b2_w = perspective_correct ? FIXED_MUL(v2.b, w2_inv) : v2.b;
 
     fixed16 dw_inv1 = w1_inv - w0_inv; fixed16 dw_inv2 = w2_inv - w0_inv;
     fixed16 ds1 = s1_w - s0_w;         fixed16 ds2 = s2_w - s0_w;
