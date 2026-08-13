@@ -347,6 +347,13 @@ module graphite_rasterizer #(
         end else if (ce) begin
             if (start && !busy) begin
                 p_r4_valid <= 1'b0;
+            end else if (zb_ack && !zb_we) begin
+                // An affine pixel is consumed immediately.  Perspective
+                // pixels must remain in stage 4 while their multipliers run;
+                // retaining them also keeps the returned Z value associated
+                // with the correct pixel.
+                if (!mult_stall)
+                    p_r4_valid <= 1'b0;
             end else if (!mem_stall && !mult_stall) begin
                 if (zb_collision) begin
                     p_r4_valid <= 1'b0;
@@ -389,6 +396,7 @@ module graphite_rasterizer #(
     // =========================================================================
     reg [1:0] mult_state;
     assign mult_stall = p_r4_valid && p_r4_inside && z_pass && (mult_state != 2'd3) && enable_perspective_correct;
+    wire p_r4_can_advance = !p_r4_valid || !p_r4_inside || !z_pass || !mult_stall;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -602,14 +610,20 @@ module graphite_rasterizer #(
             zb_addr  <= 32'd0;
             zb_wdata <= 16'd0;
         end else if (ce) begin
-            if (!mem_stall) begin
+            if (zb_ack) begin
+                // Retire the acknowledged transaction.  The pipeline advances
+                // on this cycle, so issuing from p_r3 here would duplicate the
+                // read that just completed.
+                zb_req <= 1'b0;
+                zb_we  <= 1'b0;
+            end else if (!mem_stall) begin
                 if (p_r5_valid && enable_depth_test) begin
                     // Stage 6 Write
                     zb_addr  <= ({16'b0, p_r5_y} * FB_WIDTH) + {16'b0, p_r5_x};
                     zb_wdata <= p_r5_depth_16;
                     zb_we    <= 1'b1;
                     zb_req   <= 1'b1;
-                end else if (p_r3_valid && p_r3_inside && !zb_collision && !mult_stall) begin
+                end else if (p_r3_valid && p_r3_inside && !zb_collision && p_r4_can_advance) begin
                     // Stage 3 Read
                     zb_addr  <= ({16'b0, p_r3_y} * FB_WIDTH) + {16'b0, p_r3_x};
                     zb_wdata <= 16'd0;
@@ -628,6 +642,12 @@ module graphite_rasterizer #(
     // =========================================================================
     // Busy Signal
     // =========================================================================
-    assign busy = setup_active || scan_active || p_r1_valid || p_r2_valid || p_r3_valid || p_r4_valid || p_r5_valid || fb_req;
+    // A draw is complete only after its outstanding texture, depth, and
+    // framebuffer transactions have retired. Starting the next triangle while
+    // either of the read requests is in flight can associate its pipeline
+    // state with the previous triangle's response.
+    assign busy = setup_active || scan_active || p_r1_valid || p_r2_valid ||
+                  p_r3_valid || p_r4_valid || p_r5_valid ||
+                  tex_req || zb_req || fb_req;
 
 endmodule

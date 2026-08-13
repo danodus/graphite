@@ -10,7 +10,8 @@ module graphite #(
     parameter FB_HEIGHT = 128,
     parameter TEXTURE_WIDTH = 32,
     parameter TEXTURE_HEIGHT = 32,
-    parameter SUBPIXEL_PRECISION_MASK = 16'hF000
+    parameter SUBPIXEL_PRECISION_MASK = 16'hF000,
+    parameter COMMAND_FIFO_DEPTH = 2
 ) (
     input  wire logic clk,
     input  wire logic reset_i,
@@ -56,6 +57,28 @@ module graphite #(
     logic is_textured, is_clamp_s, is_clamp_t, is_depth_test, is_perspective_correct;
     logic [2:0] texture_width_scale, texture_height_scale;
 
+    logic command_fifo_in_ready;
+    logic command_fifo_out_valid;
+    logic command_fifo_out_ready;
+    logic [31:0] command_fifo_out_data;
+    logic command_processor_ready;
+
+    assign cmd_axis_tready_o = command_fifo_in_ready;
+
+    graphite_command_fifo #(
+        .DEPTH(COMMAND_FIFO_DEPTH)
+    ) command_fifo (
+        .clk(clk),
+        .reset_i(reset_i),
+        .ce_i(ce_i),
+        .in_valid_i(cmd_axis_tvalid_i),
+        .in_ready_o(command_fifo_in_ready),
+        .in_data_i(cmd_axis_tdata_i),
+        .out_valid_o(command_fifo_out_valid),
+        .out_ready_i(command_fifo_out_ready),
+        .out_data_o(command_fifo_out_data)
+    );
+
     graphite_command_processor #(
         .FB_ADDRESS(FB_ADDRESS),
         .FB_WIDTH(FB_WIDTH),
@@ -65,9 +88,9 @@ module graphite #(
         .clk(clk),
         .reset_i(reset_i),
         .ce_i(ce_i),
-        .cmd_axis_tvalid_i(cmd_axis_tvalid_i),
-        .cmd_axis_tready_o(cmd_axis_tready_o),
-        .cmd_axis_tdata_i(cmd_axis_tdata_i),
+        .cmd_axis_tvalid_i(command_fifo_out_valid),
+        .cmd_axis_tready_o(command_processor_ready),
+        .cmd_axis_tdata_input_i(command_fifo_out_data),
         .vsync_i(vsync_i),
         .raster_busy_i(raster_busy),
         .raster_start_o(raster_start),
@@ -91,6 +114,8 @@ module graphite #(
         .texture_width_scale_o(texture_width_scale), .texture_height_scale_o(texture_height_scale)
     );
 
+    assign command_fifo_out_ready = command_processor_ready;
+
     logic tex_req;
     logic [31:0] tex_addr;
     logic tex_ack;
@@ -107,6 +132,18 @@ module graphite #(
     logic [15:0] zb_wdata;
     logic zb_ack;
     logic [15:0] zb_rdata;
+
+    // Cache reads are produced from the cache's falling-edge RAM port.  Do not
+    // feed that half-cycle result directly into the rasterizer's Z/texture
+    // logic: capture it first, then acknowledge the request on a later cycle.
+    // This turns the VRAM interface into an explicit request/response channel
+    // and removes the cache-RAM-to-rasterizer combinational timing path.
+    localparam [1:0] VRAM_RESP_IDLE  = 2'd0;
+    localparam [1:0] VRAM_RESP_ACK   = 2'd1;
+
+    logic [1:0] vram_response_state;
+    logic [31:0] tex_response_data;
+    logic [15:0] zb_response_data;
 
     graphite_rasterizer #(
         .FB_WIDTH(FB_WIDTH),
@@ -138,11 +175,8 @@ module graphite #(
     logic [15:0] fb_wdata_565;
     assign fb_wdata_565 = {fb_wdata[23:19], fb_wdata[15:10], fb_wdata[7:3]};
 
-    assign tex_rdata = {vram_data_in_i[15:12], vram_data_in_i[15:12],
-                        vram_data_in_i[11:8], vram_data_in_i[11:8],
-                        vram_data_in_i[7:4], vram_data_in_i[7:4],
-                        vram_data_in_i[3:0], vram_data_in_i[3:0]};
-    assign zb_rdata = vram_data_in_i;
+    assign tex_rdata = tex_response_data;
+    assign zb_rdata = zb_response_data;
 
     always_comb begin
         raster_vram_sel = 0;
@@ -150,32 +184,68 @@ module graphite #(
         raster_vram_mask = 4'hF;
         raster_vram_addr = 0;
         raster_vram_data_out = 0;
-        zb_ack = 0;
-        tex_ack = 0;
-        fb_ack = 0;
 
         if (zb_req && !zb_we) begin
             raster_vram_sel = 1;
             raster_vram_wr = 0;
             raster_vram_addr = fb_address + depth_rel_address + zb_addr;
-            zb_ack = 1;
         end else if (tex_req) begin
             raster_vram_sel = 1;
             raster_vram_wr = 0;
             raster_vram_addr = texture_address + tex_addr;
-            tex_ack = 1;
         end else if (zb_req && zb_we) begin
             raster_vram_sel = 1;
             raster_vram_wr = 1;
             raster_vram_addr = fb_address + depth_rel_address + zb_addr;
             raster_vram_data_out = zb_wdata;
-            zb_ack = 1;
         end else if (fb_req) begin
             raster_vram_sel = 1;
             raster_vram_wr = 1;
             raster_vram_addr = fb_address + back_rel_address + fb_addr;
             raster_vram_data_out = fb_wdata_565;
-            fb_ack = 1;
+        end
+    end
+
+    always_ff @(posedge clk) begin
+        if (reset_i) begin
+            vram_response_state <= VRAM_RESP_IDLE;
+            tex_response_data   <= 32'd0;
+            zb_response_data    <= 16'd0;
+            zb_ack              <= 1'b0;
+            tex_ack             <= 1'b0;
+            fb_ack              <= 1'b0;
+        end else if (ce_i) begin
+            zb_ack  <= 1'b0;
+            tex_ack <= 1'b0;
+            fb_ack  <= 1'b0;
+
+            case (vram_response_state)
+                VRAM_RESP_IDLE: begin
+                    if (raster_vram_sel) begin
+                        if (zb_req && !zb_we) begin
+                            zb_response_data  <= vram_data_in_i;
+                        end else if (tex_req) begin
+                            tex_response_data <= {vram_data_in_i[15:12], vram_data_in_i[15:12],
+                                                  vram_data_in_i[11:8], vram_data_in_i[11:8],
+                                                  vram_data_in_i[7:4], vram_data_in_i[7:4],
+                                                  vram_data_in_i[3:0], vram_data_in_i[3:0]};
+                        end
+                        // Acknowledgement becomes visible during the following
+                        // cycle, after the cache data has been captured above.
+                        if (zb_req)
+                            zb_ack <= 1'b1;
+                        else if (tex_req)
+                            tex_ack <= 1'b1;
+                        else
+                            fb_ack <= 1'b1;
+                        vram_response_state <= VRAM_RESP_ACK;
+                    end
+                end
+
+                default: begin
+                    vram_response_state <= VRAM_RESP_IDLE;
+                end
+            endcase
         end
     end
 

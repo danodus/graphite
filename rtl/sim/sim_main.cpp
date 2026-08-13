@@ -548,6 +548,8 @@ int main(int argc, char** argv, char** env) {
     top->reset_i = 1;
     pulse_clk(top);
     top->reset_i = 0;
+    top->cmd_axis_tvalid_i = 0;
+    top->cmd_axis_tdata_i = 0;
 
     Command c;
 
@@ -601,11 +603,12 @@ int main(int argc, char** argv, char** env) {
     bool texture_dirty = true;
 
     int return_code = 0;
+    bool frame_in_flight = false;
 
     while (!contextp->gotFinish() && !quit) {
         SDL_Event e;
 
-        if (top->cmd_axis_tready_o && g_commands.size() == 0) {
+        if (!frame_in_flight && top->cmd_axis_tready_o && g_commands.size() == 0) {
             clear();
 
             //
@@ -647,6 +650,7 @@ int main(int argc, char** argv, char** env) {
                            wireframe, textured ? &dummy_texture : NULL, clamp_s, clamp_t, TEXTURE_SCALE_X, TEXTURE_SCALE_Y, perspective_correct);
 
                 swap();
+                frame_in_flight = true;
             }
 
             if (dump) {
@@ -737,14 +741,16 @@ int main(int argc, char** argv, char** env) {
             if (state[SDL_SCANCODE_D]) yaw += 2.0f * elapsed_time;
         }
 
-        if (top->cmd_axis_tready_o) {
-            if (g_commands.size() > 0) {
-                auto c = g_commands.front();
-                g_commands.pop_front();
-                top->cmd_axis_tdata_i = (c.opcode << 24) | c.param;
-                top->cmd_axis_tvalid_i = 1;
-            }
+        if (!top->cmd_axis_tvalid_i && g_commands.size() > 0) {
+            auto c = g_commands.front();
+            top->cmd_axis_tdata_i = (c.opcode << 24) | c.param;
+            top->cmd_axis_tvalid_i = 1;
+            top->eval();
         }
+
+        bool command_handshake = top->cmd_axis_tvalid_i && top->cmd_axis_tready_o;
+        if (command_handshake)
+            g_commands.pop_front();
 
         // Combinational read from vram_data[addr]: RTL may latch vram_data_in_i on cycles
         // after vram_sel_o is deasserted (e.g. depth read), so always drive read data from addr.
@@ -758,6 +764,7 @@ int main(int argc, char** argv, char** env) {
         }
 
         if (top->swap_o) {
+            frame_in_flight = false;
 
             if (tga_path) {
                 if (!write_rgb565_tga(tga_path, vram_data + top->front_addr_o, FB_WIDTH, FB_HEIGHT)) {
@@ -812,7 +819,8 @@ int main(int argc, char** argv, char** env) {
         }
 
         pulse_clk(top);
-        top->cmd_axis_tvalid_i = 0;
+        if (command_handshake)
+            top->cmd_axis_tvalid_i = 0;
     };
 
     top->final();

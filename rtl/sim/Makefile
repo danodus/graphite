@@ -11,7 +11,7 @@ clean:
 	rm -rf obj_dir
 	rm -f golden_capture.tga
 
-RTL := top.sv ../graphite.sv ../graphite_command_processor.sv ../graphite_rasterizer.v \
+RTL := top.sv ../graphite.sv ../graphite_command_fifo.sv ../graphite_command_processor.sv ../graphite_rasterizer.v \
        ../reciprocal_lerp.v
 
 sim: $(RTL) sim_main.cpp $(SRC) ../../common/graphite.h ../../common/cube.h ../../common/teapot.h

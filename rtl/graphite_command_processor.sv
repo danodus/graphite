@@ -16,7 +16,7 @@ module graphite_command_processor #(
 
     input  wire logic cmd_axis_tvalid_i,
     output      logic cmd_axis_tready_o,
-    input  wire logic [31:0] cmd_axis_tdata_i,
+    input  wire logic [31:0] cmd_axis_tdata_input_i,
 
     input  wire logic vsync_i,
     input  wire logic raster_busy_i,
@@ -66,6 +66,9 @@ module graphite_command_processor #(
 
     logic is_textured, is_clamp_s, is_clamp_t, is_depth_test, is_perspective_correct;
     logic [2:0] texture_width_scale, texture_height_scale;
+    logic [31:0] command_reg;
+    wire [31:0] cmd_axis_tdata_i = command_reg;
+    logic raster_seen_busy;
 
     logic core_vram_sel, core_vram_wr;
     logic [3:0] core_vram_mask;
@@ -73,6 +76,9 @@ module graphite_command_processor #(
     logic [15:0] core_vram_data_out;
 
     assign front_addr_o = fb_address + front_rel_address;
+    // Ready is the consumer "want" signal; ce_i is applied by the FIFO and by
+    // this module's sequential block so a beat cannot be retired while the GPU
+    // clock-enable is low.
     assign cmd_axis_tready_o = (state == WAIT_COMMAND) && !raster_busy_i;
 
     assign v0_x_o = v0_x;
@@ -133,17 +139,22 @@ module graphite_command_processor #(
             texture_width_scale  <= 3'd0;
             texture_height_scale <= 3'd0;
             raster_start_o    <= 1'b0;
+            raster_seen_busy  <= 1'b0;
+            command_reg       <= 32'd0;
         end else if (ce_i) begin
+            // Start is a pulse by default; WAIT_RASTER re-asserts until accept.
             raster_start_o <= 1'b0;
             case (state)
                 WAIT_COMMAND: begin
-                swap_o <= 1'b0;
-                if (cmd_axis_tvalid_i)
-                    state <= PROCESS_COMMAND;
-            end
+                    swap_o <= 1'b0;
+                    if (cmd_axis_tvalid_i && cmd_axis_tready_o) begin
+                        command_reg <= cmd_axis_tdata_input_i;
+                        state <= PROCESS_COMMAND;
+                    end
+                end
 
             PROCESS_COMMAND: begin
-                case (cmd_axis_tdata_i[OP_POS+:OP_SIZE])
+                case (command_reg[OP_POS+:OP_SIZE])
                     OP_SET_V0_X: begin
                         v0_x <= cmd_axis_tdata_i[15:0];
                         state <= WAIT_COMMAND;
@@ -312,8 +323,13 @@ module graphite_command_processor #(
                         sign_reg               <= cmd_axis_tdata_i[5];
                         texture_width_scale    <= cmd_axis_tdata_i[8:6];
                         texture_height_scale   <= cmd_axis_tdata_i[11:9];
-                        raster_start_o <= 1'b1;
-                        state <= WAIT_RASTER;
+                        // Defer the draw if the rasterizer is still draining; the
+                        // FIFO may have delivered DRAW one cycle before busy fell.
+                        if (!raster_busy_i) begin
+                            raster_start_o   <= 1'b1;
+                            raster_seen_busy <= 1'b0;
+                            state            <= WAIT_RASTER;
+                        end
                     end
                     OP_SWAP: begin
                         if (vsync_i || !cmd_axis_tdata_i[0]) begin
@@ -348,12 +364,25 @@ module graphite_command_processor #(
             end
 
             WAIT_RASTER: begin
-                if (!raster_busy_i)
+                // Keep start asserted across GPU clock-enable stalls until the
+                // rasterizer has accepted the triangle (busy rises). Then wait
+                // for busy to fall before taking the next FIFO command.
+                if (raster_busy_i) begin
+                    raster_seen_busy <= 1'b1;
+                end else if (!raster_seen_busy) begin
+                    raster_start_o <= 1'b1;
+                end else begin
                     state <= WAIT_COMMAND;
+                    raster_seen_busy <= 1'b0;
+                end
             end
 
             SWAP0: begin
-                if (vsync_i)
+                // Do not retire the swap until the current v-sync interval has
+                // ended.  With queued commands, accepting the next clear while
+                // v-sync is still asserted can overwrite the just-presented
+                // buffer before the video/cache path has completed the swap.
+                if (!vsync_i)
                     state <= WAIT_COMMAND;
             end
 
