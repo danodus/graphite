@@ -604,6 +604,7 @@ int main(int argc, char** argv, char** env) {
 
     int return_code = 0;
     bool frame_in_flight = false;
+    bool prev_swap = false;
 
     while (!contextp->gotFinish() && !quit) {
         SDL_Event e;
@@ -763,7 +764,12 @@ int main(int argc, char** argv, char** env) {
             top->vram_data_in_i = 0xF800;
         }
 
-        if (top->swap_o) {
+        // swap_o stays high through SWAP0, so present on the rising edge only.
+        // Level-triggering it clears frame_in_flight again after the next
+        // frame has already been queued.
+        bool swap_pulse = top->swap_o && !prev_swap;
+        prev_swap = top->swap_o;
+        if (swap_pulse) {
             frame_in_flight = false;
 
             if (tga_path) {

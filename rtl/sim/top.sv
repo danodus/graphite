@@ -45,7 +45,9 @@ module top(
         .vram_addr_o(vram_addr_o),
         .vram_data_in_i(vram_data_in_i),
         .vram_data_out_o(vram_data_out_o),
-        .vsync_i(1'b1),
+        // No scanout in this bench. Swap now stays in SWAP0 until v-sync
+        // falls; tying vsync high leaves that state forever and holds swap_o.
+        .vsync_i(1'b0),
         .swap_o(swap_o),
         .front_addr_o(front_addr_o),
         .clear_o()
