@@ -76,9 +76,9 @@ module graphite_command_processor #(
     logic [15:0] core_vram_data_out;
 
     assign front_addr_o = fb_address + front_rel_address;
-    // Ready is the consumer "want" signal; ce_i is applied by the FIFO and by
-    // this module's sequential block so a beat cannot be retired while the GPU
-    // clock-enable is low.
+    // Ready is the consumer "want" signal. The FIFO applies ce_i on pop, and
+    // this sequential block only retires a beat while ce_i is high, so a
+    // command is not consumed while the GPU clock-enable is low.
     assign cmd_axis_tready_o = (state == WAIT_COMMAND) && !raster_busy_i;
 
     assign v0_x_o = v0_x;
@@ -378,10 +378,8 @@ module graphite_command_processor #(
             end
 
             SWAP0: begin
-                // Do not retire the swap until the current v-sync interval has
-                // ended.  With queued commands, accepting the next clear while
-                // v-sync is still asserted can overwrite the just-presented
-                // buffer before the video/cache path has completed the swap.
+                // Retire the swap only after v-sync falls. Leaving while v-sync
+                // is still high lets the next clear start during the cache flush.
                 if (!vsync_i)
                     state <= WAIT_COMMAND;
             end

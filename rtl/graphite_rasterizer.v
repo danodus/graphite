@@ -347,13 +347,6 @@ module graphite_rasterizer #(
         end else if (ce) begin
             if (start && !busy) begin
                 p_r4_valid <= 1'b0;
-            end else if (zb_ack && !zb_we) begin
-                // An affine pixel is consumed immediately.  Perspective
-                // pixels must remain in stage 4 while their multipliers run;
-                // retaining them also keeps the returned Z value associated
-                // with the correct pixel.
-                if (!mult_stall)
-                    p_r4_valid <= 1'b0;
             end else if (!mem_stall && !mult_stall) begin
                 if (zb_collision) begin
                     p_r4_valid <= 1'b0;
@@ -610,13 +603,11 @@ module graphite_rasterizer #(
             zb_addr  <= 32'd0;
             zb_wdata <= 16'd0;
         end else if (ce) begin
-            if (zb_ack) begin
-                // Retire the acknowledged transaction.  The pipeline advances
-                // on this cycle, so issuing from p_r3 here would duplicate the
-                // read that just completed.
-                zb_req <= 1'b0;
-                zb_we  <= 1'b0;
-            end else if (!mem_stall) begin
+            // Keep a request in flight across the ack cycle. Dropping zb_req
+            // here lets the next pixel reach the depth test still holding the
+            // previous pixel's Z, so an edge fragment is rejected and stays
+            // the clear color.
+            if (!mem_stall) begin
                 if (p_r5_valid && enable_depth_test) begin
                     // Stage 6 Write
                     zb_addr  <= ({16'b0, p_r5_y} * FB_WIDTH) + {16'b0, p_r5_x};
@@ -635,6 +626,7 @@ module graphite_rasterizer #(
                 end
             end else if (zb_ack) begin
                 zb_req <= 1'b0;
+                zb_we  <= 1'b0;
             end
         end
     end
