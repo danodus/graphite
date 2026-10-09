@@ -147,15 +147,16 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
     int32_t E20 = sign * ((p_x - v2.x) * (v0.y - v2.y) - (p_y - v2.y) * (v0.x - v2.x)) + bias20;
 
     // -------------------------------------------------------------------------
-    // 4. RASTERIZER INITIALIZATION (EVALUATE DIRECTLY AT TARGET PIXEL CENTER)
+    // 4. RASTERIZER INITIALIZATION
     // -------------------------------------------------------------------------
-    // Step parameters to pixel centers directly using native integer products
+    // W/S/T starts are screen-origin intercepts; step them to this pixel center.
     int32_t acc_w_inv = start_w + (int32_t)(((int64_t)curr_x * dw_dx) + ((int64_t)curr_y * dw_dy) + (dw_dx >> 1) + (dw_dy >> 1));
     int32_t acc_u_w   = start_s + (int32_t)(((int64_t)curr_x * ds_dx) + ((int64_t)curr_y * ds_dy) + (ds_dx >> 1) + (ds_dy >> 1));
     int32_t acc_v_w   = start_t + (int32_t)(((int64_t)curr_x * dt_dx) + ((int64_t)curr_y * dt_dy) + (dt_dx >> 1) + (dt_dy >> 1));
-    int32_t acc_r_w   = start_r + (int32_t)(((int64_t)curr_x * dr_dx) + ((int64_t)curr_y * dr_dy) + (dr_dx >> 1) + (dr_dy >> 1));
-    int32_t acc_g_w   = start_g + (int32_t)(((int64_t)curr_x * dg_dx) + ((int64_t)curr_y * dg_dy) + (dg_dx >> 1) + (dg_dy >> 1));
-    int32_t acc_b_w   = start_b + (int32_t)(((int64_t)curr_x * db_dx) + ((int64_t)curr_y * db_dy) + (db_dx >> 1) + (db_dy >> 1));
+    // START_R/G/B are already the 12.12 value at this pixel, same as the hardware registers.
+    int32_t acc_r_w   = start_r;
+    int32_t acc_g_w   = start_g;
+    int32_t acc_b_w   = start_b;
 
     int dir = 1; 
 
@@ -219,7 +220,7 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
 
                 g_draw_pixel_fn(curr_x, curr_y, ((final_r >> 3) << 11) | ((final_g >> 2) << 5) | (final_b >> 3));
             }
-        }
+            }
 
         // -------------------------------------------------------------------------
         // PURE 32-BIT HARDWARE EXECUTION STEPS
@@ -289,6 +290,14 @@ static inline int64_t solve_gradient_high(int64_t det, fixed16 termA, int32_t fa
     return (num / det) * 1048576LL + ((num % det) * 1048576LL) / det;
 }
 
+// Seed 12.12 color at the first scan pixel from the full-precision plane.
+// Narrowing the (0,0) intercept and the gradients separately loses cancellation on slivers.
+static inline int32_t eval_color_12_12(int64_t raw_start, int64_t raw_dx, int64_t raw_dy, int x, int y) {
+    int64_t raw = raw_start + (int64_t)x * raw_dx + (int64_t)y * raw_dy + (raw_dx >> 1) + (raw_dy >> 1);
+    int32_t q = (int32_t)(raw >> 20);
+    return (q << 8) >> 8;
+}
+
 static void draw_triangle(Vertex v0a, Vertex v1a, Vertex v2a, bool texture_enabled, bool depth_test, bool perspective_correct) {
 
     Vertex2 v0, v1, v2;
@@ -313,11 +322,12 @@ static void draw_triangle(Vertex v0a, Vertex v1a, Vertex v2a, bool texture_enabl
     fixed16 w1_inv = v1.w;
     fixed16 w2_inv = v2.w;
 
-    fixed16 s0_w = perspective_correct ? FIXED_MUL(v0.s, w0_inv) : v0.s; fixed16 s1_w = perspective_correct ? FIXED_MUL(v1.s, w1_inv) : v1.s; fixed16 s2_w = perspective_correct ? FIXED_MUL(v2.s, w2_inv) : v2.s;
-    fixed16 t0_w = perspective_correct ? FIXED_MUL(v0.t, w0_inv) : v0.t; fixed16 t1_w = perspective_correct ? FIXED_MUL(v1.t, w1_inv) : v1.t; fixed16 t2_w = perspective_correct ? FIXED_MUL(v2.t, w2_inv) : v2.t;
-    fixed16 r0_w = perspective_correct ? FIXED_MUL(v0.r, w0_inv) : v0.r; fixed16 r1_w = perspective_correct ? FIXED_MUL(v1.r, w1_inv) : v1.r; fixed16 r2_w = perspective_correct ? FIXED_MUL(v2.r, w2_inv) : v2.r;
-    fixed16 g0_w = perspective_correct ? FIXED_MUL(v0.g, w0_inv) : v0.g; fixed16 g1_w = perspective_correct ? FIXED_MUL(v1.g, w1_inv) : v1.g; fixed16 g2_w = perspective_correct ? FIXED_MUL(v2.g, w2_inv) : v2.g;
-    fixed16 b0_w = perspective_correct ? FIXED_MUL(v0.b, w0_inv) : v0.b; fixed16 b1_w = perspective_correct ? FIXED_MUL(v1.b, w1_inv) : v1.b; fixed16 b2_w = perspective_correct ? FIXED_MUL(v2.b, w2_inv) : v2.b;
+    // Host supplies attr/w and 1/w at vertices when perspective correction is enabled.
+    fixed16 s0_w = v0.s; fixed16 s1_w = v1.s; fixed16 s2_w = v2.s;
+    fixed16 t0_w = v0.t; fixed16 t1_w = v1.t; fixed16 t2_w = v2.t;
+    fixed16 r0_w = v0.r; fixed16 r1_w = v1.r; fixed16 r2_w = v2.r;
+    fixed16 g0_w = v0.g; fixed16 g1_w = v1.g; fixed16 g2_w = v2.g;
+    fixed16 b0_w = v0.b; fixed16 b1_w = v1.b; fixed16 b2_w = v2.b;
 
     // Compute hyper-attribute deltas relative to top anchor vertex (v0)
     fixed16 dw_inv1 = w1_inv - w0_inv; fixed16 dw_inv2 = w2_inv - w0_inv;
@@ -367,19 +377,27 @@ static void draw_triangle(Vertex v0a, Vertex v1a, Vertex v2a, bool texture_enabl
     int32_t dv_dx   = (int32_t)(raw_dv_dx   >> 14);
     int32_t dv_dy   = (int32_t)(raw_dt_dy   >> 14);
 
+    int start_y = v0.y >> 4;
+    int min_x   = min3(v0.x, v1.x, v2.x) >> 4;
+
+    if (min_x < 0) min_x = 0;
+    if (start_y < 0) start_y = 0;   
+
+    int curr_x = min_x;
+    int curr_y = start_y;
+
     // R, G, B parameters pack into 12.12 format (Drop lowest 20 fractional bits from 32.32)
     // Sign extension from bit 24 keeps them strictly bounded 24-bit inputs
-    int32_t start_r = ((int32_t)(raw_start_r >> 20) << 8) >> 8;
+    int32_t start_r = eval_color_12_12(raw_start_r, raw_dr_dx, raw_dr_dy, curr_x, curr_y);
     int32_t dr_dx   = ((int32_t)(raw_dr_dx   >> 20) << 8) >> 8;
     int32_t dr_dy   = ((int32_t)(raw_dr_dy   >> 20) << 8) >> 8;
 
-    int32_t start_g = ((int32_t)(raw_start_g >> 20) << 8) >> 8;
+    int32_t start_g = eval_color_12_12(raw_start_g, raw_dg_dx, raw_dg_dy, curr_x, curr_y);
     int32_t dg_dx   = ((int32_t)(raw_dg_dx   >> 20) << 8) >> 8;
-    int32_t dg_dy   = ((int32_t)(raw_dg_dy   >> 20) << 8) >> 8;
-
-    int32_t start_b = ((int32_t)(raw_start_b >> 20) << 8) >> 8;
+    int32_t dg_dy   = ((int32_t)(raw_dg_dy   >> 20) << 8) >> 8;    
+    int32_t start_b = eval_color_12_12(raw_start_b, raw_db_dx, raw_db_dy, curr_x, curr_y);
     int32_t db_dx   = ((int32_t)(raw_db_dx   >> 20) << 8) >> 8;
-    int32_t db_dy   = ((int32_t)(raw_db_dy   >> 20) << 8) >> 8;
+    int32_t db_dy   = ((int32_t)(raw_db_dy   >> 20) << 8) >> 8;    
 
     draw_triangle_serpentine_ras(v0, v1, v2, start_w, start_s, start_t, start_r, start_g, start_b, 
                              dw_dx, du_dx, dv_dx, dr_dx, dg_dx, db_dx, 

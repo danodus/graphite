@@ -190,7 +190,13 @@ static inline int64_t solve_gradient_high(int64_t det, fixed16 termA, int32_t fa
     return (num / det) * 1048576LL + ((num % det) * 1048576LL) / det;
 }
 
-
+// Seed 12.12 color at the first scan pixel from the full-precision plane.
+// Narrowing the (0,0) intercept and the gradients separately loses cancellation on slivers.
+static inline int32_t eval_color_12_12(int64_t raw_start, int64_t raw_dx, int64_t raw_dy, int x, int y) {
+    int64_t raw = raw_start + (int64_t)x * raw_dx + (int64_t)y * raw_dy + (raw_dx >> 1) + (raw_dy >> 1);
+    int32_t q = (int32_t)(raw >> 20);
+    return (q << 8) >> 8;
+};
 
 void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y,
                       bool depth_test, bool perspective_correct)                      
@@ -217,11 +223,12 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     fixed16 w1_inv = v1.w;
     fixed16 w2_inv = v2.w;
 
-    fixed16 s0_w = perspective_correct ? FIXED_MUL(v0.s, w0_inv) : v0.s; fixed16 s1_w = perspective_correct ? FIXED_MUL(v1.s, w1_inv) : v1.s; fixed16 s2_w = perspective_correct ? FIXED_MUL(v2.s, w2_inv) : v2.s;
-    fixed16 t0_w = perspective_correct ? FIXED_MUL(v0.t, w0_inv) : v0.t; fixed16 t1_w = perspective_correct ? FIXED_MUL(v1.t, w1_inv) : v1.t; fixed16 t2_w = perspective_correct ? FIXED_MUL(v2.t, w2_inv) : v2.t;
-    fixed16 r0_w = perspective_correct ? FIXED_MUL(v0.r, w0_inv) : v0.r; fixed16 r1_w = perspective_correct ? FIXED_MUL(v1.r, w1_inv) : v1.r; fixed16 r2_w = perspective_correct ? FIXED_MUL(v2.r, w2_inv) : v2.r;
-    fixed16 g0_w = perspective_correct ? FIXED_MUL(v0.g, w0_inv) : v0.g; fixed16 g1_w = perspective_correct ? FIXED_MUL(v1.g, w1_inv) : v1.g; fixed16 g2_w = perspective_correct ? FIXED_MUL(v2.g, w2_inv) : v2.g;
-    fixed16 b0_w = perspective_correct ? FIXED_MUL(v0.b, w0_inv) : v0.b; fixed16 b1_w = perspective_correct ? FIXED_MUL(v1.b, w1_inv) : v1.b; fixed16 b2_w = perspective_correct ? FIXED_MUL(v2.b, w2_inv) : v2.b;
+    // Host supplies attr/w and 1/w at vertices when perspective correction is enabled.
+    fixed16 s0_w = v0.s; fixed16 s1_w = v1.s; fixed16 s2_w = v2.s;
+    fixed16 t0_w = v0.t; fixed16 t1_w = v1.t; fixed16 t2_w = v2.t;
+    fixed16 r0_w = v0.r; fixed16 r1_w = v1.r; fixed16 r2_w = v2.r;
+    fixed16 g0_w = v0.g; fixed16 g1_w = v1.g; fixed16 g2_w = v2.g;
+    fixed16 b0_w = v0.b; fixed16 b1_w = v1.b; fixed16 b2_w = v2.b;
 
     fixed16 dw_inv1 = w1_inv - w0_inv; fixed16 dw_inv2 = w2_inv - w0_inv;
     fixed16 ds1 = s1_w - s0_w;         fixed16 ds2 = s2_w - s0_w;
@@ -263,15 +270,12 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     int32_t dv_dx   = (int32_t)(raw_dv_dx   >> 14);
     int32_t dv_dy   = (int32_t)(raw_dt_dy   >> 14);
 
-    int32_t start_r = ((int32_t)(raw_start_r >> 20) << 8) >> 8;
     int32_t dr_dx   = ((int32_t)(raw_dr_dx   >> 20) << 8) >> 8;
     int32_t dr_dy   = ((int32_t)(raw_dr_dy   >> 20) << 8) >> 8;
 
-    int32_t start_g = ((int32_t)(raw_start_g >> 20) << 8) >> 8;
     int32_t dg_dx   = ((int32_t)(raw_dg_dx   >> 20) << 8) >> 8;
     int32_t dg_dy   = ((int32_t)(raw_dg_dy   >> 20) << 8) >> 8;
 
-    int32_t start_b = ((int32_t)(raw_start_b >> 20) << 8) >> 8;
     int32_t db_dx   = ((int32_t)(raw_db_dx   >> 20) << 8) >> 8;
     int32_t db_dy   = ((int32_t)(raw_db_dy   >> 20) << 8) >> 8;
 
@@ -281,12 +285,8 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
 
     int start_y = v0.y >> 4;
     int min_x   = min3(v0.x, v1.x, v2.x) >> 4;
-    int max_x   = max3(v0.x, v1.x, v2.x) >> 4;
-    int max_y   = v2.y >> 4;
 
     if (min_x < 0) min_x = 0;
-    if (max_x >= FB_WIDTH) max_x = FB_WIDTH - 1;
-    if (max_y >= FB_HEIGHT) max_y = FB_HEIGHT - 1;
     if (start_y < 0) start_y = 0;    
 
     // Hardware setup unit will handle bounding box and edge equation initialization
@@ -297,9 +297,9 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     int32_t acc_w_inv = start_w + (int32_t)(((int64_t)curr_x * dw_dx) + ((int64_t)curr_y * dw_dy) + (dw_dx >> 1) + (dw_dy >> 1));
     int32_t acc_u_w   = start_s + (int32_t)(((int64_t)curr_x * du_dx) + ((int64_t)curr_y * du_dy) + (du_dx >> 1) + (du_dy >> 1));
     int32_t acc_v_w   = start_t + (int32_t)(((int64_t)curr_x * dv_dx) + ((int64_t)curr_y * dv_dy) + (dv_dx >> 1) + (dv_dy >> 1));
-    int32_t acc_r_w   = start_r + (int32_t)(((int64_t)curr_x * dr_dx) + ((int64_t)curr_y * dr_dy) + (dr_dx >> 1) + (dr_dy >> 1));
-    int32_t acc_g_w   = start_g + (int32_t)(((int64_t)curr_x * dg_dx) + ((int64_t)curr_y * dg_dy) + (dg_dx >> 1) + (dg_dy >> 1));
-    int32_t acc_b_w   = start_b + (int32_t)(((int64_t)curr_x * db_dx) + ((int64_t)curr_y * db_dy) + (db_dx >> 1) + (db_dy >> 1));
+    int32_t acc_r_w   = eval_color_12_12(raw_start_r, raw_dr_dx, raw_dr_dy, curr_x, curr_y);
+    int32_t acc_g_w   = eval_color_12_12(raw_start_g, raw_dg_dx, raw_dg_dy, curr_x, curr_y);
+    int32_t acc_b_w   = eval_color_12_12(raw_start_b, raw_db_dx, raw_db_dy, curr_x, curr_y);
 
 
     struct Command cmd;

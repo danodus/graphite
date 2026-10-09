@@ -684,9 +684,10 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                     //
 
                     for (int j = 0; j < 3; ++j) {
-                        vec3d n = tri_transformed.n[j];
+                        vec3d n = vector_normalize(&tri_transformed.n[j]);
                         fx32 dp = -vector_dot_product(&light_direction, &n);
                         if (dp < FX(0.0f)) dp = FX(0.0f);
+                        if (dp > FX(1.0f)) dp = FX(1.0f);
                         diffuse_intensity[j] = dp;
                     }
 
@@ -889,36 +890,6 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
 
         for (int i = 0; i < nb_triangles; ++i) {
             triangle_t* t = &triangles[i];
-
-            if (perspective_correct) {
-                fx32 w0 = DIV(FX(1.0f), t->t[0].w);
-                fx32 w1 = DIV(FX(1.0f), t->t[1].w);
-                fx32 w2 = DIV(FX(1.0f), t->t[2].w);
-
-                t->t[0].u = MUL(t->t[0].u, w0);
-                t->t[1].u = MUL(t->t[1].u, w1);
-                t->t[2].u = MUL(t->t[2].u, w2);
-
-                t->t[0].v = MUL(t->t[0].v, w0);
-                t->t[1].v = MUL(t->t[1].v, w1);
-                t->t[2].v = MUL(t->t[2].v, w2);
-
-                t->c[0].x = MUL(t->c[0].x, w0);
-                t->c[1].x = MUL(t->c[1].x, w1);
-                t->c[2].x = MUL(t->c[2].x, w2);
-
-                t->c[0].y = MUL(t->c[0].y, w0);
-                t->c[1].y = MUL(t->c[1].y, w1);
-                t->c[2].y = MUL(t->c[2].y, w2);
-
-                t->c[0].z = MUL(t->c[0].z, w0);
-                t->c[1].z = MUL(t->c[1].z, w1);
-                t->c[2].z = MUL(t->c[2].z, w2);
-
-                t->c[0].w = MUL(t->c[0].w, w0);
-                t->c[1].w = MUL(t->c[1].w, w1);
-                t->c[2].w = MUL(t->c[2].w, w2);
-            }
 
             // rasterize triangle
             if (is_wireframe) {
