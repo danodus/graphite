@@ -97,6 +97,92 @@ int main() {
     vec3d vec_up = {FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
     vec3d vec_camera = {FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
     while (!quit) {
+        float elapsed_time = (float)(SDL_GetTicks() - time) / 1000.0f;
+        if (elapsed_time < 0.001f)
+            elapsed_time = 0.001f;
+        time = SDL_GetTicks();
+
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) {
+                quit = 1;
+            } else if (e.type == SDL_KEYDOWN) {
+                switch (e.key.keysym.scancode) {
+                    case SDL_SCANCODE_ESCAPE:
+                        quit = 1;
+                        break;
+                    case SDL_SCANCODE_1:
+                        current_model = cube_model;
+                        break;
+                    case SDL_SCANCODE_2:
+                        current_model = teapot_model;
+                        break;
+                    case SDL_SCANCODE_TAB:
+                        is_wireframe = !is_wireframe;
+                        break;
+                    case SDL_SCANCODE_L:
+                        nb_lights = (nb_lights + 1) % 6;
+                        break;
+                    case SDL_SCANCODE_G:
+                        is_gouraud_shading = !is_gouraud_shading;
+                        break;
+                    case SDL_SCANCODE_T:
+                        is_textured = !is_textured;
+                        break;
+                    case SDL_SCANCODE_U:
+                        clamp_s = !clamp_s;
+                        break;
+                    case SDL_SCANCODE_V:
+                        clamp_t = !clamp_t;
+                        break;
+                    case SDL_SCANCODE_P:
+                        perspective_correct = !perspective_correct;
+                        break;
+                    case SDL_SCANCODE_SPACE:
+                        is_anim = !is_anim;
+                        break;
+                    case SDL_SCANCODE_KP_PLUS:
+                        scale += 1.0f;
+                        break;
+                    case SDL_SCANCODE_KP_MINUS:
+                        if (scale > 1.0f)
+                            scale -= 1.0f;
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+
+        const Uint8* key_state = SDL_GetKeyboardState(NULL);
+        if (key_state[SDL_SCANCODE_A])
+            yaw -= 2.0f * elapsed_time;
+        if (key_state[SDL_SCANCODE_D])
+            yaw += 2.0f * elapsed_time;
+
+        vec3d vec_look_forward = {FX(0.0f), FX(0.0f), FX(1.0f), FX(1.0f)};
+        mat4x4 mat_camera_rot = matrix_make_rotation_y(yaw);
+        vec3d vec_look_dir = matrix_multiply_vector(&mat_camera_rot, &vec_look_forward);
+        // right = up × forward, so strafe stays perpendicular to the facing direction
+        vec3d vec_right_dir = {vec_look_dir.z, FX(0.0f), -vec_look_dir.x, FX(1.0f)};
+        vec3d vec_forward = vector_mul(&vec_look_dir, MUL(FX(2.0f), FX(elapsed_time)));
+        vec3d vec_right = vector_mul(&vec_right_dir, MUL(FX(8.0f), FX(elapsed_time)));
+
+        if (key_state[SDL_SCANCODE_UP])
+            vec_camera.y += MUL(FX(8.0f), FX(elapsed_time));
+        if (key_state[SDL_SCANCODE_DOWN])
+            vec_camera.y -= MUL(FX(8.0f), FX(elapsed_time));
+        if (key_state[SDL_SCANCODE_LEFT])
+            vec_camera = vector_sub(&vec_camera, &vec_right);
+        if (key_state[SDL_SCANCODE_RIGHT])
+            vec_camera = vector_add(&vec_camera, &vec_right);
+        if (key_state[SDL_SCANCODE_W])
+            vec_camera = vector_add(&vec_camera, &vec_forward);
+        if (key_state[SDL_SCANCODE_S])
+            vec_camera = vector_sub(&vec_camera, &vec_forward);
+
+        if (is_anim)
+            theta += 0.01f;
+
         SDL_SetRenderDrawColor(renderer, 50, 50, 50, SDL_ALPHA_OPAQUE);
         SDL_RenderClear(renderer);
         sw_clear_depth_buffer_standard();
@@ -105,10 +191,7 @@ int main() {
         // camera
         //
 
-        vec3d vec_target = {FX(0.0f), FX(0.0f), FX(1.0f), FX(1.0f)};
-        mat4x4 mat_camera_rot = matrix_make_rotation_y(yaw);
-        vec3d vec_look_dir = matrix_multiply_vector(&mat_camera_rot, &vec_target);
-        vec_target = vector_add(&vec_camera, &vec_look_dir);
+        vec3d vec_target = vector_add(&vec_camera, &vec_look_dir);
 
         mat4x4 mat_camera = matrix_point_at(&vec_camera, &vec_target, &vec_up);
 
@@ -146,90 +229,6 @@ int main() {
                    is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t, 0, 0, perspective_correct);
 
         SDL_RenderPresent(renderer);
-
-        // printf("%d ms\n", SDL_GetTicks() - time);
-        float elapsed_time = (float)(SDL_GetTicks() - time) / 1000.0f;
-        time = SDL_GetTicks();
-
-        while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT) {
-                quit = 1;
-            } else if (e.type == SDL_KEYDOWN) {
-                vec3d vec_forward = vector_mul(&vec_look_dir, MUL(FX(2.0f), FX(elapsed_time)));
-                switch (e.key.keysym.scancode) {
-                    case SDL_SCANCODE_ESCAPE:
-                        quit = 1;
-                        break;
-
-                    case SDL_SCANCODE_UP:
-                        vec_camera.y += MUL(FX(8.0f), FX(elapsed_time));
-                        break;
-                    case SDL_SCANCODE_DOWN:
-                        vec_camera.y -= MUL(FX(8.0f), FX(elapsed_time));
-                        break;
-                    case SDL_SCANCODE_LEFT:
-                        vec_camera.x -= MUL(FX(8.0f), FX(elapsed_time));
-                        break;
-                    case SDL_SCANCODE_RIGHT:
-                        vec_camera.x += MUL(FX(8.0f), FX(elapsed_time));
-                        break;
-                    case SDL_SCANCODE_W:
-                        vec_camera = vector_add(&vec_camera, &vec_forward);
-                        break;
-                    case SDL_SCANCODE_S:
-                        vec_camera = vector_sub(&vec_camera, &vec_forward);
-                        break;
-                    case SDL_SCANCODE_A:
-                        yaw -= 2.0f * elapsed_time;
-                        break;
-                    case SDL_SCANCODE_D:
-                        yaw += 2.0f * elapsed_time;
-                        break;
-                    case SDL_SCANCODE_1:
-                        current_model = cube_model;
-                        break;
-                    case SDL_SCANCODE_2:
-                        current_model = teapot_model;
-                        break;
-                    case SDL_SCANCODE_TAB:
-                        is_wireframe = !is_wireframe;
-                        break;
-                    case SDL_SCANCODE_L:
-                        nb_lights = (nb_lights + 1) % 6;
-                        break;
-                    case SDL_SCANCODE_G:
-                        is_gouraud_shading = !is_gouraud_shading;
-                        break;                        
-                    case SDL_SCANCODE_T:
-                        is_textured = !is_textured;
-                        break;
-                    case SDL_SCANCODE_U:
-                        clamp_s = !clamp_s;
-                        break;
-                    case SDL_SCANCODE_V:
-                        clamp_t = !clamp_t;
-                        break;
-                    case SDL_SCANCODE_P:
-                        perspective_correct = !perspective_correct;
-                        break;                                                                                        
-                    case SDL_SCANCODE_SPACE:
-                        is_anim = !is_anim;
-                        break;
-                    case SDL_SCANCODE_KP_PLUS:
-                        scale += 1.0f;
-                        break;
-                    case SDL_SCANCODE_KP_MINUS:
-                        if (scale > 1.0f)
-                            scale -= 1.0f;
-                        break;                        
-                    default:
-                        // do nothing
-                        break;
-                }
-            }
-        }
-
-        if (is_anim) theta += 0.01f;
     }
 
     SDL_DestroyWindow(window);
