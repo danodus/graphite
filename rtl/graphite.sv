@@ -52,9 +52,15 @@ module graphite #(
     logic signed [31:0] start_w_inv, start_s, start_t, start_r, start_g, start_b;
     logic signed [31:0] dw_dx, dw_dy, ds_dx, ds_dy, dt_dx, dt_dy;
     logic signed [31:0] dr_dx, dr_dy, dg_dx, dg_dy, db_dx, db_dy;
-    logic [31:0] fb_address, texture_address, back_rel_address, depth_rel_address;
+    logic signed [31:0] start_su, start_sv, start_sz;
+    logic signed [31:0] dsu_dx, dsu_dy, dsv_dx, dsv_dy, dsz_dx, dsz_dy;
+    logic [31:0] fb_address, texture_address, back_rel_address, depth_address, shadow_address;
     logic is_textured, is_clamp_s, is_clamp_t, is_depth_test, is_perspective_correct;
+    logic is_depth_only, is_shadow;
     logic [2:0] texture_width_scale, texture_height_scale;
+    logic [2:0] shadow_width_scale, shadow_height_scale;
+    logic [15:0] shadow_bias;
+    logic [15:0] viewport_width, viewport_height;
 
     graphite_command_processor #(
         .FB_ADDRESS(FB_ADDRESS),
@@ -85,13 +91,21 @@ module graphite #(
         .dw_dx_o(dw_dx), .dw_dy_o(dw_dy), .ds_dx_o(ds_dx), .ds_dy_o(ds_dy), .dt_dx_o(dt_dx), .dt_dy_o(dt_dy),
         .dr_dx_o(dr_dx), .dr_dy_o(dr_dy), .dg_dx_o(dg_dx), .dg_dy_o(dg_dy), .db_dx_o(db_dx), .db_dy_o(db_dy),
         .fb_address_o(fb_address), .texture_address_o(texture_address),
-        .back_rel_address_o(back_rel_address), .depth_rel_address_o(depth_rel_address),
+        .back_rel_address_o(back_rel_address), .depth_address_o(depth_address),
         .is_textured_o(is_textured), .is_clamp_s_o(is_clamp_s), .is_clamp_t_o(is_clamp_t),
         .is_depth_test_o(is_depth_test), .is_perspective_correct_o(is_perspective_correct),
-        .texture_width_scale_o(texture_width_scale), .texture_height_scale_o(texture_height_scale)
+        .is_depth_only_o(is_depth_only), .is_shadow_o(is_shadow),
+        .texture_width_scale_o(texture_width_scale), .texture_height_scale_o(texture_height_scale),
+        .start_su_o(start_su), .start_sv_o(start_sv), .start_sz_o(start_sz),
+        .dsu_dx_o(dsu_dx), .dsu_dy_o(dsu_dy), .dsv_dx_o(dsv_dx), .dsv_dy_o(dsv_dy), .dsz_dx_o(dsz_dx), .dsz_dy_o(dsz_dy),
+        .viewport_width_o(viewport_width), .viewport_height_o(viewport_height),
+        .shadow_address_o(shadow_address),
+        .shadow_width_scale_o(shadow_width_scale), .shadow_height_scale_o(shadow_height_scale),
+        .shadow_bias_o(shadow_bias)
     );
 
     logic tex_req;
+    logic tex_shadow;
     logic [31:0] tex_addr;
     logic tex_ack;
     logic [31:0] tex_rdata;
@@ -122,14 +136,23 @@ module graphite #(
         .enable_perspective_correct(is_perspective_correct),
         .clamp_s(is_clamp_s),
         .clamp_t(is_clamp_t),
+        .depth_only(is_depth_only),
+        .enable_shadow(is_shadow),
         .texture_width_scale(texture_width_scale),
         .texture_height_scale(texture_height_scale),
+        .shadow_width_scale(shadow_width_scale),
+        .shadow_height_scale(shadow_height_scale),
+        .shadow_bias(shadow_bias),
+        .viewport_width(viewport_width),
+        .viewport_height(viewport_height),
         .v0_x(v0_x), .v0_y(v0_y), .v1_x(v1_x), .v1_y(v1_y), .v2_x(v2_x), .v2_y(v2_y),
         .sign(sign),
         .start_w_inv(start_w_inv), .start_s(start_s), .start_t(start_t), .start_r(start_r), .start_g(start_g), .start_b(start_b),
+        .start_su(start_su), .start_sv(start_sv), .start_sz(start_sz),
         .dw_dx(dw_dx), .dw_dy(dw_dy), .ds_dx(ds_dx), .ds_dy(ds_dy), .dt_dx(dt_dx), .dt_dy(dt_dy),
         .dr_dx(dr_dx), .dr_dy(dr_dy), .dg_dx(dg_dx), .dg_dy(dg_dy), .db_dx(db_dx), .db_dy(db_dy),
-        .tex_req(tex_req), .tex_addr(tex_addr), .tex_ack(tex_ack), .tex_rdata(tex_rdata),
+        .dsu_dx(dsu_dx), .dsu_dy(dsu_dy), .dsv_dx(dsv_dx), .dsv_dy(dsv_dy), .dsz_dx(dsz_dx), .dsz_dy(dsz_dy),
+        .tex_req(tex_req), .tex_shadow(tex_shadow), .tex_addr(tex_addr), .tex_ack(tex_ack), .tex_rdata(tex_rdata),
         .fb_req(fb_req), .fb_addr(fb_addr), .fb_wdata(fb_wdata), .fb_ack(fb_ack),
         .zb_req(zb_req), .zb_we(zb_we), .zb_addr(zb_addr), .zb_wdata(zb_wdata), .zb_ack(zb_ack), .zb_rdata(zb_rdata)
     );
@@ -138,10 +161,13 @@ module graphite #(
     logic [15:0] fb_wdata_565;
     assign fb_wdata_565 = {fb_wdata[23:19], fb_wdata[15:10], fb_wdata[7:3]};
 
-    assign tex_rdata = {vram_data_in_i[15:12], vram_data_in_i[15:12],
-                        vram_data_in_i[11:8], vram_data_in_i[11:8],
-                        vram_data_in_i[7:4], vram_data_in_i[7:4],
-                        vram_data_in_i[3:0], vram_data_in_i[3:0]};
+    // Albedo texels are RGB4444 expanded to 8 bits per channel. Shadow samples
+    // are raw 16-bit depth in the low half.
+    wire [31:0] tex_rdata_albedo = {vram_data_in_i[15:12], vram_data_in_i[15:12],
+                                    vram_data_in_i[11:8], vram_data_in_i[11:8],
+                                    vram_data_in_i[7:4], vram_data_in_i[7:4],
+                                    vram_data_in_i[3:0], vram_data_in_i[3:0]};
+    assign tex_rdata = tex_shadow ? {16'b0, vram_data_in_i} : tex_rdata_albedo;
     assign zb_rdata = vram_data_in_i;
 
     always_comb begin
@@ -157,17 +183,17 @@ module graphite #(
         if (zb_req && !zb_we) begin
             raster_vram_sel = 1;
             raster_vram_wr = 0;
-            raster_vram_addr = fb_address + depth_rel_address + zb_addr;
+            raster_vram_addr = depth_address + zb_addr;
             zb_ack = 1;
         end else if (tex_req) begin
             raster_vram_sel = 1;
             raster_vram_wr = 0;
-            raster_vram_addr = texture_address + tex_addr;
+            raster_vram_addr = (tex_shadow ? shadow_address : texture_address) + tex_addr;
             tex_ack = 1;
         end else if (zb_req && zb_we) begin
             raster_vram_sel = 1;
             raster_vram_wr = 1;
-            raster_vram_addr = fb_address + depth_rel_address + zb_addr;
+            raster_vram_addr = depth_address + zb_addr;
             raster_vram_data_out = zb_wdata;
             zb_ack = 1;
         end else if (fb_req) begin

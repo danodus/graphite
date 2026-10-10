@@ -32,8 +32,12 @@ void draw_pixel(int x, int y, int color) {
 }
 
 void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y,
-                      bool depth_test, bool perspective_correct)
+                      bool depth_test, bool perspective_correct, const vec3d* sh, bool depth_only, bool enable_shadow)
 {
+    if (sh != NULL && (depth_only || enable_shadow))
+        sw_set_triangle_shadow(depth_only, enable_shadow, sh[0].x, sh[0].y, sh[0].z, sh[1].x, sh[1].y, sh[1].z, sh[2].x, sh[2].y, sh[2].z);
+    else
+        sw_set_triangle_shadow(false, false, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     sw_draw_triangle_standard(p[0].x, p[0].y, t[0].w, t[0].u, t[0].v, c[0].x, c[0].y, c[0].z, c[0].w, p[1].x, p[1].y, t[1].w, t[1].u, t[1].v, c[1].x, c[1].y, c[1].z, c[1].w, p[2].x, p[2].y, t[2].w, t[2].u, t[2].v, c[2].x, c[2].y, c[2].z, c[2].w, (tex != NULL) ? true : false, clamp_s, clamp_t, depth_test, perspective_correct);
 }
 

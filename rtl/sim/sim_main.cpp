@@ -54,6 +54,19 @@
 #define OP_SWAP 26
 #define OP_SET_TEX_ADDR 27
 #define OP_SET_FB_ADDR 28
+#define OP_SET_START_SU 29
+#define OP_SET_START_SV 30
+#define OP_SET_START_SZ 31
+#define OP_SET_DSU_DX 32
+#define OP_SET_DSU_DY 33
+#define OP_SET_DSV_DX 34
+#define OP_SET_DSV_DY 35
+#define OP_SET_DSZ_DX 36
+#define OP_SET_DSZ_DY 37
+#define OP_SET_VIEWPORT 38
+#define OP_SET_ZB_ADDR 39
+#define OP_SET_SHADOW 40
+#define OP_SET_SHADOW_PARAM 41
 
 #if FIXED_POINT
 #define PARAM(x) (x)
@@ -89,7 +102,8 @@ struct Vertex2 {
     int16_t x, y; // 12.4 fixed-point format
     fixed16 w; 
     fixed16 s, t;
-    fixed16 r, g, b; 
+    fixed16 r, g, b;
+    fixed16 su, sv, sz;
 };
 
 static inline int16_t min3(int16_t a, int16_t b, int16_t c) {
@@ -198,15 +212,19 @@ static inline int32_t eval_color_12_20(int64_t raw_start, int64_t raw_dx, int64_
 };
 
 void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y,
-                      bool depth_test, bool perspective_correct)                      
+                      bool depth_test, bool perspective_correct, const vec3d* sh, bool depth_only, bool enable_shadow)                      
 {
     uint32_t texture_width = 32 << texture_scale_x;
     uint32_t texture_height = 32 << texture_scale_y;
 
     Vertex2 v0, v1, v2;
+    bool use_shadow_attr = sh != nullptr && (depth_only || enable_shadow);
     v0.x = FX32_TO_FIXED16(p[0].x) >> 12; v0.y = FX32_TO_FIXED16(p[0].y) >> 12; v0.w = FX32_TO_FIXED16(t[0].w); v0.s = FX32_TO_FIXED16(MUL(t[0].u, FXI(texture_width))); v0.t = FX32_TO_FIXED16(MUL(t[0].v, FXI(texture_height))); v0.r = FX32_TO_FIXED16(MUL(c[0].x, FXI(255))); v0.g = FX32_TO_FIXED16(MUL(c[0].y, FXI(255))); v0.b = FX32_TO_FIXED16(MUL(c[0].z, FXI(255)));
     v1.x = FX32_TO_FIXED16(p[1].x) >> 12; v1.y = FX32_TO_FIXED16(p[1].y) >> 12; v1.w = FX32_TO_FIXED16(t[1].w); v1.s = FX32_TO_FIXED16(MUL(t[1].u, FXI(texture_width))); v1.t = FX32_TO_FIXED16(MUL(t[1].v, FXI(texture_height))); v1.r = FX32_TO_FIXED16(MUL(c[1].x, FXI(255))); v1.g = FX32_TO_FIXED16(MUL(c[1].y, FXI(255))); v1.b = FX32_TO_FIXED16(MUL(c[1].z, FXI(255)));
     v2.x = FX32_TO_FIXED16(p[2].x) >> 12; v2.y = FX32_TO_FIXED16(p[2].y) >> 12; v2.w = FX32_TO_FIXED16(t[2].w); v2.s = FX32_TO_FIXED16(MUL(t[2].u, FXI(texture_width))); v2.t = FX32_TO_FIXED16(MUL(t[2].v, FXI(texture_height))); v2.r = FX32_TO_FIXED16(MUL(c[2].x, FXI(255))); v2.g = FX32_TO_FIXED16(MUL(c[2].y, FXI(255))); v2.b = FX32_TO_FIXED16(MUL(c[2].z, FXI(255)));
+    v0.su = use_shadow_attr ? FX32_TO_FIXED16(sh[0].x) : 0; v0.sv = use_shadow_attr ? FX32_TO_FIXED16(sh[0].y) : 0; v0.sz = use_shadow_attr ? FX32_TO_FIXED16(sh[0].z) : 0;
+    v1.su = use_shadow_attr ? FX32_TO_FIXED16(sh[1].x) : 0; v1.sv = use_shadow_attr ? FX32_TO_FIXED16(sh[1].y) : 0; v1.sz = use_shadow_attr ? FX32_TO_FIXED16(sh[1].z) : 0;
+    v2.su = use_shadow_attr ? FX32_TO_FIXED16(sh[2].x) : 0; v2.sv = use_shadow_attr ? FX32_TO_FIXED16(sh[2].y) : 0; v2.sz = use_shadow_attr ? FX32_TO_FIXED16(sh[2].z) : 0;
 
     if (v0.y > v1.y) std::swap(v0, v1);
     if (v0.y > v2.y) std::swap(v0, v2);
@@ -352,6 +370,43 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
 
     cmd.param |= texture_scale_x << 6;
     cmd.param |= texture_scale_y << 9;
+    if (depth_only)
+        cmd.param |= 1u << 12;
+    if (enable_shadow)
+        cmd.param |= 1u << 13;
+
+    if (use_shadow_attr) {
+        fixed16 su0 = v0.su, su1 = v1.su, su2 = v2.su;
+        fixed16 sv0 = v0.sv, sv1 = v1.sv, sv2 = v2.sv;
+        fixed16 sz0 = v0.sz, sz1 = v1.sz, sz2 = v2.sz;
+        int64_t raw_dsu_dx = solve_gradient_high(det, su1 - su0, dy2, su2 - su0, dy1);
+        int64_t raw_dsv_dx = solve_gradient_high(det, sv1 - sv0, dy2, sv2 - sv0, dy1);
+        int64_t raw_dsz_dx = solve_gradient_high(det, sz1 - sz0, dy2, sz2 - sz0, dy1);
+        int64_t raw_dsu_dy = solve_gradient_high(det, su2 - su0, dx1, su1 - su0, dx2);
+        int64_t raw_dsv_dy = solve_gradient_high(det, sv2 - sv0, dx1, sv1 - sv0, dx2);
+        int64_t raw_dsz_dy = solve_gradient_high(det, sz2 - sz0, dx1, sz1 - sz0, dx2);
+        int64_t raw_start_su = ((int64_t)su0 << 16) - mul_shr4(v0.x, raw_dsu_dx) - mul_shr4(v0.y, raw_dsu_dy);
+        int64_t raw_start_sv = ((int64_t)sv0 << 16) - mul_shr4(v0.x, raw_dsv_dx) - mul_shr4(v0.y, raw_dsv_dy);
+        int64_t raw_start_sz = ((int64_t)sz0 << 16) - mul_shr4(v0.x, raw_dsz_dx) - mul_shr4(v0.y, raw_dsz_dy);
+        int32_t su_dx = (int32_t)(raw_dsu_dx >> 14);
+        int32_t su_dy = (int32_t)(raw_dsu_dy >> 14);
+        int32_t sv_dx = (int32_t)(raw_dsv_dx >> 14);
+        int32_t sv_dy = (int32_t)(raw_dsv_dy >> 14);
+        int32_t sz_dx = (int32_t)(raw_dsz_dx >> 12);
+        int32_t sz_dy = (int32_t)(raw_dsz_dy >> 12);
+        int32_t su_at = (int32_t)(raw_start_su >> 14) + (int32_t)(((int64_t)curr_x * su_dx) + ((int64_t)curr_y * su_dy) + (su_dx >> 1) + (su_dy >> 1));
+        int32_t sv_at = (int32_t)(raw_start_sv >> 14) + (int32_t)(((int64_t)curr_x * sv_dx) + ((int64_t)curr_y * sv_dy) + (sv_dx >> 1) + (sv_dy >> 1));
+        int32_t sz_at = eval_color_12_20(raw_start_sz, raw_dsz_dx, raw_dsz_dy, curr_x, curr_y);
+        push_32(OP_SET_START_SU, su_at);
+        push_32(OP_SET_START_SV, sv_at);
+        push_32(OP_SET_START_SZ, sz_at);
+        push_32(OP_SET_DSU_DX, su_dx);
+        push_32(OP_SET_DSU_DY, su_dy);
+        push_32(OP_SET_DSV_DX, sv_dx);
+        push_32(OP_SET_DSV_DY, sv_dy);
+        push_32(OP_SET_DSZ_DX, sz_dx);
+        push_32(OP_SET_DSZ_DY, sz_dy);
+    }
 
     g_commands.push_back(cmd);
 }

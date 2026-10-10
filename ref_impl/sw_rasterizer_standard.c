@@ -39,15 +39,50 @@ typedef int32_t fixed16;
 typedef struct {
     fixed16 x, y, w; // w maps to true transformed camera Z depth
     fixed16 s, t;
-    fixed16 r, g, b; 
+    fixed16 r, g, b;
+    fixed16 su, sv, sz;
 } Vertex;
 
 typedef struct {
     int16_t x, y; // 12.4 fixed-point format
     fixed16 w; // w maps to true transformed camera Z depth
     fixed16 s, t;
-    fixed16 r, g, b; 
+    fixed16 r, g, b;
+    fixed16 su, sv, sz;
 } Vertex2;
+
+static bool g_depth_only = false;
+static bool g_enable_shadow = false;
+static fixed16 g_in_su[3], g_in_sv[3], g_in_sz[3];
+static uint16_t* g_shadow_map = NULL;
+static int g_shadow_size = 0;
+static int g_shadow_bias = 0;
+static int32_t g_su_dx, g_su_dy, g_sv_dx, g_sv_dy, g_sz_dx, g_sz_dy;
+static int32_t g_su_start, g_sv_start, g_sz_start;
+
+void sw_bind_shadow_map(uint16_t* map, int size, int bias) {
+    g_shadow_map = map;
+    g_shadow_size = size;
+    g_shadow_bias = bias;
+}
+
+void sw_clear_shadow_map(void) {
+    if (g_shadow_map == NULL || g_shadow_size <= 0)
+        return;
+    for (int i = 0; i < g_shadow_size * g_shadow_size; ++i)
+        g_shadow_map[i] = 0xFFFF;
+}
+
+void sw_set_triangle_shadow(bool depth_only, bool enable_shadow,
+                            fx32 su0, fx32 sv0, fx32 sz0,
+                            fx32 su1, fx32 sv1, fx32 sz1,
+                            fx32 su2, fx32 sv2, fx32 sz2) {
+    g_depth_only = depth_only;
+    g_enable_shadow = enable_shadow;
+    g_in_su[0] = FX32_TO_FIXED16(su0); g_in_sv[0] = FX32_TO_FIXED16(sv0); g_in_sz[0] = FX32_TO_FIXED16(sz0);
+    g_in_su[1] = FX32_TO_FIXED16(su1); g_in_sv[1] = FX32_TO_FIXED16(sv1); g_in_sz[1] = FX32_TO_FIXED16(sz1);
+    g_in_su[2] = FX32_TO_FIXED16(su2); g_in_sv[2] = FX32_TO_FIXED16(sv2); g_in_sz[2] = FX32_TO_FIXED16(sz2);
+}
 
 static int g_fb_width, g_fb_height;
 static draw_pixel_fn_t g_draw_pixel_fn;
@@ -157,6 +192,9 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
     int32_t acc_r_w   = start_r;
     int32_t acc_g_w   = start_g;
     int32_t acc_b_w   = start_b;
+    int32_t acc_su_w  = g_su_start + (int32_t)(((int64_t)curr_x * g_su_dx) + ((int64_t)curr_y * g_su_dy) + (g_su_dx >> 1) + (g_su_dy >> 1));
+    int32_t acc_sv_w  = g_sv_start + (int32_t)(((int64_t)curr_x * g_sv_dx) + ((int64_t)curr_y * g_sv_dy) + (g_sv_dx >> 1) + (g_sv_dy >> 1));
+    int32_t acc_sz_w  = g_sz_start;
 
     int dir = 1; 
 
@@ -186,8 +224,34 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
             if (w_int > Z_INFINITY_16) w_int = Z_INFINITY_16;
             uint16_t depth_16 = (uint16_t)w_int;
 
+            fixed16 current_su_w = acc_su_w >> 2;
+            fixed16 current_sv_w = acc_sv_w >> 2;
+            fixed16 current_sz_w = acc_sz_w >> 4;
+            fixed16 true_su = perspective_correct ? (fixed16)(((int64_t)current_su_w * current_w) >> 24) : current_su_w;
+            fixed16 true_sv = perspective_correct ? (fixed16)(((int64_t)current_sv_w * current_w) >> 24) : current_sv_w;
+            fixed16 true_sz = perspective_correct ? (fixed16)(((int64_t)current_sz_w * current_w) >> 24) : current_sz_w;
+            int32_t sz_int = FIXED_TO_INT(true_sz);
+            if (sz_int < 0) sz_int = 0;
+            if (sz_int > Z_INFINITY_16) sz_int = Z_INFINITY_16;
+            if (g_depth_only)
+                depth_16 = (uint16_t)sz_int;
+
             int buf_idx = curr_y * g_fb_width + curr_x;
-            if (!depth_test || depth_16 < g_depth_buffer[buf_idx]) {
+            if (g_depth_only) {
+                // Shadow pass stores interpolated SZ. A bound map is the depth target;
+                // otherwise the screen depth buffer receives it. Color is left alone.
+                if (g_shadow_map != NULL && curr_x >= 0 && curr_y >= 0 &&
+                    curr_x < g_shadow_size && curr_y < g_shadow_size) {
+                    int map_idx = curr_y * g_shadow_size + curr_x;
+                    if (!depth_test || depth_16 < g_shadow_map[map_idx]) {
+                        if (depth_test)
+                            g_shadow_map[map_idx] = depth_16;
+                    }
+                } else if (!depth_test || depth_16 < g_depth_buffer[buf_idx]) {
+                    if (depth_test)
+                        g_depth_buffer[buf_idx] = depth_16;
+                }
+            } else if (!depth_test || depth_16 < g_depth_buffer[buf_idx]) {
                 if (depth_test) g_depth_buffer[buf_idx] = depth_16;
 
                 fixed16 true_u = perspective_correct ? (fixed16)(((int64_t)current_u_w * current_w) >> 24) : current_u_w;
@@ -217,6 +281,20 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
                 uint32_t final_r = (tex_r * r_int) >> 8;
                 uint32_t final_g = (tex_g * g_int) >> 8;
                 uint32_t final_b = (tex_b * b_int) >> 8;
+
+                if (g_enable_shadow && g_shadow_map != NULL && g_shadow_size > 0) {
+                    int su = FIXED_TO_INT(true_su);
+                    int sv = FIXED_TO_INT(true_sv);
+                    bool inside = su >= 0 && sv >= 0 && su < g_shadow_size && sv < g_shadow_size;
+                    if (inside) {
+                        uint16_t sampled = g_shadow_map[sv * g_shadow_size + su];
+                        if (sampled < Z_INFINITY_16 && (sz_int + g_shadow_bias) > sampled) {
+                            final_r >>= 1;
+                            final_g >>= 1;
+                            final_b >>= 1;
+                        }
+                    }
+                }
 
                 g_draw_pixel_fn(curr_x, curr_y, ((final_r >> 3) << 11) | ((final_g >> 2) << 5) | (final_b >> 3));
             }
@@ -255,6 +333,7 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
             acc_w_inv += dw_dy;
             acc_u_w   += ds_dy; acc_v_w   += dt_dy;
             acc_r_w   += dr_dy; acc_g_w   += dg_dy; acc_b_w   += db_dy;
+            acc_su_w  += g_su_dy; acc_sv_w += g_sv_dy; acc_sz_w += g_sz_dy;
         } else {
             // Advance horizontally along the current row line
             curr_x += dir;
@@ -267,6 +346,7 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
             acc_w_inv += dw_dx * dir;
             acc_u_w   += ds_dx * dir; acc_v_w   += dt_dx * dir;
             acc_r_w   += dr_dx * dir; acc_g_w   += dg_dx * dir; acc_b_w   += db_dx * dir;
+            acc_su_w  += g_su_dx * dir; acc_sv_w += g_sv_dx * dir; acc_sz_w += g_sz_dx * dir;
         }
     }
 }
@@ -296,9 +376,9 @@ static void draw_triangle(Vertex v0a, Vertex v1a, Vertex v2a, bool texture_enabl
 
     Vertex2 v0, v1, v2;
 
-    v0.x = v0a.x >> 12; v0.y = v0a.y >> 12; v0.w = v0a.w; v0.s = v0a.s; v0.t = v0a.t; v0.r = v0a.r; v0.g = v0a.g; v0.b = v0a.b;
-    v1.x = v1a.x >> 12; v1.y = v1a.y >> 12; v1.w = v1a.w; v1.s = v1a.s; v1.t = v1a.t; v1.r = v1a.r; v1.g = v1a.g; v1.b = v1a.b;
-    v2.x = v2a.x >> 12; v2.y = v2a.y >> 12; v2.w = v2a.w; v2.s = v2a.s; v2.t = v2a.t; v2.r = v2a.r; v2.g = v2a.g; v2.b = v2a.b;
+    v0.x = v0a.x >> 12; v0.y = v0a.y >> 12; v0.w = v0a.w; v0.s = v0a.s; v0.t = v0a.t; v0.r = v0a.r; v0.g = v0a.g; v0.b = v0a.b; v0.su = v0a.su; v0.sv = v0a.sv; v0.sz = v0a.sz;
+    v1.x = v1a.x >> 12; v1.y = v1a.y >> 12; v1.w = v1a.w; v1.s = v1a.s; v1.t = v1a.t; v1.r = v1a.r; v1.g = v1a.g; v1.b = v1a.b; v1.su = v1a.su; v1.sv = v1a.sv; v1.sz = v1a.sz;
+    v2.x = v2a.x >> 12; v2.y = v2a.y >> 12; v2.w = v2a.w; v2.s = v2a.s; v2.t = v2a.t; v2.r = v2a.r; v2.g = v2a.g; v2.b = v2a.b; v2.su = v2a.su; v2.sv = v2a.sv; v2.sz = v2a.sz;
 
     // Sort vertices by Y coordinate
     if (v0.y > v1.y) { Vertex2 t = v0; v0 = v1; v1 = t; }
@@ -390,7 +470,34 @@ static void draw_triangle(Vertex v0a, Vertex v1a, Vertex v2a, bool texture_enabl
     int32_t dg_dy   = (int32_t)(raw_dg_dy   >> 12);
     int32_t start_b = eval_color_12_20(raw_start_b, raw_db_dx, raw_db_dy, curr_x, curr_y);
     int32_t db_dx   = (int32_t)(raw_db_dx   >> 12);
-    int32_t db_dy   = (int32_t)(raw_db_dy   >> 12);    
+    int32_t db_dy   = (int32_t)(raw_db_dy   >> 12);
+
+    if (g_depth_only || g_enable_shadow) {
+        fixed16 su0_w = v0.su, su1_w = v1.su, su2_w = v2.su;
+        fixed16 sv0_w = v0.sv, sv1_w = v1.sv, sv2_w = v2.sv;
+        fixed16 sz0_w = v0.sz, sz1_w = v1.sz, sz2_w = v2.sz;
+        int64_t raw_dsu_dx = solve_gradient_high(det, su1_w - su0_w, dy2, su2_w - su0_w, dy1);
+        int64_t raw_dsv_dx = solve_gradient_high(det, sv1_w - sv0_w, dy2, sv2_w - sv0_w, dy1);
+        int64_t raw_dsz_dx = solve_gradient_high(det, sz1_w - sz0_w, dy2, sz2_w - sz0_w, dy1);
+        int64_t raw_dsu_dy = solve_gradient_high(det, su2_w - su0_w, dx1, su1_w - su0_w, dx2);
+        int64_t raw_dsv_dy = solve_gradient_high(det, sv2_w - sv0_w, dx1, sv1_w - sv0_w, dx2);
+        int64_t raw_dsz_dy = solve_gradient_high(det, sz2_w - sz0_w, dx1, sz1_w - sz0_w, dx2);
+        int64_t raw_start_su = ((int64_t)su0_w << 16) - mul_shr4(v0.x, raw_dsu_dx) - mul_shr4(v0.y, raw_dsu_dy);
+        int64_t raw_start_sv = ((int64_t)sv0_w << 16) - mul_shr4(v0.x, raw_dsv_dx) - mul_shr4(v0.y, raw_dsv_dy);
+        int64_t raw_start_sz = ((int64_t)sz0_w << 16) - mul_shr4(v0.x, raw_dsz_dx) - mul_shr4(v0.y, raw_dsz_dy);
+        g_su_start = (int32_t)(raw_start_su >> 14);
+        g_sv_start = (int32_t)(raw_start_sv >> 14);
+        g_su_dx = (int32_t)(raw_dsu_dx >> 14);
+        g_su_dy = (int32_t)(raw_dsu_dy >> 14);
+        g_sv_dx = (int32_t)(raw_dsv_dx >> 14);
+        g_sv_dy = (int32_t)(raw_dsv_dy >> 14);
+        g_sz_dx = (int32_t)(raw_dsz_dx >> 12);
+        g_sz_dy = (int32_t)(raw_dsz_dy >> 12);
+        g_sz_start = eval_color_12_20(raw_start_sz, raw_dsz_dx, raw_dsz_dy, curr_x, curr_y);
+    } else {
+        g_su_start = g_sv_start = g_sz_start = 0;
+        g_su_dx = g_su_dy = g_sv_dx = g_sv_dy = g_sz_dx = g_sz_dy = 0;
+    }
 
     draw_triangle_serpentine_ras(v0, v1, v2, start_w, start_s, start_t, start_r, start_g, start_b, 
                              dw_dx, du_dx, dv_dx, dr_dx, dg_dx, db_dx, 
@@ -406,5 +513,10 @@ void sw_draw_triangle_standard(fx32 x0, fx32 y0, fx32 w0, fx32 s0, fx32 t0, fx32
     v0.x = FX32_TO_FIXED16(x0); v0.y = FX32_TO_FIXED16(y0); v0.w = FX32_TO_FIXED16(w0); v0.s = FX32_TO_FIXED16(MUL(s0, FXI(TEX_WIDTH))); v0.t = FX32_TO_FIXED16(MUL(t0, FXI(TEX_HEIGHT))); v0.r = FX32_TO_FIXED16(MUL(r0, FXI(255))); v0.g = FX32_TO_FIXED16(MUL(g0, FXI(255))); v0.b = FX32_TO_FIXED16(MUL(b0, FXI(255)));
     v1.x = FX32_TO_FIXED16(x1); v1.y = FX32_TO_FIXED16(y1); v1.w = FX32_TO_FIXED16(w1); v1.s = FX32_TO_FIXED16(MUL(s1, FXI(TEX_WIDTH))); v1.t = FX32_TO_FIXED16(MUL(t1, FXI(TEX_HEIGHT))); v1.r = FX32_TO_FIXED16(MUL(r1, FXI(255))); v1.g = FX32_TO_FIXED16(MUL(g1, FXI(255))); v1.b = FX32_TO_FIXED16(MUL(b1, FXI(255)));
     v2.x = FX32_TO_FIXED16(x2); v2.y = FX32_TO_FIXED16(y2); v2.w = FX32_TO_FIXED16(w2); v2.s = FX32_TO_FIXED16(MUL(s2, FXI(TEX_WIDTH))); v2.t = FX32_TO_FIXED16(MUL(t2, FXI(TEX_HEIGHT))); v2.r = FX32_TO_FIXED16(MUL(r2, FXI(255))); v2.g = FX32_TO_FIXED16(MUL(g2, FXI(255))); v2.b = FX32_TO_FIXED16(MUL(b2, FXI(255)));
+    v0.su = g_in_su[0]; v0.sv = g_in_sv[0]; v0.sz = g_in_sz[0];
+    v1.su = g_in_su[1]; v1.sv = g_in_sv[1]; v1.sz = g_in_sz[1];
+    v2.su = g_in_su[2]; v2.sv = g_in_sv[2]; v2.sz = g_in_sz[2];
     draw_triangle(v0, v1, v2, texture, depth_test, persp_correct);
+    g_depth_only = false;
+    g_enable_shadow = false;
 }

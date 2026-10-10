@@ -19,7 +19,7 @@
 #define MAX_NB_TRIANGLES    16      // maximum number of triangles produced by the clipping
 
 void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y,
-                      bool depth_test, bool perspective_correct);
+                      bool depth_test, bool perspective_correct, const vec3d* sh, bool depth_only, bool enable_shadow);
 
 vec3d matrix_multiply_vector(mat4x4* m, vec3d* i) {
     vec3d r = {MUL(i->x, m->m[0][0]) + MUL(i->y, m->m[1][0]) + MUL(i->z, m->m[2][0]) + m->m[3][0],
@@ -567,7 +567,7 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
         {c1.x, c1.y, c1.z, c1.w}
     };
 
-    xd_draw_triangle(pp0, tt0, cc0, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, false, perspective_correct);
+    xd_draw_triangle(pp0, tt0, cc0, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, false, perspective_correct, NULL, false, false);
 
     vec3d pp1[3] = {
         {vv1.x, vv1.y, vv1.z, FX(0.0)},
@@ -587,7 +587,7 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
         {c1.x, c1.y, c1.z, c1.w}
     };    
 
-    xd_draw_triangle(pp1, tt1, cc1, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, false, perspective_correct);
+    xd_draw_triangle(pp1, tt1, cc1, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, false, perspective_correct, NULL, false, false);
 }
 
 void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
@@ -912,7 +912,7 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                           (vec3d){t->c[2].x, t->c[2].y, t->c[2].z, t->c[2].w},
                           (vec3d){t->c[0].x, t->c[0].y, t->c[0].z, t->c[0].w}, FX(1.0f), texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, perspective_correct);
             } else {
-                xd_draw_triangle(t->p, t->t, t->c, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, true, perspective_correct);
+                xd_draw_triangle(t->p, t->t, t->c, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, true, perspective_correct, NULL, false, false);
             }
         }
     }

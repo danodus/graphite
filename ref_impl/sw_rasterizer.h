@@ -13,6 +13,12 @@ typedef void (*draw_pixel_fn_t)(int x, int y, int color);
 void sw_init_rasterizer_standard(int fb_width, int fb_height, draw_pixel_fn_t draw_pixel_fn);
 void sw_dispose_rasterizer_standard();
 void sw_clear_depth_buffer_standard();
+void sw_bind_shadow_map(uint16_t* map, int size, int bias);
+void sw_clear_shadow_map(void);
+void sw_set_triangle_shadow(bool depth_only, bool enable_shadow,
+                            fx32 su0, fx32 sv0, fx32 sz0,
+                            fx32 su1, fx32 sv1, fx32 sz1,
+                            fx32 su2, fx32 sv2, fx32 sz2);
 
 void sw_fragment_shader(int fb_width, int fb_height, int x, int y, fx32 z, fx32 u, fx32 v, fx32 r, fx32 g, fx32 b, fx32 a, bool clamp_s, bool clamp_t, bool depth_test, bool texture, fx32* depth_buffer, bool persp_correct, draw_pixel_fn_t draw_pixel_fn);
 

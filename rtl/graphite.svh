@@ -36,6 +36,19 @@ localparam OP_DRAW              = 25;
 localparam OP_SWAP              = 26;
 localparam OP_SET_TEX_ADDR      = 27;
 localparam OP_SET_FB_ADDR       = 28;
+localparam OP_SET_START_SU      = 29;
+localparam OP_SET_START_SV      = 30;
+localparam OP_SET_START_SZ      = 31;
+localparam OP_SET_DSU_DX        = 32;
+localparam OP_SET_DSU_DY        = 33;
+localparam OP_SET_DSV_DX        = 34;
+localparam OP_SET_DSV_DY        = 35;
+localparam OP_SET_DSZ_DX        = 36;
+localparam OP_SET_DSZ_DY        = 37;
+localparam OP_SET_VIEWPORT      = 38;
+localparam OP_SET_ZB_ADDR       = 39;
+localparam OP_SET_SHADOW        = 40;
+localparam OP_SET_SHADOW_PARAM  = 41;
 
 
 

@@ -46,6 +46,19 @@ OP_DRAW            25    Draw triangle
 OP_SWAP            26    Swap the front and back buffer addresses
 OP_SET_TEX_ADDR    27    Set texture address (in 16-bit word, address >> 1)
 OP_SET_FB_ADDR     28    Set the frame buffer address (in 16-bit word, address >> 1)
+OP_SET_START_SU    29    Set START_SU (shadow map U)
+OP_SET_START_SV    30    Set START_SV (shadow map V)
+OP_SET_START_SZ    31    Set START_SZ (shadow depth)
+OP_SET_DSU_DX      32    Set DSU_DX
+OP_SET_DSU_DY      33    Set DSU_DY
+OP_SET_DSV_DX      34    Set DSV_DX
+OP_SET_DSV_DY      35    Set DSV_DY
+OP_SET_DSZ_DX      36    Set DSZ_DX
+OP_SET_DSZ_DY      37    Set DSZ_DY
+OP_SET_VIEWPORT    38    Set the raster viewport width and height
+OP_SET_ZB_ADDR     39    Set the depth buffer address (in 16-bit word, address >> 1)
+OP_SET_SHADOW      40    Set the shadow map address (in 16-bit word, address >> 1)
+OP_SET_SHADOW_PARAM 41   Set the shadow map scale and depth bias
 ================== ===== ==================================================
 
 OP_SET_*
@@ -66,6 +79,8 @@ Parameter Formats:
 - START_W_INV, DW_DX, DW_DY: 4.28 fixed point format (32-bit)
 - START_S, START_T, DS_DX, DS_DY, DT_DX, DT_DY: 14.18 fixed point format (32-bit)
 - START_R, START_G, START_B, DR_DX, DR_DY, DG_DX, DG_DY, DB_DX, DB_DY: 12.20 fixed point format (32-bit)
+- START_SU, START_SV, DSU_DX, DSU_DY, DSV_DX, DSV_DY: 14.18 fixed point format (32-bit)
+- START_SZ, DSZ_DX, DSZ_DY: 12.20 fixed point format (32-bit)
 
 
 OP_CLEAR
@@ -93,8 +108,47 @@ Field   Description
 [5]     0=positive area, 1=negative area (winding sign bit)
 [8:6]   Texture width scale (0=32, 1=64, 2=128, 3=256, 4=512, 5=1024, 6=2048, 7=4096)
 [11:9]  Texture height scale (0=32, 1=64, 2=128, 3=256, 4=512, 5=1024, 6=2048, 7=4096)
+[12]    0=shade, 1=depth only (no texture fetch, no color write; depth is interpolated SZ)
+[13]    0=shadow compare off, 1=sample the shadow map and darken occluded pixels
 [31:24] Opcode (25)
 ======= ============================
+
+OP_SET_VIEWPORT
+^^^^^^^^^^^^^^^
+
+======= ============================
+Field   Description
+======= ============================
+[11:0]  Viewport width in pixels
+[23:12] Viewport height in pixels
+[31:24] Opcode (38)
+======= ============================
+
+Depth clears cover ``width * height`` samples at the current depth address. The rasterizer clips and addresses using this viewport. A power-of-two size (the shadow map) or the framebuffer size configured at elaboration are the supported dimensions.
+
+OP_SET_ZB_ADDR
+^^^^^^^^^^^^^^
+
+Absolute depth-buffer address in 16-bit words. Same two-beat encoding as OP_SET_TEX_ADDR.
+
+OP_SET_SHADOW
+^^^^^^^^^^^^^
+
+Absolute shadow-map address in 16-bit words. Same two-beat encoding as OP_SET_TEX_ADDR. Samples are raw 16-bit depth, not RGB4444.
+
+OP_SET_SHADOW_PARAM
+^^^^^^^^^^^^^^^^^^^
+
+======= ============================
+Field   Description
+======= ============================
+[2:0]   Shadow map width scale (0=32 .. 7=4096), same encoding as texture scale
+[5:3]   Shadow map height scale
+[21:6]  Constant depth bias added to interpolated SZ before the compare
+[31:24] Opcode (41)
+======= ============================
+
+A pixel is darkened by half when it is inside the map, the fetched depth is below 20000, and ``SZ + bias`` is greater than the fetched depth. Coordinates outside the map stay lit.
 
 OP_SWAP
 ^^^^^^^
