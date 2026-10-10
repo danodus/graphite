@@ -191,9 +191,10 @@ module graphite_rasterizer #(
     wire signed [31:0] scanner_zinv = acc_w_inv >>> 12; 
     wire signed [31:0] scanner_s_w  = acc_s >>> 2;      
     wire signed [31:0] scanner_t_w  = acc_t >>> 2;
-    wire signed [31:0] scanner_r_w  = acc_r <<< 4;      
-    wire signed [31:0] scanner_g_w  = acc_g <<< 4;
-    wire signed [31:0] scanner_b_w  = acc_b <<< 4;
+    // Color is a 12.20 plane. >>> 4 yields 16.16, which the perspective multiply expects.
+    wire signed [31:0] scanner_r_w  = acc_r >>> 4;
+    wire signed [31:0] scanner_g_w  = acc_g >>> 4;
+    wire signed [31:0] scanner_b_w  = acc_b >>> 4;
 
     wire signed [31:0] next_r_down  = acc_r + dr_dy;
     wire signed [31:0] next_g_down  = acc_g + dg_dy;
@@ -261,9 +262,9 @@ module graphite_rasterizer #(
                     acc_w_inv <= acc_w_inv + dw_dy;
                     acc_s <= acc_s + ds_dy;
                     acc_t <= acc_t + dt_dy;
-                    acc_r <= {{8{next_r_down[23]}}, next_r_down[23:0]};
-                    acc_g <= {{8{next_g_down[23]}}, next_g_down[23:0]};
-                    acc_b <= {{8{next_b_down[23]}}, next_b_down[23:0]};
+                    acc_r <= next_r_down;
+                    acc_g <= next_g_down;
+                    acc_b <= next_b_down;
                     if (scan_y + 1'b1 > max_y || scan_y + 1'b1 >= FB_HEIGHT)
                         scan_active <= 1'b0;
                 end else begin
@@ -275,9 +276,9 @@ module graphite_rasterizer #(
                     acc_w_inv <= acc_w_inv + ((scan_dir == 2'sd1) ? dw_dx : -dw_dx);
                     acc_s <= acc_s + ((scan_dir == 2'sd1) ? ds_dx : -ds_dx);
                     acc_t <= acc_t + ((scan_dir == 2'sd1) ? dt_dx : -dt_dx);
-                    acc_r <= {{8{next_r_horiz[23]}}, next_r_horiz[23:0]};
-                    acc_g <= {{8{next_g_horiz[23]}}, next_g_horiz[23:0]};
-                    acc_b <= {{8{next_b_horiz[23]}}, next_b_horiz[23:0]};
+                    acc_r <= next_r_horiz;
+                    acc_g <= next_g_horiz;
+                    acc_b <= next_b_horiz;
                 end
             end
         end

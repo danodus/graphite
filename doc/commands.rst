@@ -65,7 +65,7 @@ Parameter Formats:
 - V0_X, V0_Y, V1_X, V1_Y, V2_X, V2_Y: 12.4 fixed point format (16-bit)
 - START_W_INV, DW_DX, DW_DY: 4.28 fixed point format (32-bit)
 - START_S, START_T, DS_DX, DS_DY, DT_DX, DT_DY: 14.18 fixed point format (32-bit)
-- START_R, START_G, START_B, DR_DX, DR_DY, DG_DX, DG_DY, DB_DX, DB_DY: 12.12 fixed point format (32-bit)
+- START_R, START_G, START_B, DR_DX, DR_DY, DG_DX, DG_DY, DB_DX, DB_DY: 12.20 fixed point format (32-bit)
 
 
 OP_CLEAR

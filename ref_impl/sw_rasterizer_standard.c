@@ -153,7 +153,7 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
     int32_t acc_w_inv = start_w + (int32_t)(((int64_t)curr_x * dw_dx) + ((int64_t)curr_y * dw_dy) + (dw_dx >> 1) + (dw_dy >> 1));
     int32_t acc_u_w   = start_s + (int32_t)(((int64_t)curr_x * ds_dx) + ((int64_t)curr_y * ds_dy) + (ds_dx >> 1) + (ds_dy >> 1));
     int32_t acc_v_w   = start_t + (int32_t)(((int64_t)curr_x * dt_dx) + ((int64_t)curr_y * dt_dy) + (dt_dx >> 1) + (dt_dy >> 1));
-    // START_R/G/B are already the 12.12 value at this pixel, same as the hardware registers.
+    // START_R/G/B are already the 12.20 value at this pixel, same as the hardware registers.
     int32_t acc_r_w   = start_r;
     int32_t acc_g_w   = start_g;
     int32_t acc_b_w   = start_b;
@@ -174,9 +174,9 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
             fixed16 current_zinv = acc_w_inv >> 12; // 4.28  -> 16.16 (shift right 12)
             fixed16 current_u_w  = acc_u_w   >> 2;  // 14.18 -> 16.16 (shift right 2)
             fixed16 current_v_w  = acc_v_w   >> 2;  // 14.18 -> 16.16 (shift right 2)
-            fixed16 current_r_w  = acc_r_w   << 4;  // 12.12 -> 16.16 (shift left 4)
-            fixed16 current_g_w  = acc_g_w   << 4;  // 12.12 -> 16.16 (shift left 4)
-            fixed16 current_b_w  = acc_b_w   << 4;  // 12.12 -> 16.16 (shift left 4)
+            fixed16 current_r_w  = acc_r_w   >> 4;  // 12.20 -> 16.16 (shift right 4)
+            fixed16 current_g_w  = acc_g_w   >> 4;  // 12.20 -> 16.16 (shift right 4)
+            fixed16 current_b_w  = acc_b_w   >> 4;  // 12.20 -> 16.16 (shift right 4)
 
             fixed16 z_inv = (current_zinv < 1) ? 1 : current_zinv;
             fixed16 current_w = (fixed16)(((int64_t)1 << 40) / z_inv);
@@ -268,11 +268,6 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
             acc_u_w   += ds_dx * dir; acc_v_w   += dt_dx * dir;
             acc_r_w   += dr_dx * dir; acc_g_w   += dg_dx * dir; acc_b_w   += db_dx * dir;
         }
-
-        // Enforce 24-bit sign-extension limits on color registers to match ASIC widths
-        acc_r_w = (acc_r_w << 8) >> 8;
-        acc_g_w = (acc_g_w << 8) >> 8;
-        acc_b_w = (acc_b_w << 8) >> 8;
     }
 }
 
@@ -290,12 +285,11 @@ static inline int64_t solve_gradient_high(int64_t det, fixed16 termA, int32_t fa
     return (num / det) * 1048576LL + ((num % det) * 1048576LL) / det;
 }
 
-// Seed 12.12 color at the first scan pixel from the full-precision plane.
+// Seed 12.20 color at the first scan pixel from the full-precision plane.
 // Narrowing the (0,0) intercept and the gradients separately loses cancellation on slivers.
-static inline int32_t eval_color_12_12(int64_t raw_start, int64_t raw_dx, int64_t raw_dy, int x, int y) {
+static inline int32_t eval_color_12_20(int64_t raw_start, int64_t raw_dx, int64_t raw_dy, int x, int y) {
     int64_t raw = raw_start + (int64_t)x * raw_dx + (int64_t)y * raw_dy + (raw_dx >> 1) + (raw_dy >> 1);
-    int32_t q = (int32_t)(raw >> 20);
-    return (q << 8) >> 8;
+    return (int32_t)(raw >> 12);
 }
 
 static void draw_triangle(Vertex v0a, Vertex v1a, Vertex v2a, bool texture_enabled, bool depth_test, bool perspective_correct) {
@@ -386,18 +380,17 @@ static void draw_triangle(Vertex v0a, Vertex v1a, Vertex v2a, bool texture_enabl
     int curr_x = min_x;
     int curr_y = start_y;
 
-    // R, G, B parameters pack into 12.12 format (Drop lowest 20 fractional bits from 32.32)
-    // Sign extension from bit 24 keeps them strictly bounded 24-bit inputs
-    int32_t start_r = eval_color_12_12(raw_start_r, raw_dr_dx, raw_dr_dy, curr_x, curr_y);
-    int32_t dr_dx   = ((int32_t)(raw_dr_dx   >> 20) << 8) >> 8;
-    int32_t dr_dy   = ((int32_t)(raw_dr_dy   >> 20) << 8) >> 8;
+    // R, G, B parameters pack into 12.20 format (Drop lowest 12 fractional bits from 32.32)
+    int32_t start_r = eval_color_12_20(raw_start_r, raw_dr_dx, raw_dr_dy, curr_x, curr_y);
+    int32_t dr_dx   = (int32_t)(raw_dr_dx   >> 12);
+    int32_t dr_dy   = (int32_t)(raw_dr_dy   >> 12);
 
-    int32_t start_g = eval_color_12_12(raw_start_g, raw_dg_dx, raw_dg_dy, curr_x, curr_y);
-    int32_t dg_dx   = ((int32_t)(raw_dg_dx   >> 20) << 8) >> 8;
-    int32_t dg_dy   = ((int32_t)(raw_dg_dy   >> 20) << 8) >> 8;    
-    int32_t start_b = eval_color_12_12(raw_start_b, raw_db_dx, raw_db_dy, curr_x, curr_y);
-    int32_t db_dx   = ((int32_t)(raw_db_dx   >> 20) << 8) >> 8;
-    int32_t db_dy   = ((int32_t)(raw_db_dy   >> 20) << 8) >> 8;    
+    int32_t start_g = eval_color_12_20(raw_start_g, raw_dg_dx, raw_dg_dy, curr_x, curr_y);
+    int32_t dg_dx   = (int32_t)(raw_dg_dx   >> 12);
+    int32_t dg_dy   = (int32_t)(raw_dg_dy   >> 12);
+    int32_t start_b = eval_color_12_20(raw_start_b, raw_db_dx, raw_db_dy, curr_x, curr_y);
+    int32_t db_dx   = (int32_t)(raw_db_dx   >> 12);
+    int32_t db_dy   = (int32_t)(raw_db_dy   >> 12);    
 
     draw_triangle_serpentine_ras(v0, v1, v2, start_w, start_s, start_t, start_r, start_g, start_b, 
                              dw_dx, du_dx, dv_dx, dr_dx, dg_dx, db_dx, 
