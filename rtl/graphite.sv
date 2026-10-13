@@ -60,6 +60,7 @@ module graphite #(
     logic [2:0] texture_width_scale, texture_height_scale;
     logic [2:0] shadow_width_scale, shadow_height_scale;
     logic [15:0] shadow_bias;
+    logic [7:0] depth_bias;
     logic [15:0] viewport_width, viewport_height;
 
     graphite_command_processor #(
@@ -101,7 +102,8 @@ module graphite #(
         .viewport_width_o(viewport_width), .viewport_height_o(viewport_height),
         .shadow_address_o(shadow_address),
         .shadow_width_scale_o(shadow_width_scale), .shadow_height_scale_o(shadow_height_scale),
-        .shadow_bias_o(shadow_bias)
+        .shadow_bias_o(shadow_bias),
+        .depth_bias_o(depth_bias)
     );
 
     logic tex_req;
@@ -143,6 +145,7 @@ module graphite #(
         .shadow_width_scale(shadow_width_scale),
         .shadow_height_scale(shadow_height_scale),
         .shadow_bias(shadow_bias),
+        .depth_bias(depth_bias),
         .viewport_width(viewport_width),
         .viewport_height(viewport_height),
         .v0_x(v0_x), .v0_y(v0_y), .v1_x(v1_x), .v1_y(v1_y), .v2_x(v2_x), .v2_y(v2_y),

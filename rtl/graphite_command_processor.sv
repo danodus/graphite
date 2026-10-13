@@ -60,7 +60,8 @@ module graphite_command_processor #(
     output logic [31:0] shadow_address_o,
     output logic [2:0] shadow_width_scale_o,
     output logic [2:0] shadow_height_scale_o,
-    output logic [15:0] shadow_bias_o
+    output logic [15:0] shadow_bias_o,
+    output logic [7:0] depth_bias_o
 );
 
     enum { WAIT_COMMAND, PROCESS_COMMAND, WAIT_RASTER, SWAP0, CLEAR_FB0, CLEAR_DEPTH0 } state;
@@ -85,6 +86,7 @@ module graphite_command_processor #(
     logic [2:0] texture_width_scale, texture_height_scale;
     logic [2:0] shadow_width_scale, shadow_height_scale;
     logic [15:0] shadow_bias;
+    logic [7:0] depth_bias;
 
     // Screen-sized clears use the elaborated product. Power-of-two viewports
     // (the shadow map) use a shift so this path does not infer a multiplier.
@@ -181,6 +183,7 @@ module graphite_command_processor #(
     assign shadow_width_scale_o = shadow_width_scale;
     assign shadow_height_scale_o = shadow_height_scale;
     assign shadow_bias_o = shadow_bias;
+    assign depth_bias_o = depth_bias;
 
     assign core_vram_sel_o = core_vram_sel;
     assign core_vram_wr_o = core_vram_wr;
@@ -211,6 +214,7 @@ module graphite_command_processor #(
             shadow_width_scale   <= 3'd0;
             shadow_height_scale  <= 3'd0;
             shadow_bias          <= 16'd0;
+            depth_bias           <= 8'd0;
             is_depth_only        <= 1'b0;
             is_shadow            <= 1'b0;
             raster_start_o    <= 1'b0;
@@ -395,6 +399,7 @@ module graphite_command_processor #(
                         texture_height_scale   <= cmd_axis_tdata_i[11:9];
                         is_depth_only          <= cmd_axis_tdata_i[12];
                         is_shadow              <= cmd_axis_tdata_i[13];
+                        depth_bias             <= cmd_axis_tdata_i[21:14];
                         raster_start_o <= 1'b1;
                         state <= WAIT_RASTER;
                     end

@@ -57,6 +57,7 @@ static fixed16 g_in_su[3], g_in_sv[3], g_in_sz[3];
 static uint16_t* g_shadow_map = NULL;
 static int g_shadow_size = 0;
 static int g_shadow_bias = 0;
+static uint16_t g_depth_bias = 0;
 static int32_t g_su_dx, g_su_dy, g_sv_dx, g_sv_dy, g_sz_dx, g_sz_dy;
 static int32_t g_su_start, g_sv_start, g_sz_start;
 
@@ -243,6 +244,10 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
             if (sz_int > Z_INFINITY_16) sz_int = Z_INFINITY_16;
             if (g_depth_only)
                 depth_16 = (uint16_t)sz_int;
+            else if (depth_16 > g_depth_bias)
+                depth_16 = (uint16_t)(depth_16 - g_depth_bias);
+            else
+                depth_16 = 0;
 
             int buf_idx = curr_y * g_fb_width + curr_x;
             if (g_depth_only) {
@@ -516,8 +521,9 @@ static void draw_triangle(Vertex v0a, Vertex v1a, Vertex v2a, bool texture_enabl
 void sw_draw_triangle_standard(fx32 x0, fx32 y0, fx32 w0, fx32 s0, fx32 t0, fx32 r0, fx32 g0, fx32 b0, fx32 a0,
                       fx32 x1, fx32 y1, fx32 w1, fx32 s1, fx32 t1, fx32 r1, fx32 g1, fx32 b1, fx32 a1,
                       fx32 x2, fx32 y2, fx32 w2, fx32 s2, fx32 t2, fx32 r2, fx32 g2, fx32 b2, fx32 a2,
-                      bool texture, bool clamp_s, bool clamp_t, bool depth_test, bool persp_correct) {
+                      bool texture, bool clamp_s, bool clamp_t, bool depth_test, bool persp_correct, uint8_t depth_bias) {
     Vertex v0, v1, v2;
+    g_depth_bias = depth_bias;
 
     v0.x = FX32_TO_FIXED16(x0); v0.y = FX32_TO_FIXED16(y0); v0.w = FX32_TO_FIXED16(w0); v0.s = FX32_TO_FIXED16(MUL(s0, FXI(TEX_WIDTH))); v0.t = FX32_TO_FIXED16(MUL(t0, FXI(TEX_HEIGHT))); v0.r = FX32_TO_FIXED16(MUL(r0, FXI(255))); v0.g = FX32_TO_FIXED16(MUL(g0, FXI(255))); v0.b = FX32_TO_FIXED16(MUL(b0, FXI(255)));
     v1.x = FX32_TO_FIXED16(x1); v1.y = FX32_TO_FIXED16(y1); v1.w = FX32_TO_FIXED16(w1); v1.s = FX32_TO_FIXED16(MUL(s1, FXI(TEX_WIDTH))); v1.t = FX32_TO_FIXED16(MUL(t1, FXI(TEX_HEIGHT))); v1.r = FX32_TO_FIXED16(MUL(r1, FXI(255))); v1.g = FX32_TO_FIXED16(MUL(g1, FXI(255))); v1.b = FX32_TO_FIXED16(MUL(b1, FXI(255)));

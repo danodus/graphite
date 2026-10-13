@@ -24,6 +24,7 @@ module graphite_rasterizer #(
     input  wire [2:0]   shadow_width_scale,
     input  wire [2:0]   shadow_height_scale,
     input  wire [15:0]  shadow_bias,
+    input  wire [7:0]   depth_bias,
     input  wire [15:0]  viewport_width,
     input  wire [15:0]  viewport_height,
     output wire         busy,
@@ -451,7 +452,11 @@ module graphite_rasterizer #(
         else if (p_r4_sz_w[30:16] > 15'd20000) sz_depth_affine = 16'd20000;
         else                                   sz_depth_affine = p_r4_sz_w[31:16];
     end
-    wire [15:0] test_depth = depth_only ? sz_depth_affine : p4_depth_16;
+    // Color draws store a closer depth so a coplanar decal wins against the
+    // surface underneath. Depth-only shadow draws keep their own bias.
+    wire [15:0] depth_bias_16 = {8'd0, depth_bias};
+    wire [15:0] color_depth = (p4_depth_16 > depth_bias_16) ? (p4_depth_16 - depth_bias_16) : 16'd0;
+    wire [15:0] test_depth = depth_only ? sz_depth_affine : color_depth;
     wire z_pass = !enable_depth_test || (test_depth < current_zb_depth);
 
     // =========================================================================
@@ -653,7 +658,7 @@ module graphite_rasterizer #(
                 p_r5_valid     <= p4_accept;
                 p_r5_x         <= p_r4_x;
                 p_r5_y         <= p_r4_y;
-                p_r5_depth_16  <= depth_only ? sz_depth_affine : p4_depth_16;
+                p_r5_depth_16  <= test_depth;
                 p_r5_clamped_r <= p4_clamped_r;
                 p_r5_clamped_g <= p4_clamped_g;
                 p_r5_clamped_b <= p4_clamped_b;
