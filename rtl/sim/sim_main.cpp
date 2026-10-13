@@ -362,18 +362,16 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
     push_32(OP_SET_DB_DX, db_dx);
     push_32(OP_SET_DB_DY, db_dy);
 
-    cmd.opcode = OP_DRAW;
-
-    cmd.param = (depth_test ? 0b01000 : 0b00000) | (clamp_s ? 0b00100 : 0b00000) | (clamp_t ? 0b00010 : 0b00000) |
+    uint32_t draw_param = (depth_test ? 0b01000 : 0b00000) | (clamp_s ? 0b00100 : 0b00000) | (clamp_t ? 0b00010 : 0b00000) |
               ((tex != NULL) ? 0b00001 : 0b00000) | (perspective_correct ? 0b10000 : 0b00000) |
               (sign_bit ? 0b100000 : 0b000000);
 
-    cmd.param |= texture_scale_x << 6;
-    cmd.param |= texture_scale_y << 9;
+    draw_param |= texture_scale_x << 6;
+    draw_param |= texture_scale_y << 9;
     if (depth_only)
-        cmd.param |= 1u << 12;
+        draw_param |= 1u << 12;
     if (enable_shadow)
-        cmd.param |= 1u << 13;
+        draw_param |= 1u << 13;
 
     if (use_shadow_attr) {
         fixed16 su0 = v0.su, su1 = v1.su, su2 = v2.su;
@@ -408,7 +406,26 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
         push_32(OP_SET_DSZ_DY, sz_dy);
     }
 
+    // push_32 overwrites cmd, so the draw is queued after the shadow registers.
+    cmd.opcode = OP_DRAW;
+    cmd.param = draw_param;
     g_commands.push_back(cmd);
+}
+
+static void push_cmd(uint32_t opcode, uint32_t param) {
+    Command cmd;
+    cmd.opcode = opcode;
+    cmd.param = param;
+    g_commands.push_back(cmd);
+}
+
+static void push_addr(uint32_t opcode, uint32_t addr) {
+    push_cmd(opcode, addr & 0xFFFF);
+    push_cmd(opcode, 0x10000u | ((addr >> 16) & 0xFFFF));
+}
+
+static void set_viewport(int w, int h) {
+    push_cmd(OP_SET_VIEWPORT, ((uint32_t)h << 12) | (uint32_t)w);
 }
 
 void clear() {
@@ -421,6 +438,10 @@ void clear() {
     cmd.opcode = OP_CLEAR;
     cmd.param = 0x010000 | 20000; // Initialize to 20000
     g_commands.push_back(cmd);
+}
+
+static void clear_depth(uint16_t value) {
+    push_cmd(OP_CLEAR, 0x010000u | value);
 }
 
 void swap() {
@@ -437,8 +458,13 @@ void send_command(const char* s) {
     g_commands.push_back(c);
 }
 
-void write_texture(uint16_t* vram) {
-    uint32_t tex_addr = 3 * FB_WIDTH * FB_HEIGHT;
+#define FB_PIXELS (FB_WIDTH * FB_HEIGHT)
+#define DEPTH_ADDR (2u * FB_PIXELS)
+#define SHADOW_ADDR (3u * FB_PIXELS)
+#define TEX_ADDR_DEFAULT SHADOW_ADDR
+#define TEX_ADDR_SHADOW (SHADOW_ADDR + SHADOW_MAP_SIZE * SHADOW_MAP_SIZE)
+
+void write_texture(uint16_t* vram, uint32_t tex_addr) {
     memcpy(vram + tex_addr, tex, TEXTURE_WIDTH*TEXTURE_HEIGHT*2);
 }
 
@@ -607,6 +633,7 @@ int main(int argc, char** argv, char** env) {
 
     model_t* teapot_model = load_teapot();
     model_t* cube_model = load_cube();
+    model_t* floor_model = load_shadow_floor();
     model_t* current_model = cube_model;
 
     float theta = 0.5f;
@@ -628,6 +655,8 @@ int main(int argc, char** argv, char** env) {
     bool clamp_t = false;
     bool perspective_correct = true;
     bool show_depth = false;
+    bool show_shadow = false;
+    bool tex_addr_needs_restore = false;
 
     light_t lights[5];
     lights[0].direction = {FX(0.0f), FX(0.0f), FX(1.0f), FX(0.0f)};
@@ -706,6 +735,13 @@ int main(int argc, char** argv, char** env) {
                         case SDL_SCANCODE_F1:
                             show_depth = !show_depth;
                             break;
+                        case SDL_SCANCODE_M:
+                            show_shadow = !show_shadow;
+                            if (show_shadow)
+                                texture_dirty = true;
+                            else
+                                tex_addr_needs_restore = true;
+                            break;
                         default:
                             break;
                     }
@@ -733,8 +769,6 @@ int main(int argc, char** argv, char** env) {
 
             if (anim) theta += 2.0f * elapsed_time;
 
-            clear();
-
             //
             // camera
             //
@@ -759,16 +793,67 @@ int main(int argc, char** argv, char** env) {
             mat_world = mat_normal = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
             mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
 
-            if (texture_dirty || dump) {
-                write_texture(vram_data);
+            vec3d light_pos;
+            mat4x4 light_view, light_proj;
+            shadow_draw_t sample_pass = {};
+            if (show_shadow) {
+                if (texture_dirty || dump) {
+                    write_texture(vram_data, TEX_ADDR_SHADOW);
+                    texture_dirty = false;
+                }
+                tex_addr_needs_restore = true;
+
+                shadow_make_light(&light_pos, &light_view, &light_proj);
+                set_viewport(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+                push_addr(OP_SET_ZB_ADDR, SHADOW_ADDR);
+                clear_depth(0xFFFF);
+
+                shadow_draw_t depth_pass = {};
+                depth_pass.z_near = FX(SHADOW_Z_NEAR);
+                depth_pass.z_far = FX(SHADOW_Z_FAR);
+                depth_pass.depth_only = true;
+                draw_model(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, &light_pos, current_model, &mat_world, NULL, &light_proj, &light_view,
+                           NULL, 0, false, NULL, false, false, 0, 0, false, &depth_pass);
+
+                set_viewport(FB_WIDTH, FB_HEIGHT);
+                push_addr(OP_SET_ZB_ADDR, DEPTH_ADDR);
+                push_addr(OP_SET_SHADOW, SHADOW_ADDR);
+                // Width scale: 0 = 32, 1 = 64, 2 = 128, 3 = 256. Bias sits in bits [21:6].
+                int shadow_scale = 0;
+                for (int n = SHADOW_MAP_SIZE; n > 32; n >>= 1)
+                    ++shadow_scale;
+                push_cmd(OP_SET_SHADOW_PARAM, (SHADOW_BIAS << 6) | (shadow_scale << 3) | shadow_scale);
+                push_addr(OP_SET_TEX_ADDR, TEX_ADDR_SHADOW);
+
+                sample_pass.light_view = &light_view;
+                sample_pass.light_proj = &light_proj;
+                sample_pass.map_size = SHADOW_MAP_SIZE;
+                sample_pass.z_near = FX(SHADOW_Z_NEAR);
+                sample_pass.z_far = FX(SHADOW_Z_FAR);
+                sample_pass.sample = true;
+            } else if (tex_addr_needs_restore) {
+                write_texture(vram_data, TEX_ADDR_DEFAULT);
+                push_addr(OP_SET_TEX_ADDR, TEX_ADDR_DEFAULT);
+                tex_addr_needs_restore = false;
+                texture_dirty = false;
+            } else if (texture_dirty || dump) {
+                write_texture(vram_data, TEX_ADDR_DEFAULT);
                 texture_dirty = false;
             }
+
+            clear();
 
             if (current_model) {
                 // Draw cube
                 texture_t dummy_texture;
                 draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, current_model, &mat_world, gouraud_shading ? &mat_normal : NULL, &mat_proj, &mat_view, lights, nb_lights,
-                           wireframe, textured ? &dummy_texture : NULL, clamp_s, clamp_t, TEXTURE_SCALE_X, TEXTURE_SCALE_Y, perspective_correct);
+                           wireframe, textured ? &dummy_texture : NULL, clamp_s, clamp_t, TEXTURE_SCALE_X, TEXTURE_SCALE_Y, perspective_correct, NULL);
+
+                if (show_shadow) {
+                    mat4x4 mat_floor = matrix_make_identity();
+                    draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, floor_model, &mat_floor, NULL, &mat_proj, &mat_view, NULL, 0,
+                               false, NULL, false, false, 0, 0, perspective_correct, &sample_pass);
+                }
 
                 swap();
             }

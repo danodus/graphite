@@ -3,7 +3,7 @@
 Graphite is a FPGA based open source 2D/3D graphics accelerator.
 See the following project for an integration example: https://github.com/danodus/xgsoc
 
-![Utah Teapot](doc/teapot.gif)
+![Utah Teapot](doc/teapot_shadow.png)
 
 ## Documentation
 
@@ -38,3 +38,4 @@ make run
 - Press L to increase the number of directional lights;
 - Press G to enable/disable Gouraud shading;
 - Press P to enable/disable perspective correction.
+- Press M to show or hide a floor that receives the model's shadow.

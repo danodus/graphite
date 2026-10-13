@@ -66,7 +66,11 @@ int main() {
 
     model_t* cube_model = load_cube();
     model_t* teapot_model = load_teapot();
+    model_t* floor_model = load_shadow_floor();
     model_t* current_model = cube_model;
+
+    static uint16_t shadow_map[SHADOW_MAP_SIZE * SHADOW_MAP_SIZE];
+    sw_bind_shadow_map(shadow_map, SHADOW_MAP_SIZE, SHADOW_BIAS);
 
     bool is_anim = false;
     bool is_wireframe = false;
@@ -76,6 +80,7 @@ int main() {
     bool clamp_s = false;
     bool clamp_t = false;
     bool perspective_correct = true;
+    bool show_shadow = false;
 
     light_t lights[5];
     lights[0].direction = (vec3d){FX(0.0f), FX(0.0f), FX(1.0f), FX(0.0f)};
@@ -143,6 +148,9 @@ int main() {
                         break;
                     case SDL_SCANCODE_SPACE:
                         is_anim = !is_anim;
+                        break;
+                    case SDL_SCANCODE_M:
+                        show_shadow = !show_shadow;
                         break;
                     case SDL_SCANCODE_KP_PLUS:
                         scale += 1.0f;
@@ -217,6 +225,28 @@ int main() {
         mat_world = matrix_multiply_matrix(&mat_world, &mat_scale);
         mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
 
+        vec3d light_pos;
+        mat4x4 light_view, light_proj;
+        shadow_draw_t sample_pass = {0};
+        if (show_shadow) {
+            sw_clear_shadow_map();
+            shadow_make_light(&light_pos, &light_view, &light_proj);
+
+            shadow_draw_t depth_pass = {0};
+            depth_pass.z_near = FX(SHADOW_Z_NEAR);
+            depth_pass.z_far = FX(SHADOW_Z_FAR);
+            depth_pass.depth_only = true;
+            draw_model(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, &light_pos, current_model, &mat_world, NULL, &light_proj, &light_view,
+                       NULL, 0, false, NULL, false, false, 0, 0, false, &depth_pass);
+
+            sample_pass.light_view = &light_view;
+            sample_pass.light_proj = &light_proj;
+            sample_pass.map_size = SHADOW_MAP_SIZE;
+            sample_pass.z_near = FX(SHADOW_Z_NEAR);
+            sample_pass.z_far = FX(SHADOW_Z_FAR);
+            sample_pass.sample = true;
+        }
+
         // Draw lines
         vec3d v0, v1, c0, c1;
         v0.x = FX(0.0f), v0.y = FX(0.0f), v0.z = FX(1.0f), v0.w = FX(1.0f);
@@ -230,7 +260,13 @@ int main() {
         // Draw model
         texture_t dummy_texture;
         draw_model(screen_width, screen_height, &vec_camera, current_model, &mat_world, is_gouraud_shading ? &mat_normal : NULL, &mat_proj, &mat_view, lights, nb_lights,
-                   is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t, 0, 0, perspective_correct);
+                   is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t, 0, 0, perspective_correct, NULL);
+
+        if (show_shadow) {
+            mat4x4 mat_floor = matrix_make_identity();
+            draw_model(screen_width, screen_height, &vec_camera, floor_model, &mat_floor, NULL, &mat_proj, &mat_view, NULL, 0,
+                       false, NULL, false, false, 0, 0, perspective_correct, &sample_pass);
+        }
 
         SDL_RenderPresent(renderer);
     }

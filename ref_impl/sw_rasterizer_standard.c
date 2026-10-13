@@ -136,8 +136,16 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
     int max_x   = max3(v0.x, v1.x, v2.x) >> 4;
     int max_y   = v2.y >> 4;
 
+    // The shadow pass can be larger than the screen (the framebuffer is 240 tall).
+    int view_w = g_fb_width;
+    int view_h = g_fb_height;
+    if (g_depth_only && g_shadow_map != NULL && g_shadow_size > 0) {
+        view_w = g_shadow_size;
+        view_h = g_shadow_size;
+    }
+
     if (min_x < 0) min_x = 0;
-    if (max_x >= g_fb_width) max_x = g_fb_width - 1;
+    if (max_x >= view_w) max_x = view_w - 1;
     if (start_y < 0) start_y = 0;    
 
     // -------------------------------------------------------------------------
@@ -202,8 +210,8 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
     // 5. RASTERIZATION LOOP
     // -------------------------------------------------------------------------
     bool hit_inside_this_row = false;
-    while (curr_y <= max_y && curr_y < g_fb_height) {
-        bool inside = (curr_x >= min_x && curr_x <= max_x && curr_y >= 0 && curr_y < g_fb_height) && 
+    while (curr_y <= max_y && curr_y < view_h) {
+        bool inside = (curr_x >= min_x && curr_x <= max_x && curr_y >= 0 && curr_y < view_h) && 
                       (E01 >= 0 && E12 >= 0 && E20 >= 0);
 
         if (inside) {
@@ -247,7 +255,8 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
                         if (depth_test)
                             g_shadow_map[map_idx] = depth_16;
                     }
-                } else if (!depth_test || depth_16 < g_depth_buffer[buf_idx]) {
+                } else if (curr_x >= 0 && curr_y >= 0 && curr_x < g_fb_width && curr_y < g_fb_height &&
+                           (!depth_test || depth_16 < g_depth_buffer[buf_idx])) {
                     if (depth_test)
                         g_depth_buffer[buf_idx] = depth_16;
                 }

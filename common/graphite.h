@@ -98,6 +98,7 @@ typedef struct {
     vec2d t[3];
     vec3d c[3];
     vec3d n[3];
+    vec3d sh[3];
 } triangle_t;
 
 typedef struct {
@@ -131,6 +132,27 @@ typedef struct {
     vec3d diffuse_color;
 } light_t;
 
+#define SHADOW_MAP_SIZE 256
+// SZ shares the 12.20 color plane, which holds ±2048. Perspective correction stores
+// sz/w, and a visible vertex can sit on the near plane (w = 0.125), so sz must stay
+// at or below 255. One step of bias is the smallest offset that still clears acne.
+#define SHADOW_DEPTH_MAX 255
+#define SHADOW_BIAS 1
+#define SHADOW_Z_NEAR 0.5f
+#define SHADOW_Z_FAR 12.0f
+
+// depth_only renders with the light as the camera and stores encoded light-view z.
+// sample projects each world vertex through light_view/light_proj into the shadow map.
+typedef struct {
+    mat4x4* light_view;
+    mat4x4* light_proj;
+    int map_size;
+    fx32 z_near;
+    fx32 z_far;
+    bool depth_only;
+    bool sample;
+} shadow_draw_t;
+
 vec3d matrix_multiply_vector(mat4x4* m, vec3d* i);
 vec3d vector_add(vec3d* v1, vec3d* v2);
 vec3d vector_sub(vec3d* v1, vec3d* v2);
@@ -144,6 +166,9 @@ vec3d vector_clamp(vec3d* v);
 
 mat4x4 matrix_make_identity();
 mat4x4 matrix_make_projection(int viewport_width, int viewport_height, float fov);
+mat4x4 matrix_make_orthographic(fx32 left, fx32 right, fx32 bottom, fx32 top);
+void shadow_make_light(vec3d* light_pos, mat4x4* light_view, mat4x4* light_proj);
+model_t* load_shadow_floor(void);
 mat4x4 matrix_make_rotation_x(float theta);
 mat4x4 matrix_make_rotation_y(float theta);
 mat4x4 matrix_make_rotation_z(float theta);
@@ -158,6 +183,7 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
 
 void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
                 mat4x4* mat_normal, mat4x4* mat_projection, mat4x4* mat_view, light_t* lights, size_t nb_lights, bool is_wireframe, texture_t* texture,
-                bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y, bool perspective_correct);
+                bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y, bool perspective_correct,
+                const shadow_draw_t* shadow);
 
 #endif
