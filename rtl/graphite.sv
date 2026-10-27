@@ -56,7 +56,7 @@ module graphite #(
     logic signed [31:0] dsu_dx, dsu_dy, dsv_dx, dsv_dy, dsz_dx, dsz_dy;
     logic [31:0] fb_address, texture_address, back_rel_address, depth_address, shadow_address;
     logic is_textured, is_clamp_s, is_clamp_t, is_depth_test, is_perspective_correct;
-    logic is_depth_only, is_shadow;
+    logic is_depth_only, is_shadow, is_dither;
     logic [2:0] texture_width_scale, texture_height_scale;
     logic [2:0] shadow_width_scale, shadow_height_scale;
     logic [15:0] shadow_bias;
@@ -95,7 +95,7 @@ module graphite #(
         .back_rel_address_o(back_rel_address), .depth_address_o(depth_address),
         .is_textured_o(is_textured), .is_clamp_s_o(is_clamp_s), .is_clamp_t_o(is_clamp_t),
         .is_depth_test_o(is_depth_test), .is_perspective_correct_o(is_perspective_correct),
-        .is_depth_only_o(is_depth_only), .is_shadow_o(is_shadow),
+        .is_depth_only_o(is_depth_only), .is_shadow_o(is_shadow), .is_dither_o(is_dither),
         .texture_width_scale_o(texture_width_scale), .texture_height_scale_o(texture_height_scale),
         .start_su_o(start_su), .start_sv_o(start_sv), .start_sz_o(start_sz),
         .dsu_dx_o(dsu_dx), .dsu_dy_o(dsu_dy), .dsv_dx_o(dsv_dx), .dsv_dy_o(dsv_dy), .dsz_dx_o(dsz_dx), .dsz_dy_o(dsz_dy),
@@ -140,6 +140,7 @@ module graphite #(
         .clamp_t(is_clamp_t),
         .depth_only(is_depth_only),
         .enable_shadow(is_shadow),
+        .enable_dither(is_dither),
         .texture_width_scale(texture_width_scale),
         .texture_height_scale(texture_height_scale),
         .shadow_width_scale(shadow_width_scale),

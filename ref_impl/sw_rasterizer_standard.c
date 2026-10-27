@@ -58,6 +58,25 @@ static uint16_t* g_shadow_map = NULL;
 static int g_shadow_size = 0;
 static int g_shadow_bias = 0;
 static uint16_t g_depth_bias = 0;
+static bool g_dither = false;
+
+// 4x4 Bayer, row-major, indexed by {y[1:0], x[1:0]}. Same table as the rasterizer.
+static const uint8_t g_bayer4[16] = {
+     0,  8,  2, 10,
+    12,  4, 14,  6,
+     3, 11,  1,  9,
+    15,  7, 13,  5
+};
+
+void sw_set_dither(bool enable) {
+    g_dither = enable;
+}
+
+static uint32_t add_sat8(uint32_t color, unsigned addend) {
+    uint32_t sum = color + addend;
+    return sum > 255u ? 255u : sum;
+}
+
 static int32_t g_su_dx, g_su_dy, g_sv_dx, g_sv_dy, g_sz_dx, g_sz_dy;
 static int32_t g_su_start, g_sv_start, g_sz_start;
 
@@ -310,7 +329,14 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
                     }
                 }
 
-                g_draw_pixel_fn(curr_x, curr_y, ((final_r >> 3) << 11) | ((final_g >> 2) << 5) | (final_b >> 3));
+                uint32_t qr = final_r, qg = final_g, qb = final_b;
+                if (g_dither) {
+                    unsigned t = g_bayer4[((curr_y & 3) << 2) | (curr_x & 3)];
+                    qr = add_sat8(final_r, t >> 1);
+                    qg = add_sat8(final_g, t >> 2);
+                    qb = add_sat8(final_b, t >> 1);
+                }
+                g_draw_pixel_fn(curr_x, curr_y, ((qr >> 3) << 11) | ((qg >> 2) << 5) | (qb >> 3));
             }
             }
 

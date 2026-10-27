@@ -39,3 +39,4 @@ make run
 - Press G to enable/disable Gouraud shading;
 - Press P to enable/disable perspective correction.
 - Press M to show or hide a floor that receives the model's shadow.
+- Press B to enable/disable 4x4 Bayer dithering.

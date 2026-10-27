@@ -17,6 +17,7 @@ module graphite_rasterizer #(
     input  wire         enable_perspective_correct,
     input  wire         depth_only,
     input  wire         enable_shadow,
+    input  wire         enable_dither,
     input  wire         clamp_s,
     input  wire         clamp_t,
     input  wire [2:0]   texture_width_scale,
@@ -109,6 +110,28 @@ module graphite_rasterizer #(
             endcase
             pixel_addr = row + {16'd0, px};
         end
+    endfunction
+
+    // 4x4 Bayer thresholds, indexed by {y[1:0], x[1:0]}. Values are 0..15.
+    function automatic [3:0] bayer4(input [1:0] x, input [1:0] y);
+        case ({y, x})
+            4'b0000: bayer4 = 4'd0;
+            4'b0001: bayer4 = 4'd8;
+            4'b0010: bayer4 = 4'd2;
+            4'b0011: bayer4 = 4'd10;
+            4'b0100: bayer4 = 4'd12;
+            4'b0101: bayer4 = 4'd4;
+            4'b0110: bayer4 = 4'd14;
+            4'b0111: bayer4 = 4'd6;
+            4'b1000: bayer4 = 4'd3;
+            4'b1001: bayer4 = 4'd11;
+            4'b1010: bayer4 = 4'd1;
+            4'b1011: bayer4 = 4'd9;
+            4'b1100: bayer4 = 4'd15;
+            4'b1101: bayer4 = 4'd7;
+            4'b1110: bayer4 = 4'd13;
+            default: bayer4 = 4'd5;
+        endcase
     endfunction
 
     wire signed [63:0] mult_res1;
@@ -727,6 +750,15 @@ module graphite_rasterizer #(
     wire [7:0] out_g = shadow_hit ? (lit_g >> 1) : lit_g;
     wire [7:0] out_b = shadow_hit ? (lit_b >> 1) : lit_b;
 
+    // Ordered dither into the bits RGB565 discards: 3 for R/B, 2 for G.
+    wire [3:0] bayer_t = bayer4(p_r5_x[1:0], p_r5_y[1:0]);
+    wire [8:0] dither_sum_r = {1'b0, out_r} + {6'b0, bayer_t[3:1]};
+    wire [8:0] dither_sum_g = {1'b0, out_g} + {7'b0, bayer_t[3:2]};
+    wire [8:0] dither_sum_b = {1'b0, out_b} + {6'b0, bayer_t[3:1]};
+    wire [7:0] fb_r = enable_dither ? (dither_sum_r[8] ? 8'hFF : dither_sum_r[7:0]) : out_r;
+    wire [7:0] fb_g = enable_dither ? (dither_sum_g[8] ? 8'hFF : dither_sum_g[7:0]) : out_g;
+    wire [7:0] fb_b = enable_dither ? (dither_sum_b[8] ? 8'hFF : dither_sum_b[7:0]) : out_b;
+
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             fb_req   <= 1'b0;
@@ -736,7 +768,7 @@ module graphite_rasterizer #(
             if (!mem_stall) begin
                 if (p_r5_valid && !shadow_extra && !depth_only) begin
                     fb_addr  <= pixel_addr(p_r5_x, p_r5_y);
-                    fb_wdata <= {8'b0, out_r, out_g, out_b};
+                    fb_wdata <= {8'b0, fb_r, fb_g, fb_b};
                     fb_req   <= 1'b1;
                 end else begin
                     fb_req   <= 1'b0;

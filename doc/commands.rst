@@ -110,6 +110,7 @@ Field   Description
 [11:9]  Texture height scale (0=32, 1=64, 2=128, 3=256, 4=512, 5=1024, 6=2048, 7=4096)
 [12]    0=shade, 1=depth only (no texture fetch, no color write; depth is interpolated SZ)
 [13]    0=shadow compare off, 1=sample the shadow map and darken occluded pixels
+[22]    0=truncate to RGB565, 1=4x4 Bayer dither before the RGB565 quantize
 [31:24] Opcode (25)
 ======= ============================
 

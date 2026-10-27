@@ -81,6 +81,7 @@ int main() {
     bool clamp_t = false;
     bool perspective_correct = true;
     bool show_shadow = false;
+    bool dither = false;
 
     light_t lights[5];
     lights[0].direction = (vec3d){FX(0.0f), FX(0.0f), FX(1.0f), FX(0.0f)};
@@ -151,6 +152,10 @@ int main() {
                         break;
                     case SDL_SCANCODE_M:
                         show_shadow = !show_shadow;
+                        break;
+                    case SDL_SCANCODE_B:
+                        dither = !dither;
+                        sw_set_dither(dither);
                         break;
                     case SDL_SCANCODE_KP_PLUS:
                         scale += 1.0f;
