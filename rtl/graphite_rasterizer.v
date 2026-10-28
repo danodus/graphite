@@ -88,10 +88,18 @@ module graphite_rasterizer #(
     // =========================================================================
     reg p_r1_valid, p_r2_valid, p_r3_valid, p_r4_valid, p_r5_valid;
     reg p_r1_inside, p_r2_inside, p_r3_inside, p_r4_inside;
-    
+    // Read data is valid the cycle after the cache acknowledge. The cache
+    // BRAM is clocked on the falling edge, so using rdata in the ack cycle
+    // is only a half-cycle path through the depth compare and address math.
+    reg zb_fresh;
+    reg tex_fresh;
+
     // Stage 5 writes to FB/ZB. Stage 3 issues ZB read.
     wire zb_collision = p_r5_valid && p_r3_valid && p_r3_inside;
-    wire mem_stall = (zb_req && !zb_ack) || (tex_req && !tex_ack) || (fb_req && !fb_ack);
+    wire zb_read_wait = zb_req && !zb_we && !zb_fresh;
+    wire zb_write_wait = zb_req && zb_we && !zb_ack;
+    wire tex_wait = tex_req && !tex_fresh;
+    wire mem_stall = zb_read_wait || zb_write_wait || tex_wait || (fb_req && !fb_ack);
     wire pipe_stall = mem_stall || zb_collision;
 
     // Power-of-two viewports (shadow map) address with a shift. The screen
@@ -454,18 +462,25 @@ module graphite_rasterizer #(
     end
 
 
-    // Latched ZB data for Depth Test
+    // Latched ZB data for Depth Test. Sampled while the pipeline is held,
+    // then used on the following cycle (see zb_fresh).
     reg [15:0] latched_zb_rdata;
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             latched_zb_rdata <= 16'h0000;
+            zb_fresh <= 1'b0;
         end else if (ce) begin
-            if (zb_ack && !zb_we) begin
+            if (start && !busy) begin
+                zb_fresh <= 1'b0;
+            end else if (zb_ack && zb_req && !zb_we) begin
                 latched_zb_rdata <= zb_rdata;
+                zb_fresh <= 1'b1;
+            end else if (!mem_stall) begin
+                zb_fresh <= 1'b0;
             end
         end
     end
-    wire [15:0] current_zb_depth = (zb_ack && !zb_we) ? zb_rdata : latched_zb_rdata;
+    wire [15:0] current_zb_depth = latched_zb_rdata;
 
     // Depth-only draws store interpolated SZ. That path is affine (the ortho
     // shadow pass), so the 16.16 plane is valid without the perspective multiply.
@@ -671,7 +686,7 @@ module graphite_rasterizer #(
                 tex_shadow <= 1'b0;
                 shadow_extra <= 1'b0;
             end else if (shadow_extra && !mem_stall) begin
-                // Albedo data is visible this cycle. Hold it and issue the shadow read.
+                // Albedo was latched on the previous edge. Hold it and issue the shadow read.
                 albedo_hold  <= current_tex_data;
                 tex_addr     <= p_r5_shadow_addr;
                 tex_shadow   <= 1'b1;
@@ -715,18 +730,24 @@ module graphite_rasterizer #(
         end
     end
 
-    // Latched Texture data for Blend
+    // Latched texture sample. Visible the cycle after tex_ack (see tex_fresh).
     reg [31:0] latched_tex_rdata;
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             latched_tex_rdata <= 32'd0;
+            tex_fresh <= 1'b0;
         end else if (ce) begin
-            if (tex_ack) begin
+            if (start && !busy) begin
+                tex_fresh <= 1'b0;
+            end else if (tex_ack && tex_req) begin
                 latched_tex_rdata <= tex_rdata;
+                tex_fresh <= 1'b1;
+            end else if (!mem_stall) begin
+                tex_fresh <= 1'b0;
             end
         end
     end
-    wire [31:0] current_tex_data = tex_ack ? tex_rdata : latched_tex_rdata;
+    wire [31:0] current_tex_data = latched_tex_rdata;
 
     // =========================================================================
     // Pipeline Stage 6 (Shade Blending & FB/ZB Write)
