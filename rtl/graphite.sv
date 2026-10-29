@@ -56,7 +56,7 @@ module graphite #(
     logic signed [31:0] dsu_dx, dsu_dy, dsv_dx, dsv_dy, dsz_dx, dsz_dy;
     logic [31:0] fb_address, texture_address, back_rel_address, depth_address, shadow_address;
     logic is_textured, is_clamp_s, is_clamp_t, is_depth_test, is_perspective_correct;
-    logic is_depth_only, is_shadow, is_dither;
+    logic is_depth_only, is_shadow, is_dither, is_alpha_blend;
     logic [2:0] texture_width_scale, texture_height_scale;
     logic [2:0] shadow_width_scale, shadow_height_scale;
     logic [15:0] shadow_bias;
@@ -96,6 +96,7 @@ module graphite #(
         .is_textured_o(is_textured), .is_clamp_s_o(is_clamp_s), .is_clamp_t_o(is_clamp_t),
         .is_depth_test_o(is_depth_test), .is_perspective_correct_o(is_perspective_correct),
         .is_depth_only_o(is_depth_only), .is_shadow_o(is_shadow), .is_dither_o(is_dither),
+        .is_alpha_blend_o(is_alpha_blend),
         .texture_width_scale_o(texture_width_scale), .texture_height_scale_o(texture_height_scale),
         .start_su_o(start_su), .start_sv_o(start_sv), .start_sz_o(start_sz),
         .dsu_dx_o(dsu_dx), .dsu_dy_o(dsu_dy), .dsv_dx_o(dsv_dx), .dsv_dy_o(dsv_dy), .dsz_dx_o(dsz_dx), .dsz_dy_o(dsz_dy),
@@ -116,6 +117,10 @@ module graphite #(
     logic [31:0] fb_addr;
     logic [31:0] fb_wdata;
     logic fb_ack;
+    logic fb_rd_req;
+    logic [31:0] fb_rd_addr;
+    logic fb_rd_ack;
+    logic [15:0] fb_rd_data;
 
     logic zb_req;
     logic zb_we;
@@ -141,6 +146,7 @@ module graphite #(
         .depth_only(is_depth_only),
         .enable_shadow(is_shadow),
         .enable_dither(is_dither),
+        .enable_alpha_blend(is_alpha_blend),
         .texture_width_scale(texture_width_scale),
         .texture_height_scale(texture_height_scale),
         .shadow_width_scale(shadow_width_scale),
@@ -158,6 +164,7 @@ module graphite #(
         .dsu_dx(dsu_dx), .dsu_dy(dsu_dy), .dsv_dx(dsv_dx), .dsv_dy(dsv_dy), .dsz_dx(dsz_dx), .dsz_dy(dsz_dy),
         .tex_req(tex_req), .tex_shadow(tex_shadow), .tex_addr(tex_addr), .tex_ack(tex_ack), .tex_rdata(tex_rdata),
         .fb_req(fb_req), .fb_addr(fb_addr), .fb_wdata(fb_wdata), .fb_ack(fb_ack),
+        .fb_rd_req(fb_rd_req), .fb_rd_addr(fb_rd_addr), .fb_rd_ack(fb_rd_ack), .fb_rd_data(fb_rd_data),
         .zb_req(zb_req), .zb_we(zb_we), .zb_addr(zb_addr), .zb_wdata(zb_wdata), .zb_ack(zb_ack), .zb_rdata(zb_rdata)
     );
 
@@ -165,14 +172,16 @@ module graphite #(
     logic [15:0] fb_wdata_565;
     assign fb_wdata_565 = {fb_wdata[23:19], fb_wdata[15:10], fb_wdata[7:3]};
 
-    // Albedo texels are RGB4444 expanded to 8 bits per channel. Shadow samples
-    // are raw 16-bit depth in the low half.
+    // Albedo texels are ARGB4444 expanded to 8 bits per channel. Alpha is
+    // [31:24]; RGB is modulated by the vertex color in the rasterizer.
+    // Shadow samples are raw 16-bit depth in the low half.
     wire [31:0] tex_rdata_albedo = {vram_data_in_i[15:12], vram_data_in_i[15:12],
                                     vram_data_in_i[11:8], vram_data_in_i[11:8],
                                     vram_data_in_i[7:4], vram_data_in_i[7:4],
                                     vram_data_in_i[3:0], vram_data_in_i[3:0]};
     assign tex_rdata = tex_shadow ? {16'b0, vram_data_in_i} : tex_rdata_albedo;
     assign zb_rdata = vram_data_in_i;
+    assign fb_rd_data = vram_data_in_i;
 
     always_comb begin
         raster_vram_sel = 0;
@@ -183,6 +192,7 @@ module graphite #(
         zb_ack = 0;
         tex_ack = 0;
         fb_ack = 0;
+        fb_rd_ack = 0;
 
         if (zb_req && !zb_we) begin
             raster_vram_sel = 1;
@@ -194,6 +204,11 @@ module graphite #(
             raster_vram_wr = 0;
             raster_vram_addr = (tex_shadow ? shadow_address : texture_address) + tex_addr;
             tex_ack = 1;
+        end else if (fb_rd_req) begin
+            raster_vram_sel = 1;
+            raster_vram_wr = 0;
+            raster_vram_addr = fb_address + back_rel_address + fb_rd_addr;
+            fb_rd_ack = 1;
         end else if (zb_req && zb_we) begin
             raster_vram_sel = 1;
             raster_vram_wr = 1;

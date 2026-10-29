@@ -18,6 +18,7 @@ module graphite_rasterizer #(
     input  wire         depth_only,
     input  wire         enable_shadow,
     input  wire         enable_dither,
+    input  wire         enable_alpha_blend,
     input  wire         clamp_s,
     input  wire         clamp_t,
     input  wire [2:0]   texture_width_scale,
@@ -68,11 +69,15 @@ module graphite_rasterizer #(
     input  wire        tex_ack,
     input  wire [31:0] tex_rdata,
 
-    // Frame Buffer Interface (Write-Only)
+    // Frame buffer. fb_req writes; fb_rd_req reads a destination texel for alpha blend.
     output reg         fb_req,
     output reg  [31:0] fb_addr,
     output reg  [31:0] fb_wdata,
     input  wire        fb_ack,
+    output reg         fb_rd_req,
+    output reg  [31:0] fb_rd_addr,
+    input  wire        fb_rd_ack,
+    input  wire [15:0] fb_rd_data,
 
     // Z-Buffer Interface (Read/Write)
     output reg         zb_req,
@@ -93,13 +98,15 @@ module graphite_rasterizer #(
     // is only a half-cycle path through the depth compare and address math.
     reg zb_fresh;
     reg tex_fresh;
+    reg fb_fresh;
 
     // Stage 5 writes to FB/ZB. Stage 3 issues ZB read.
     wire zb_collision = p_r5_valid && p_r3_valid && p_r3_inside;
     wire zb_read_wait = zb_req && !zb_we && !zb_fresh;
     wire zb_write_wait = zb_req && zb_we && !zb_ack;
     wire tex_wait = tex_req && !tex_fresh;
-    wire mem_stall = zb_read_wait || zb_write_wait || tex_wait || (fb_req && !fb_ack);
+    wire fb_rd_wait = fb_rd_req && !fb_fresh;
+    wire mem_stall = zb_read_wait || zb_write_wait || tex_wait || (fb_req && !fb_ack) || fb_rd_wait;
     wire pipe_stall = mem_stall || zb_collision;
 
     // Power-of-two viewports (shadow map) address with a shift. The screen
@@ -140,6 +147,23 @@ module graphite_rasterizer #(
             4'b1110: bayer4 = 4'd13;
             default: bayer4 = 4'd5;
         endcase
+    endfunction
+
+    // Unsigned 8x8. Written as partial products because this Yosys maps every
+    // `*` onto a MULT18X18D, and the iCEPi 25k has 28 of them. The perspective
+    // pair, reciprocal, and color modulate already take 15, so the six alpha
+    // products have to stay in LUTs.
+    function automatic [15:0] mul8(input [7:0] x, input [7:0] y);
+        begin
+            mul8 = {8'b0, x & {8{y[0]}}}
+                 + {7'b0, x & {8{y[1]}}, 1'b0}
+                 + {6'b0, x & {8{y[2]}}, 2'b0}
+                 + {5'b0, x & {8{y[3]}}, 3'b0}
+                 + {4'b0, x & {8{y[4]}}, 4'b0}
+                 + {3'b0, x & {8{y[5]}}, 5'b0}
+                 + {2'b0, x & {8{y[6]}}, 6'b0}
+                 + {1'b0, x & {8{y[7]}}, 7'b0};
+        end
     endfunction
 
     wire signed [63:0] mult_res1;
@@ -218,7 +242,13 @@ module graphite_rasterizer #(
     reg [1:0] setup_state;
     wire mult_stall;
     reg shadow_extra;
-    wire stall = pipe_stall || mult_stall || shadow_extra;
+    reg blend_extra;
+    // Declared here and driven next to the shader so the scanner can pause
+    // on a partial-alpha texel the same way it pauses for the shadow fetch.
+    wire hold_for_blend;
+    wire blend_done;
+    wire block_blend;
+    wire stall = pipe_stall || mult_stall || shadow_extra || block_blend;
 
     // =========================================================================
     // Scanner Registers (boustrophedon scan)
@@ -438,7 +468,7 @@ module graphite_rasterizer #(
         end else if (ce) begin
             if (start && !busy) begin
                 p_r4_valid <= 1'b0;
-            end else if (!mem_stall && !mult_stall && !shadow_extra) begin
+            end else if (!mem_stall && !mult_stall && !shadow_extra && !block_blend) begin
                 if (zb_collision) begin
                     p_r4_valid <= 1'b0;
                 end else begin
@@ -513,7 +543,7 @@ module graphite_rasterizer #(
         end else if (ce) begin
             if (start && !busy) begin
                 mult_state <= 3'd0;
-            end else if (!mem_stall && !shadow_extra) begin
+            end else if (!mem_stall && !shadow_extra && !block_blend) begin
                 if (p_r4_valid && p_r4_inside && z_pass && enable_perspective_correct) begin
                     if (mult_state == mult_last) begin
                         mult_state <= 3'd0;
@@ -584,7 +614,7 @@ module graphite_rasterizer #(
             p4_true_b <= 32'd0;
             p4_true_su <= 32'd0; p4_true_sv <= 32'd0; p4_true_sz <= 32'd0;
         end else if (ce) begin
-            if (!mem_stall && !shadow_extra && p_r4_valid && p_r4_inside && z_pass && enable_perspective_correct) begin
+            if (!mem_stall && !shadow_extra && !block_blend && p_r4_valid && p_r4_inside && z_pass && enable_perspective_correct) begin
                 if (mult_state == 3'd0) begin
                     p4_true_u <= mult_res1[55:24];
                     p4_true_v <= mult_res2[55:24];
@@ -679,12 +709,18 @@ module graphite_rasterizer #(
             tex_addr   <= 32'd0;
             albedo_hold <= 32'd0;
             shadow_extra <= 1'b0;
+            blend_extra  <= 1'b0;
         end else if (ce) begin
             if (start && !busy) begin
                 p_r5_valid <= 1'b0;
                 tex_req    <= 1'b0;
                 tex_shadow <= 1'b0;
                 shadow_extra <= 1'b0;
+                blend_extra  <= 1'b0;
+            end else if (hold_for_blend) begin
+                // Texel is partial coverage. Keep this pixel in stage 5 and
+                // read the destination color before writing.
+                blend_extra <= 1'b1;
             end else if (shadow_extra && !mem_stall) begin
                 // Albedo was latched on the previous edge. Hold it and issue the shadow read.
                 albedo_hold  <= current_tex_data;
@@ -692,7 +728,8 @@ module graphite_rasterizer #(
                 tex_shadow   <= 1'b1;
                 tex_req      <= 1'b1;
                 shadow_extra <= 1'b0;
-            end else if (!mem_stall && !shadow_extra) begin
+            end else if (!mem_stall && !shadow_extra && !block_blend) begin
+                blend_extra    <= 1'b0;
                 p_r5_valid     <= p4_accept;
                 p_r5_x         <= p_r4_x;
                 p_r5_y         <= p_r4_y;
@@ -749,6 +786,33 @@ module graphite_rasterizer #(
     end
     wire [31:0] current_tex_data = latched_tex_rdata;
 
+    // Destination color for a partial-alpha texel. Same ack timing as a texture read.
+    reg [15:0] latched_fb;
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            fb_rd_req  <= 1'b0;
+            fb_rd_addr <= 32'd0;
+            latched_fb <= 16'd0;
+            fb_fresh   <= 1'b0;
+        end else if (ce) begin
+            if (start && !busy) begin
+                fb_rd_req <= 1'b0;
+                fb_fresh  <= 1'b0;
+            end else if (hold_for_blend) begin
+                fb_rd_req  <= 1'b1;
+                fb_rd_addr <= pixel_addr(p_r5_x, p_r5_y);
+            end else begin
+                if (fb_rd_ack && fb_rd_req) begin
+                    latched_fb <= fb_rd_data;
+                    fb_fresh   <= 1'b1;
+                    fb_rd_req  <= 1'b0;
+                end else if (!mem_stall) begin
+                    fb_fresh <= 1'b0;
+                end
+            end
+        end
+    end
+
     // =========================================================================
     // Pipeline Stage 6 (Shade Blending & FB/ZB Write)
     // =========================================================================
@@ -756,6 +820,13 @@ module graphite_rasterizer #(
     // the sample visible at the write is the shadow depth. Pixels outside the
     // map fetched albedo directly, so they must not reuse a stale hold.
     wire [31:0] shade_tex = (enable_shadow && enable_texture && p_r5_shadow_inside) ? albedo_hold : current_tex_data;
+    wire [7:0] texel_a = shade_tex[31:24];
+    wire alpha_on = enable_alpha_blend && enable_texture && !depth_only && p_r5_valid && !shadow_extra && !blend_extra;
+    wire alpha_reject = alpha_on && (texel_a == 8'h00);
+    wire alpha_partial = alpha_on && (texel_a != 8'h00) && (texel_a != 8'hFF);
+    assign hold_for_blend = alpha_partial && !mem_stall;
+    assign blend_done = blend_extra && fb_fresh && !mem_stall;
+    assign block_blend = hold_for_blend || (blend_extra && !blend_done);
     wire [15:0] blend_r = ({8'b0, shade_tex[23:16]} * {8'b0, p_r5_clamped_r}) >> 8;
     wire [15:0] blend_g = ({8'b0, shade_tex[15:8]}  * {8'b0, p_r5_clamped_g}) >> 8;
     wire [15:0] blend_b = ({8'b0, shade_tex[7:0]}   * {8'b0, p_r5_clamped_b}) >> 8;
@@ -771,14 +842,27 @@ module graphite_rasterizer #(
     wire [7:0] out_g = shadow_hit ? (lit_g >> 1) : lit_g;
     wire [7:0] out_b = shadow_hit ? (lit_b >> 1) : lit_b;
 
+    // RGB565 destination, expanded the same way the write path truncates.
+    wire [7:0] dst_r = {latched_fb[15:11], latched_fb[15:13]};
+    wire [7:0] dst_g = {latched_fb[10:5], latched_fb[10:9]};
+    wire [7:0] dst_b = {latched_fb[4:0], latched_fb[4:2]};
+    wire [7:0] inv_a = 8'hFF - texel_a;
+    // (src * a + dst * (255 - a)) ; take bits [15:8]. See mul8.
+    wire [16:0] mix_r_w = {1'b0, mul8(out_r, texel_a)} + {1'b0, mul8(dst_r, inv_a)};
+    wire [16:0] mix_g_w = {1'b0, mul8(out_g, texel_a)} + {1'b0, mul8(dst_g, inv_a)};
+    wire [16:0] mix_b_w = {1'b0, mul8(out_b, texel_a)} + {1'b0, mul8(dst_b, inv_a)};
+    wire [7:0] shade_r = blend_done ? mix_r_w[15:8] : out_r;
+    wire [7:0] shade_g = blend_done ? mix_g_w[15:8] : out_g;
+    wire [7:0] shade_b = blend_done ? mix_b_w[15:8] : out_b;
+
     // Ordered dither into the bits RGB565 discards: 3 for R/B, 2 for G.
     wire [3:0] bayer_t = bayer4(p_r5_x[1:0], p_r5_y[1:0]);
-    wire [8:0] dither_sum_r = {1'b0, out_r} + {6'b0, bayer_t[3:1]};
-    wire [8:0] dither_sum_g = {1'b0, out_g} + {7'b0, bayer_t[3:2]};
-    wire [8:0] dither_sum_b = {1'b0, out_b} + {6'b0, bayer_t[3:1]};
-    wire [7:0] fb_r = enable_dither ? (dither_sum_r[8] ? 8'hFF : dither_sum_r[7:0]) : out_r;
-    wire [7:0] fb_g = enable_dither ? (dither_sum_g[8] ? 8'hFF : dither_sum_g[7:0]) : out_g;
-    wire [7:0] fb_b = enable_dither ? (dither_sum_b[8] ? 8'hFF : dither_sum_b[7:0]) : out_b;
+    wire [8:0] dither_sum_r = {1'b0, shade_r} + {6'b0, bayer_t[3:1]};
+    wire [8:0] dither_sum_g = {1'b0, shade_g} + {7'b0, bayer_t[3:2]};
+    wire [8:0] dither_sum_b = {1'b0, shade_b} + {6'b0, bayer_t[3:1]};
+    wire [7:0] fb_r = enable_dither ? (dither_sum_r[8] ? 8'hFF : dither_sum_r[7:0]) : shade_r;
+    wire [7:0] fb_g = enable_dither ? (dither_sum_g[8] ? 8'hFF : dither_sum_g[7:0]) : shade_g;
+    wire [7:0] fb_b = enable_dither ? (dither_sum_b[8] ? 8'hFF : dither_sum_b[7:0]) : shade_b;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -786,8 +870,14 @@ module graphite_rasterizer #(
             fb_addr  <= 32'd0;
             fb_wdata <= 32'd0;
         end else if (ce) begin
-            if (!mem_stall) begin
-                if (p_r5_valid && !shadow_extra && !depth_only) begin
+            if (blend_done) begin
+                fb_addr  <= pixel_addr(p_r5_x, p_r5_y);
+                fb_wdata <= {8'b0, fb_r, fb_g, fb_b};
+                fb_req   <= 1'b1;
+            end else if (hold_for_blend) begin
+                fb_req   <= 1'b0;
+            end else if (!mem_stall) begin
+                if (p_r5_valid && !shadow_extra && !blend_extra && !depth_only && !alpha_reject) begin
                     fb_addr  <= pixel_addr(p_r5_x, p_r5_y);
                     fb_wdata <= {8'b0, fb_r, fb_g, fb_b};
                     fb_req   <= 1'b1;
@@ -810,11 +900,22 @@ module graphite_rasterizer #(
             zb_addr  <= 32'd0;
             zb_wdata <= 16'd0;
         end else if (ce) begin
-            if (shadow_extra && !mem_stall) begin
+            if (hold_for_blend) begin
+                zb_req <= 1'b0;
+                zb_we  <= 1'b0;
+            end else if (blend_done && enable_depth_test) begin
+                zb_addr  <= pixel_addr(p_r5_x, p_r5_y);
+                zb_wdata <= p_r5_depth_16;
+                zb_we    <= 1'b1;
+                zb_req   <= 1'b1;
+            end else if (blend_done) begin
+                zb_req <= 1'b0;
+                zb_we  <= 1'b0;
+            end else if (shadow_extra && !mem_stall) begin
                 zb_req <= 1'b0;
                 zb_we  <= 1'b0;
             end else if (!mem_stall) begin
-                if (p_r5_valid && enable_depth_test && !shadow_extra) begin
+                if (p_r5_valid && enable_depth_test && !shadow_extra && !blend_extra && !alpha_reject) begin
                     // Stage 6 Write
                     zb_addr  <= pixel_addr(p_r5_x, p_r5_y);
                     zb_wdata <= p_r5_depth_16;

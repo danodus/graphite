@@ -15,6 +15,8 @@ void sw_dispose_rasterizer_standard();
 void sw_clear_depth_buffer_standard();
 void sw_bind_shadow_map(uint16_t* map, int size, int bias);
 void sw_set_dither(bool enable);
+void sw_set_alpha_blend(bool enable);
+void sw_clear_color_buffer(uint16_t rgb565);
 void sw_clear_shadow_map(void);
 void sw_set_triangle_shadow(bool depth_only, bool enable_shadow,
                             fx32 su0, fx32 sv0, fx32 sz0,

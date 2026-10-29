@@ -51,6 +51,7 @@ module graphite_command_processor #(
     output logic is_depth_only_o,
     output logic is_shadow_o,
     output logic is_dither_o,
+    output logic is_alpha_blend_o,
     output logic [2:0] texture_width_scale_o,
     output logic [2:0] texture_height_scale_o,
 
@@ -83,7 +84,7 @@ module graphite_command_processor #(
     logic [31:0] viewport_pixels;
 
     logic is_textured, is_clamp_s, is_clamp_t, is_depth_test, is_perspective_correct;
-    logic is_depth_only, is_shadow, is_dither;
+    logic is_depth_only, is_shadow, is_dither, is_alpha_blend;
     logic [2:0] texture_width_scale, texture_height_scale;
     logic [2:0] shadow_width_scale, shadow_height_scale;
     logic [15:0] shadow_bias;
@@ -168,6 +169,7 @@ module graphite_command_processor #(
     assign is_depth_only_o = is_depth_only;
     assign is_shadow_o = is_shadow;
     assign is_dither_o = is_dither;
+    assign is_alpha_blend_o = is_alpha_blend;
     assign texture_width_scale_o = texture_width_scale;
     assign texture_height_scale_o = texture_height_scale;
     assign start_su_o = start_su;
@@ -220,6 +222,7 @@ module graphite_command_processor #(
             is_depth_only        <= 1'b0;
             is_shadow            <= 1'b0;
             is_dither            <= 1'b0;
+            is_alpha_blend       <= 1'b0;
             raster_start_o    <= 1'b0;
         end else if (ce_i) begin
             raster_start_o <= 1'b0;
@@ -404,6 +407,7 @@ module graphite_command_processor #(
                         is_shadow              <= cmd_axis_tdata_i[13];
                         depth_bias             <= cmd_axis_tdata_i[21:14];
                         is_dither              <= cmd_axis_tdata_i[22];
+                        is_alpha_blend         <= cmd_axis_tdata_i[23];
                         raster_start_o <= 1'b1;
                         state <= WAIT_RASTER;
                     end

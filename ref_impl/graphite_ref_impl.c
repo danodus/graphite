@@ -82,6 +82,7 @@ int main() {
     bool perspective_correct = true;
     bool show_shadow = false;
     bool dither = false;
+    bool alpha_blend = false;
 
     light_t lights[5];
     lights[0].direction = (vec3d){FX(0.0f), FX(0.0f), FX(1.0f), FX(0.0f)};
@@ -157,6 +158,10 @@ int main() {
                         dither = !dither;
                         sw_set_dither(dither);
                         break;
+                    case SDL_SCANCODE_N:
+                        alpha_blend = !alpha_blend;
+                        sw_set_alpha_blend(alpha_blend);
+                        break;
                     case SDL_SCANCODE_KP_PLUS:
                         scale += 1.0f;
                         break;
@@ -203,6 +208,7 @@ int main() {
         SDL_SetRenderDrawColor(renderer, 50, 50, 50, SDL_ALPHA_OPAQUE);
         SDL_RenderClear(renderer);
         sw_clear_depth_buffer_standard();
+        sw_clear_color_buffer((uint16_t)(((50 >> 3) << 11) | ((50 >> 2) << 5) | (50 >> 3)));
 
         //
         // camera

@@ -9,6 +9,7 @@
 
 #include "sw_rasterizer.h"
 
+extern uint16_t tex_circle[];
 extern uint16_t tex32x32[];
 extern uint16_t tex32x64[];
 extern uint16_t tex256x2048[];
@@ -59,6 +60,8 @@ static int g_shadow_size = 0;
 static int g_shadow_bias = 0;
 static uint16_t g_depth_bias = 0;
 static bool g_dither = false;
+static bool g_alpha_blend = true;
+static uint16_t* g_color_buffer = NULL;
 
 // 4x4 Bayer, row-major, indexed by {y[1:0], x[1:0]}. Same table as the rasterizer.
 static const uint8_t g_bayer4[16] = {
@@ -70,6 +73,20 @@ static const uint8_t g_bayer4[16] = {
 
 void sw_set_dither(bool enable) {
     g_dither = enable;
+}
+
+void sw_set_alpha_blend(bool enable) {
+    g_alpha_blend = enable;
+}
+
+// Bit replication used when the rasterizer reads RGB565 back for blending.
+static void expand_rgb565(uint16_t p, uint32_t* r, uint32_t* g, uint32_t* b) {
+    uint32_t r5 = p >> 11;
+    uint32_t g6 = (p >> 5) & 0x3Fu;
+    uint32_t b5 = p & 0x1Fu;
+    *r = (r5 << 3) | (r5 >> 2);
+    *g = (g6 << 2) | (g6 >> 4);
+    *b = (b5 << 3) | (b5 >> 2);
 }
 
 static uint32_t add_sat8(uint32_t color, unsigned addend) {
@@ -113,14 +130,25 @@ void sw_init_rasterizer_standard(int fb_width, int fb_height, draw_pixel_fn_t dr
     g_fb_width = fb_width;
     g_fb_height = fb_height;
     g_depth_buffer = (fx32*)malloc(fb_width * fb_height * sizeof(fx32));
+    g_color_buffer = (uint16_t*)malloc(fb_width * fb_height * sizeof(uint16_t));
     g_draw_pixel_fn = draw_pixel_fn;
 }
 
-void sw_dispose_rasterizer_standard() { free(g_depth_buffer); }
+void sw_dispose_rasterizer_standard() {
+    free(g_depth_buffer);
+    free(g_color_buffer);
+}
 
 void sw_clear_depth_buffer_standard() {
     for (int i = 0; i < g_fb_width * g_fb_height; i++)
         g_depth_buffer[i] = Z_INFINITY_16;  // max int32 = "infinity"
+}
+
+void sw_clear_color_buffer(uint16_t rgb565) {
+    if (g_color_buffer == NULL)
+        return;
+    for (int i = 0; i < g_fb_width * g_fb_height; i++)
+        g_color_buffer[i] = rgb565;
 }
 
 static inline int16_t min3(int16_t a, int16_t b, int16_t c) {
@@ -285,8 +313,6 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
                         g_depth_buffer[buf_idx] = depth_16;
                 }
             } else if (!depth_test || depth_16 < g_depth_buffer[buf_idx]) {
-                if (depth_test) g_depth_buffer[buf_idx] = depth_16;
-
                 fixed16 true_u = perspective_correct ? (fixed16)(((int64_t)current_u_w * current_w) >> 24) : current_u_w;
                 fixed16 true_v = perspective_correct ? (fixed16)(((int64_t)current_v_w * current_w) >> 24) : current_v_w;
                 fixed16 true_r = perspective_correct ? (fixed16)(((int64_t)current_r_w * current_w) >> 24) : current_r_w;
@@ -300,6 +326,8 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
                 uint32_t tr = texture_enabled ? ((tex_pixel >> 8) & 0xF) : 15;
                 uint32_t tg = texture_enabled ? ((tex_pixel >> 4) & 0xF) : 15;
                 uint32_t tb = texture_enabled ? (tex_pixel & 0xF) : 15;
+                uint32_t ta_n = texture_enabled ? ((tex_pixel >> 12) & 0xF) : 15;
+                uint32_t texel_a = (ta_n << 4) | ta_n;
                 uint32_t tex_r = (tr << 4) | tr;
                 uint32_t tex_g = (tg << 4) | tg;
                 uint32_t tex_b = (tb << 4) | tb;
@@ -329,14 +357,37 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
                     }
                 }
 
-                uint32_t qr = final_r, qg = final_g, qb = final_b;
-                if (g_dither) {
-                    unsigned t = g_bayer4[((curr_y & 3) << 2) | (curr_x & 3)];
-                    qr = add_sat8(final_r, t >> 1);
-                    qg = add_sat8(final_g, t >> 2);
-                    qb = add_sat8(final_b, t >> 1);
+                // Same rule as the rasterizer: alpha 0 skips color and depth,
+                // 0xFF writes the modulated color, anything else is source-over.
+                uint32_t shade_r = final_r, shade_g = final_g, shade_b = final_b;
+                bool alpha_reject = false;
+                if (g_alpha_blend && texture_enabled) {
+                    if (texel_a == 0) {
+                        alpha_reject = true;
+                    } else if (texel_a != 0xFFu) {
+                        uint32_t dst_r, dst_g, dst_b, inv_a;
+                        expand_rgb565(g_color_buffer[buf_idx], &dst_r, &dst_g, &dst_b);
+                        inv_a = 255u - texel_a;
+                        shade_r = (final_r * texel_a + dst_r * inv_a) >> 8;
+                        shade_g = (final_g * texel_a + dst_g * inv_a) >> 8;
+                        shade_b = (final_b * texel_a + dst_b * inv_a) >> 8;
+                    }
                 }
-                g_draw_pixel_fn(curr_x, curr_y, ((qr >> 3) << 11) | ((qg >> 2) << 5) | (qb >> 3));
+
+                if (!alpha_reject) {
+                    if (depth_test) g_depth_buffer[buf_idx] = depth_16;
+
+                    uint32_t qr = shade_r, qg = shade_g, qb = shade_b;
+                    if (g_dither) {
+                        unsigned t = g_bayer4[((curr_y & 3) << 2) | (curr_x & 3)];
+                        qr = add_sat8(shade_r, t >> 1);
+                        qg = add_sat8(shade_g, t >> 2);
+                        qb = add_sat8(shade_b, t >> 1);
+                    }
+                    uint16_t pixel = (uint16_t)(((qr >> 3) << 11) | ((qg >> 2) << 5) | (qb >> 3));
+                    g_color_buffer[buf_idx] = pixel;
+                    g_draw_pixel_fn(curr_x, curr_y, pixel);
+                }
             }
             }
 

@@ -111,6 +111,7 @@ Field   Description
 [12]    0=shade, 1=depth only (no texture fetch, no color write; depth is interpolated SZ)
 [13]    0=shadow compare off, 1=sample the shadow map and darken occluded pixels
 [22]    0=truncate to RGB565, 1=4x4 Bayer dither before the RGB565 quantize
+[23]    0=ignore texel alpha, 1=blend source over the framebuffer (alpha 0 skips the write)
 [31:24] Opcode (25)
 ======= ============================
 

@@ -74,6 +74,7 @@
 #define PARAM(x) (_FLOAT_TO_FIXED(x, 14))
 #endif
 
+extern uint16_t tex_circle[];
 extern uint16_t tex64x64[];
 extern uint16_t tex32x32[];
 extern uint16_t tex32x64[];
@@ -212,6 +213,7 @@ static inline int32_t eval_color_12_20(int64_t raw_start, int64_t raw_dx, int64_
 };
 
 static bool g_enable_dither = false;
+static bool g_enable_alpha_blend = false;
 
 void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y,
                       bool depth_test, bool perspective_correct, const vec3d* sh, bool depth_only, bool enable_shadow)                      
@@ -376,6 +378,8 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
         draw_param |= 1u << 13;
     if (g_enable_dither)
         draw_param |= 1u << 22;
+    if (g_enable_alpha_blend)
+        draw_param |= 1u << 23;
 
     if (use_shadow_attr) {
         fixed16 su0 = v0.su, su1 = v1.su, su2 = v2.su;
@@ -741,6 +745,9 @@ int main(int argc, char** argv, char** env) {
                             break;
                         case SDL_SCANCODE_B:
                             g_enable_dither = !g_enable_dither;
+                            break;
+                        case SDL_SCANCODE_N:
+                            g_enable_alpha_blend = !g_enable_alpha_blend;
                             break;
                         case SDL_SCANCODE_M:
                             show_shadow = !show_shadow;
