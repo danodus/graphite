@@ -184,6 +184,6 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
 void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
                 mat4x4* mat_normal, mat4x4* mat_projection, mat4x4* mat_view, light_t* lights, size_t nb_lights, bool is_wireframe, texture_t* texture,
                 bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y, bool perspective_correct,
-                const shadow_draw_t* shadow);
+                bool dither, bool alpha_blend, const shadow_draw_t* shadow);
 
 #endif

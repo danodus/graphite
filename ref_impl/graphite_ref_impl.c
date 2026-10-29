@@ -32,13 +32,14 @@ void draw_pixel(int x, int y, int color) {
 }
 
 void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y,
-                      bool depth_test, bool perspective_correct, const vec3d* sh, bool depth_only, bool enable_shadow)
+                      bool depth_test, bool perspective_correct, const vec3d* sh, bool depth_only, bool enable_shadow,
+                      bool dither, bool alpha_blend)
 {
     if (sh != NULL && (depth_only || enable_shadow))
         sw_set_triangle_shadow(depth_only, enable_shadow, sh[0].x, sh[0].y, sh[0].z, sh[1].x, sh[1].y, sh[1].z, sh[2].x, sh[2].y, sh[2].z);
     else
         sw_set_triangle_shadow(false, false, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-    sw_draw_triangle_standard(p[0].x, p[0].y, t[0].w, t[0].u, t[0].v, c[0].x, c[0].y, c[0].z, c[0].w, p[1].x, p[1].y, t[1].w, t[1].u, t[1].v, c[1].x, c[1].y, c[1].z, c[1].w, p[2].x, p[2].y, t[2].w, t[2].u, t[2].v, c[2].x, c[2].y, c[2].z, c[2].w, (tex != NULL) ? true : false, clamp_s, clamp_t, depth_test, perspective_correct, 0);
+    sw_draw_triangle_standard(p[0].x, p[0].y, t[0].w, t[0].u, t[0].v, c[0].x, c[0].y, c[0].z, c[0].w, p[1].x, p[1].y, t[1].w, t[1].u, t[1].v, c[1].x, c[1].y, c[1].z, c[1].w, p[2].x, p[2].y, t[2].w, t[2].u, t[2].v, c[2].x, c[2].y, c[2].z, c[2].w, (tex != NULL) ? true : false, clamp_s, clamp_t, depth_test, perspective_correct, 0, dither, alpha_blend);
 }
 
 int main() {
@@ -156,11 +157,9 @@ int main() {
                         break;
                     case SDL_SCANCODE_B:
                         dither = !dither;
-                        sw_set_dither(dither);
                         break;
                     case SDL_SCANCODE_N:
                         alpha_blend = !alpha_blend;
-                        sw_set_alpha_blend(alpha_blend);
                         break;
                     case SDL_SCANCODE_KP_PLUS:
                         scale += 1.0f;
@@ -248,7 +247,7 @@ int main() {
             depth_pass.z_far = FX(SHADOW_Z_FAR);
             depth_pass.depth_only = true;
             draw_model(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, &light_pos, current_model, &mat_world, NULL, &light_proj, &light_view,
-                       NULL, 0, false, NULL, false, false, 0, 0, false, &depth_pass);
+                       NULL, 0, false, NULL, false, false, 0, 0, false, false, false, &depth_pass);
 
             sample_pass.light_view = &light_view;
             sample_pass.light_proj = &light_proj;
@@ -271,12 +270,12 @@ int main() {
         // Draw model
         texture_t dummy_texture;
         draw_model(screen_width, screen_height, &vec_camera, current_model, &mat_world, is_gouraud_shading ? &mat_normal : NULL, &mat_proj, &mat_view, lights, nb_lights,
-                   is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t, 0, 0, perspective_correct, NULL);
+                   is_wireframe, is_textured ? &dummy_texture : NULL, clamp_s, clamp_t, 0, 0, perspective_correct, dither, alpha_blend, NULL);
 
         if (show_shadow) {
             mat4x4 mat_floor = matrix_make_identity();
             draw_model(screen_width, screen_height, &vec_camera, floor_model, &mat_floor, NULL, &mat_proj, &mat_view, NULL, 0,
-                       false, NULL, false, false, 0, 0, perspective_correct, &sample_pass);
+                       false, NULL, false, false, 0, 0, perspective_correct, false, false, &sample_pass);
         }
 
         SDL_RenderPresent(renderer);

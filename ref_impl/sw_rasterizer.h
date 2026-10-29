@@ -14,8 +14,6 @@ void sw_init_rasterizer_standard(int fb_width, int fb_height, draw_pixel_fn_t dr
 void sw_dispose_rasterizer_standard();
 void sw_clear_depth_buffer_standard();
 void sw_bind_shadow_map(uint16_t* map, int size, int bias);
-void sw_set_dither(bool enable);
-void sw_set_alpha_blend(bool enable);
 void sw_clear_color_buffer(uint16_t rgb565);
 void sw_clear_shadow_map(void);
 void sw_set_triangle_shadow(bool depth_only, bool enable_shadow,
@@ -28,6 +26,7 @@ void sw_fragment_shader(int fb_width, int fb_height, int x, int y, fx32 z, fx32 
 void sw_draw_triangle_standard(fx32 x0, fx32 y0, fx32 z0, fx32 u0, fx32 v0, fx32 r0, fx32 g0, fx32 b0, fx32 a0,
                       fx32 x1, fx32 y1, fx32 z1, fx32 u1, fx32 v1, fx32 r1, fx32 g1, fx32 b1, fx32 a1,
                       fx32 x2, fx32 y2, fx32 z2, fx32 u2, fx32 v2, fx32 r2, fx32 g2, fx32 b2, fx32 a2,
-                      bool texture, bool clamp_s, bool clamp_t, bool depth_test, bool persp_correct, uint8_t depth_bias);
+                      bool texture, bool clamp_s, bool clamp_t, bool depth_test, bool persp_correct, uint8_t depth_bias,
+                      bool dither, bool alpha_blend);
 
 #endif  // SW_RASTERIZER_H

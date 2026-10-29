@@ -19,7 +19,8 @@
 #define MAX_NB_TRIANGLES    16      // maximum number of triangles produced by the clipping
 
 void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y,
-                      bool depth_test, bool perspective_correct, const vec3d* sh, bool depth_only, bool enable_shadow);
+                      bool depth_test, bool perspective_correct, const vec3d* sh, bool depth_only, bool enable_shadow,
+                      bool dither, bool alpha_blend);
 
 vec3d matrix_multiply_vector(mat4x4* m, vec3d* i) {
     vec3d r = {MUL(i->x, m->m[0][0]) + MUL(i->y, m->m[1][0]) + MUL(i->z, m->m[2][0]) + m->m[3][0],
@@ -650,7 +651,7 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
         {c1.x, c1.y, c1.z, c1.w}
     };
 
-    xd_draw_triangle(pp0, tt0, cc0, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, false, perspective_correct, NULL, false, false);
+    xd_draw_triangle(pp0, tt0, cc0, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, false, perspective_correct, NULL, false, false, false, false);
 
     vec3d pp1[3] = {
         {vv1.x, vv1.y, vv1.z, FX(0.0)},
@@ -670,7 +671,7 @@ void draw_line(vec3d v0, vec3d v1, vec2d uv0, vec2d uv1, vec3d c0, vec3d c1, fx3
         {c1.x, c1.y, c1.z, c1.w}
     };    
 
-    xd_draw_triangle(pp1, tt1, cc1, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, false, perspective_correct, NULL, false, false);
+    xd_draw_triangle(pp1, tt1, cc1, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, false, perspective_correct, NULL, false, false, false, false);
 }
 
 static fx32 shadow_encode_depth(fx32 view_z, fx32 z_near, fx32 z_far) {
@@ -701,7 +702,7 @@ static vec3d project_shadow_coord(vec3d* world, const shadow_draw_t* shadow) {
 void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, model_t* model, mat4x4* mat_world,
                 mat4x4* mat_normal, mat4x4* mat_proj, mat4x4* mat_view, light_t* lights, size_t nb_lights, bool is_wireframe, texture_t* texture,
                 bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y, bool perspective_correct,
-                const shadow_draw_t* shadow) {
+                bool dither, bool alpha_blend, const shadow_draw_t* shadow) {
     size_t triangle_to_raster_index = 0;
 
     // The shadow camera is orthographic. A face is visible when its normal
@@ -1077,7 +1078,7 @@ void draw_model(int viewport_width, int viewport_height, vec3d* vec_camera, mode
                     depth_only = shadow->depth_only;
                     enable_shadow = shadow->sample;
                 }
-                xd_draw_triangle(t->p, t->t, t->c, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, true, perspective_correct, sh, depth_only, enable_shadow);
+                xd_draw_triangle(t->p, t->t, t->c, texture, clamp_s, clamp_t, texture_scale_x, texture_scale_y, true, perspective_correct, sh, depth_only, enable_shadow, dither, alpha_blend);
             }
         }
     }

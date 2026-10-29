@@ -212,11 +212,9 @@ static inline int32_t eval_color_12_20(int64_t raw_start, int64_t raw_dx, int64_
     return (int32_t)(raw >> 12);
 };
 
-static bool g_enable_dither = false;
-static bool g_enable_alpha_blend = false;
-
 void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool clamp_s, bool clamp_t, int texture_scale_x, int texture_scale_y,
-                      bool depth_test, bool perspective_correct, const vec3d* sh, bool depth_only, bool enable_shadow)                      
+                      bool depth_test, bool perspective_correct, const vec3d* sh, bool depth_only, bool enable_shadow,
+                      bool dither, bool alpha_blend)                      
 {
     uint32_t texture_width = 32 << texture_scale_x;
     uint32_t texture_height = 32 << texture_scale_y;
@@ -376,9 +374,9 @@ void xd_draw_triangle(vec3d p[3], vec2d t[3], vec3d c[3], texture_t* tex, bool c
         draw_param |= 1u << 12;
     if (enable_shadow)
         draw_param |= 1u << 13;
-    if (g_enable_dither)
+    if (dither)
         draw_param |= 1u << 22;
-    if (g_enable_alpha_blend)
+    if (alpha_blend)
         draw_param |= 1u << 23;
 
     if (use_shadow_attr) {
@@ -664,6 +662,8 @@ int main(int argc, char** argv, char** env) {
     bool perspective_correct = true;
     bool show_depth = false;
     bool show_shadow = false;
+    bool enable_dither = false;
+    bool enable_alpha_blend = false;
     bool tex_addr_needs_restore = false;
 
     light_t lights[5];
@@ -744,10 +744,10 @@ int main(int argc, char** argv, char** env) {
                             show_depth = !show_depth;
                             break;
                         case SDL_SCANCODE_B:
-                            g_enable_dither = !g_enable_dither;
+                            enable_dither = !enable_dither;
                             break;
                         case SDL_SCANCODE_N:
-                            g_enable_alpha_blend = !g_enable_alpha_blend;
+                            enable_alpha_blend = !enable_alpha_blend;
                             break;
                         case SDL_SCANCODE_M:
                             show_shadow = !show_shadow;
@@ -827,7 +827,7 @@ int main(int argc, char** argv, char** env) {
                 depth_pass.z_far = FX(SHADOW_Z_FAR);
                 depth_pass.depth_only = true;
                 draw_model(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, &light_pos, current_model, &mat_world, NULL, &light_proj, &light_view,
-                           NULL, 0, false, NULL, false, false, 0, 0, false, &depth_pass);
+                           NULL, 0, false, NULL, false, false, 0, 0, false, false, false, &depth_pass);
 
                 set_viewport(FB_WIDTH, FB_HEIGHT);
                 push_addr(OP_SET_ZB_ADDR, DEPTH_ADDR);
@@ -861,12 +861,12 @@ int main(int argc, char** argv, char** env) {
                 // Draw cube
                 texture_t dummy_texture;
                 draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, current_model, &mat_world, gouraud_shading ? &mat_normal : NULL, &mat_proj, &mat_view, lights, nb_lights,
-                           wireframe, textured ? &dummy_texture : NULL, clamp_s, clamp_t, TEXTURE_SCALE_X, TEXTURE_SCALE_Y, perspective_correct, NULL);
+                           wireframe, textured ? &dummy_texture : NULL, clamp_s, clamp_t, TEXTURE_SCALE_X, TEXTURE_SCALE_Y, perspective_correct, enable_dither, enable_alpha_blend, NULL);
 
                 if (show_shadow) {
                     mat4x4 mat_floor = matrix_make_identity();
                     draw_model(FB_WIDTH, FB_HEIGHT, &vec_camera, floor_model, &mat_floor, NULL, &mat_proj, &mat_view, NULL, 0,
-                               false, NULL, false, false, 0, 0, perspective_correct, &sample_pass);
+                               false, NULL, false, false, 0, 0, perspective_correct, false, false, &sample_pass);
                 }
 
                 swap();

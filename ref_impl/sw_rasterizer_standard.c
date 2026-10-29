@@ -59,8 +59,6 @@ static uint16_t* g_shadow_map = NULL;
 static int g_shadow_size = 0;
 static int g_shadow_bias = 0;
 static uint16_t g_depth_bias = 0;
-static bool g_dither = false;
-static bool g_alpha_blend = true;
 static uint16_t* g_color_buffer = NULL;
 
 // 4x4 Bayer, row-major, indexed by {y[1:0], x[1:0]}. Same table as the rasterizer.
@@ -70,14 +68,6 @@ static const uint8_t g_bayer4[16] = {
      3, 11,  1,  9,
     15,  7, 13,  5
 };
-
-void sw_set_dither(bool enable) {
-    g_dither = enable;
-}
-
-void sw_set_alpha_blend(bool enable) {
-    g_alpha_blend = enable;
-}
 
 // Bit replication used when the rasterizer reads RGB565 back for blending.
 static void expand_rgb565(uint16_t p, uint32_t* r, uint32_t* g, uint32_t* b) {
@@ -163,7 +153,7 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
                               int32_t start_w, int32_t start_s, int32_t start_t, int32_t start_r, int32_t start_g, int32_t start_b,
                               int32_t dw_dx, int32_t ds_dx, int32_t dt_dx, int32_t dr_dx, int32_t dg_dx, int32_t db_dx,
                               int32_t dw_dy, int32_t ds_dy, int32_t dt_dy, int32_t dr_dy, int32_t dg_dy, int32_t db_dy, bool sign_bit,
-                              bool texture_enabled, bool depth_test, bool perspective_correct) {
+                              bool texture_enabled, bool depth_test, bool perspective_correct, bool dither, bool alpha_blend) {
     
     // -------------------------------------------------------------------------
     // 1. WINDING ORIENTATION
@@ -361,7 +351,7 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
                 // 0xFF writes the modulated color, anything else is source-over.
                 uint32_t shade_r = final_r, shade_g = final_g, shade_b = final_b;
                 bool alpha_reject = false;
-                if (g_alpha_blend && texture_enabled) {
+                if (alpha_blend && texture_enabled) {
                     if (texel_a == 0) {
                         alpha_reject = true;
                     } else if (texel_a != 0xFFu) {
@@ -378,7 +368,7 @@ static void draw_triangle_serpentine_ras(Vertex2 v0, Vertex2 v1, Vertex2 v2,
                     if (depth_test) g_depth_buffer[buf_idx] = depth_16;
 
                     uint32_t qr = shade_r, qg = shade_g, qb = shade_b;
-                    if (g_dither) {
+                    if (dither) {
                         unsigned t = g_bayer4[((curr_y & 3) << 2) | (curr_x & 3)];
                         qr = add_sat8(shade_r, t >> 1);
                         qg = add_sat8(shade_g, t >> 2);
@@ -463,7 +453,8 @@ static inline int32_t eval_color_12_20(int64_t raw_start, int64_t raw_dx, int64_
     return (int32_t)(raw >> 12);
 }
 
-static void draw_triangle(Vertex v0a, Vertex v1a, Vertex v2a, bool texture_enabled, bool depth_test, bool perspective_correct) {
+static void draw_triangle(Vertex v0a, Vertex v1a, Vertex v2a, bool texture_enabled, bool depth_test, bool perspective_correct,
+                          bool dither, bool alpha_blend) {
 
     Vertex2 v0, v1, v2;
 
@@ -592,13 +583,15 @@ static void draw_triangle(Vertex v0a, Vertex v1a, Vertex v2a, bool texture_enabl
 
     draw_triangle_serpentine_ras(v0, v1, v2, start_w, start_s, start_t, start_r, start_g, start_b, 
                              dw_dx, du_dx, dv_dx, dr_dx, dg_dx, db_dx, 
-                             dw_dy, du_dy, dv_dy, dr_dy, dg_dy, db_dy, det > 0, texture_enabled, depth_test, perspective_correct);
+                             dw_dy, du_dy, dv_dy, dr_dy, dg_dy, db_dy, det > 0, texture_enabled, depth_test, perspective_correct,
+                             dither, alpha_blend);
 }
 
 void sw_draw_triangle_standard(fx32 x0, fx32 y0, fx32 w0, fx32 s0, fx32 t0, fx32 r0, fx32 g0, fx32 b0, fx32 a0,
                       fx32 x1, fx32 y1, fx32 w1, fx32 s1, fx32 t1, fx32 r1, fx32 g1, fx32 b1, fx32 a1,
                       fx32 x2, fx32 y2, fx32 w2, fx32 s2, fx32 t2, fx32 r2, fx32 g2, fx32 b2, fx32 a2,
-                      bool texture, bool clamp_s, bool clamp_t, bool depth_test, bool persp_correct, uint8_t depth_bias) {
+                      bool texture, bool clamp_s, bool clamp_t, bool depth_test, bool persp_correct, uint8_t depth_bias,
+                      bool dither, bool alpha_blend) {
     Vertex v0, v1, v2;
     g_depth_bias = depth_bias;
 
@@ -608,7 +601,7 @@ void sw_draw_triangle_standard(fx32 x0, fx32 y0, fx32 w0, fx32 s0, fx32 t0, fx32
     v0.su = g_in_su[0]; v0.sv = g_in_sv[0]; v0.sz = g_in_sz[0];
     v1.su = g_in_su[1]; v1.sv = g_in_sv[1]; v1.sz = g_in_sz[1];
     v2.su = g_in_su[2]; v2.sv = g_in_sv[2]; v2.sz = g_in_sz[2];
-    draw_triangle(v0, v1, v2, texture, depth_test, persp_correct);
+    draw_triangle(v0, v1, v2, texture, depth_test, persp_correct, dither, alpha_blend);
     g_depth_only = false;
     g_enable_shadow = false;
 }
