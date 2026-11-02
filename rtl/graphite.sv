@@ -155,6 +155,10 @@ module graphite #(
         .depth_bias(depth_bias),
         .viewport_width(viewport_width),
         .viewport_height(viewport_height),
+        .fb_base(fb_address + back_rel_address),
+        .depth_base(depth_address),
+        .texture_base(texture_address),
+        .shadow_base(shadow_address),
         .v0_x(v0_x), .v0_y(v0_y), .v1_x(v1_x), .v1_y(v1_y), .v2_x(v2_x), .v2_y(v2_y),
         .sign(sign),
         .start_w_inv(start_w_inv), .start_s(start_s), .start_t(start_t), .start_r(start_r), .start_g(start_g), .start_b(start_b),
@@ -194,31 +198,33 @@ module graphite #(
         fb_ack = 0;
         fb_rd_ack = 0;
 
+        // Addresses are already absolute. Adding the base here would land on
+        // the cache BRAM's falling-edge setup path.
         if (zb_req && !zb_we) begin
             raster_vram_sel = 1;
             raster_vram_wr = 0;
-            raster_vram_addr = depth_address + zb_addr;
+            raster_vram_addr = zb_addr;
             zb_ack = 1;
         end else if (tex_req) begin
             raster_vram_sel = 1;
             raster_vram_wr = 0;
-            raster_vram_addr = (tex_shadow ? shadow_address : texture_address) + tex_addr;
+            raster_vram_addr = tex_addr;
             tex_ack = 1;
         end else if (fb_rd_req) begin
             raster_vram_sel = 1;
             raster_vram_wr = 0;
-            raster_vram_addr = fb_address + back_rel_address + fb_rd_addr;
+            raster_vram_addr = fb_rd_addr;
             fb_rd_ack = 1;
         end else if (zb_req && zb_we) begin
             raster_vram_sel = 1;
             raster_vram_wr = 1;
-            raster_vram_addr = depth_address + zb_addr;
+            raster_vram_addr = zb_addr;
             raster_vram_data_out = zb_wdata;
             zb_ack = 1;
         end else if (fb_req) begin
             raster_vram_sel = 1;
             raster_vram_wr = 1;
-            raster_vram_addr = fb_address + back_rel_address + fb_addr;
+            raster_vram_addr = fb_addr;
             raster_vram_data_out = fb_wdata_565;
             fb_ack = 1;
         end

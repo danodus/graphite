@@ -29,6 +29,12 @@ module graphite_rasterizer #(
     input  wire [7:0]   depth_bias,
     input  wire [15:0]  viewport_width,
     input  wire [15:0]  viewport_height,
+    // Added when an address is registered. The cache data RAM is clocked on
+    // the falling edge, so this add cannot sit on the request path.
+    input  wire [31:0]  fb_base,
+    input  wire [31:0]  depth_base,
+    input  wire [31:0]  texture_base,
+    input  wire [31:0]  shadow_base,
     output wire         busy,
 
     // Vertices
@@ -724,7 +730,7 @@ module graphite_rasterizer #(
             end else if (shadow_extra && !mem_stall) begin
                 // Albedo was latched on the previous edge. Hold it and issue the shadow read.
                 albedo_hold  <= current_tex_data;
-                tex_addr     <= p_r5_shadow_addr;
+                tex_addr     <= shadow_base + p_r5_shadow_addr;
                 tex_shadow   <= 1'b1;
                 tex_req      <= 1'b1;
                 shadow_extra <= 1'b0;
@@ -742,17 +748,17 @@ module graphite_rasterizer #(
                 p_r5_shadow_addr <= p4_shadow_addr;
 
                 if (p4_accept && !depth_only && enable_shadow && p4_shadow_inside && enable_texture) begin
-                    tex_addr     <= p4_tex_addr;
+                    tex_addr     <= texture_base + p4_tex_addr;
                     tex_shadow   <= 1'b0;
                     tex_req      <= 1'b1;
                     shadow_extra <= 1'b1;
                 end else if (p4_accept && !depth_only && enable_shadow && p4_shadow_inside) begin
-                    tex_addr   <= p4_shadow_addr;
+                    tex_addr   <= shadow_base + p4_shadow_addr;
                     tex_shadow <= 1'b1;
                     tex_req    <= 1'b1;
                     shadow_extra <= 1'b0;
                 end else if (p4_accept && !depth_only) begin
-                    tex_addr   <= p4_tex_addr;
+                    tex_addr   <= texture_base + p4_tex_addr;
                     tex_shadow <= 1'b0;
                     tex_req    <= 1'b1;
                     shadow_extra <= 1'b0;
@@ -800,7 +806,7 @@ module graphite_rasterizer #(
                 fb_fresh  <= 1'b0;
             end else if (hold_for_blend) begin
                 fb_rd_req  <= 1'b1;
-                fb_rd_addr <= pixel_addr(p_r5_x, p_r5_y);
+                fb_rd_addr <= fb_base + pixel_addr(p_r5_x, p_r5_y);
             end else begin
                 if (fb_rd_ack && fb_rd_req) begin
                     latched_fb <= fb_rd_data;
@@ -871,14 +877,14 @@ module graphite_rasterizer #(
             fb_wdata <= 32'd0;
         end else if (ce) begin
             if (blend_done) begin
-                fb_addr  <= pixel_addr(p_r5_x, p_r5_y);
+                fb_addr  <= fb_base + pixel_addr(p_r5_x, p_r5_y);
                 fb_wdata <= {8'b0, fb_r, fb_g, fb_b};
                 fb_req   <= 1'b1;
             end else if (hold_for_blend) begin
                 fb_req   <= 1'b0;
             end else if (!mem_stall) begin
                 if (p_r5_valid && !shadow_extra && !blend_extra && !depth_only && !alpha_reject) begin
-                    fb_addr  <= pixel_addr(p_r5_x, p_r5_y);
+                    fb_addr  <= fb_base + pixel_addr(p_r5_x, p_r5_y);
                     fb_wdata <= {8'b0, fb_r, fb_g, fb_b};
                     fb_req   <= 1'b1;
                 end else begin
@@ -904,7 +910,7 @@ module graphite_rasterizer #(
                 zb_req <= 1'b0;
                 zb_we  <= 1'b0;
             end else if (blend_done && enable_depth_test) begin
-                zb_addr  <= pixel_addr(p_r5_x, p_r5_y);
+                zb_addr  <= depth_base + pixel_addr(p_r5_x, p_r5_y);
                 zb_wdata <= p_r5_depth_16;
                 zb_we    <= 1'b1;
                 zb_req   <= 1'b1;
@@ -917,13 +923,13 @@ module graphite_rasterizer #(
             end else if (!mem_stall) begin
                 if (p_r5_valid && enable_depth_test && !shadow_extra && !blend_extra && !alpha_reject) begin
                     // Stage 6 Write
-                    zb_addr  <= pixel_addr(p_r5_x, p_r5_y);
+                    zb_addr  <= depth_base + pixel_addr(p_r5_x, p_r5_y);
                     zb_wdata <= p_r5_depth_16;
                     zb_we    <= 1'b1;
                     zb_req   <= 1'b1;
                 end else if (p_r3_valid && p_r3_inside && !zb_collision && !mult_stall) begin
                     // Stage 3 Read
-                    zb_addr  <= pixel_addr(p_r3_x, p_r3_y);
+                    zb_addr  <= depth_base + pixel_addr(p_r3_x, p_r3_y);
                     zb_wdata <= 16'd0;
                     zb_we    <= 1'b0;
                     zb_req   <= 1'b1;
