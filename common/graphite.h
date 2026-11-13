@@ -43,18 +43,7 @@ typedef int32_t fx32;
 #define TAN(x) FX(tanf(_FIXED_TO_FLOAT(x, SCALE)))
 #define SQRT(x) FX(sqrtf(_FIXED_TO_FLOAT(x, SCALE)))
 
-#if RV_FIXED_POINT_EXTENSION
-// Accelerated
-inline fx32 fix_mul(fx32 a, fx32 b) {
-    int result;
-    // .insn r opcode6, func3, func7, rd, rs1, rs2
-    asm (".insn r 0x0b, 0, 0, %0, %1, %2" : "=r" (result) : "r" (a), "r" (b)); 
-    return result; 
-}
-#define MUL(x, y) fix_mul(x, y)
-#else
 #define MUL(x, y) _MUL(x, y, SCALE)
-#endif
 
 #else
 
