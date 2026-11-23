@@ -29,6 +29,7 @@ module graphite_rasterizer #(
     input  wire [7:0]   depth_bias,
     input  wire [15:0]  viewport_width,
     input  wire [15:0]  viewport_height,
+    input  wire [1:0]   zoom_i,
     // Added when an address is registered. The cache data RAM is clocked on
     // the falling edge, so this add cannot sit on the request path.
     input  wire [31:0]  fb_base,
@@ -127,7 +128,9 @@ module graphite_rasterizer #(
                 16'd256:  row = {16'd0, py} << 8;
                 16'd512:  row = {16'd0, py} << 9;
                 16'd1024: row = {16'd0, py} << 10;
-                default:  row = {16'd0, py} * FB_WIDTH;
+                default:  row = (zoom_i == 2'd2) ? ({16'd0, py} * (FB_WIDTH / 4)) :
+                                 (zoom_i == 2'd1) ? ({16'd0, py} * (FB_WIDTH / 2)) :
+                                                    ({16'd0, py} * FB_WIDTH);
             endcase
             pixel_addr = row + {16'd0, px};
         end

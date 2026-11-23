@@ -15,6 +15,7 @@ module graphite #(
     input  wire logic clk,
     input  wire logic reset_i,
     input  wire logic ce_i,
+    input  wire logic [1:0] zoom_i = 2'b0,
 
     input  wire logic cmd_axis_tvalid_i,
     output      logic cmd_axis_tready_o,
@@ -62,6 +63,7 @@ module graphite #(
     logic [15:0] shadow_bias;
     logic [7:0] depth_bias;
     logic [15:0] viewport_width, viewport_height;
+    logic [1:0] zoom_latched;
 
     graphite_command_processor #(
         .FB_ADDRESS(FB_ADDRESS),
@@ -72,6 +74,7 @@ module graphite #(
         .clk(clk),
         .reset_i(reset_i),
         .ce_i(ce_i),
+        .zoom_i(zoom_i),
         .cmd_axis_tvalid_i(cmd_axis_tvalid_i),
         .cmd_axis_tready_o(cmd_axis_tready_o),
         .cmd_axis_tdata_i(cmd_axis_tdata_i),
@@ -81,6 +84,7 @@ module graphite #(
         .swap_o(swap_o),
         .clear_o(clear_o),
         .front_addr_o(front_addr_o),
+        .zoom_o(zoom_latched),
         .core_vram_sel_o(core_vram_sel),
         .core_vram_wr_o(core_vram_wr),
         .core_vram_mask_o(core_vram_mask),
@@ -155,6 +159,7 @@ module graphite #(
         .depth_bias(depth_bias),
         .viewport_width(viewport_width),
         .viewport_height(viewport_height),
+        .zoom_i(zoom_latched),
         .fb_base(fb_address + back_rel_address),
         .depth_base(depth_address),
         .texture_base(texture_address),

@@ -13,6 +13,7 @@ module graphite_command_processor #(
     input  wire logic clk,
     input  wire logic reset_i,
     input  wire logic ce_i,
+    input  wire logic [1:0] zoom_i,
 
     input  wire logic cmd_axis_tvalid_i,
     output      logic cmd_axis_tready_o,
@@ -25,6 +26,7 @@ module graphite_command_processor #(
     output logic swap_o,
     output logic clear_o,
     output logic [31:0] front_addr_o,
+    output logic [1:0] zoom_o,
 
     output logic core_vram_sel_o,
     output logic core_vram_wr_o,
@@ -89,6 +91,63 @@ module graphite_command_processor #(
     logic [2:0] shadow_width_scale, shadow_height_scale;
     logic [15:0] shadow_bias;
     logic [7:0] depth_bias;
+    logic [1:0] zoom_q;
+
+    // Native, half, and quarter framebuffers are elaborated constants.
+    // zoom_q selects which one scanout is using. A general multiply is not used.
+    localparam [15:0] FB_W_FULL = FB_WIDTH;
+    localparam [15:0] FB_H_FULL = FB_HEIGHT;
+    localparam [15:0] FB_W_HALF = FB_WIDTH / 2;
+    localparam [15:0] FB_H_HALF = FB_HEIGHT / 2;
+    localparam [15:0] FB_W_QTR  = FB_WIDTH / 4;
+    localparam [15:0] FB_H_QTR  = FB_HEIGHT / 4;
+    localparam [31:0] FB_PIX_FULL = FB_WIDTH * FB_HEIGHT;
+    localparam [31:0] FB_PIX_HALF = (FB_WIDTH / 2) * (FB_HEIGHT / 2);
+    localparam [31:0] FB_PIX_QTR  = (FB_WIDTH / 4) * (FB_HEIGHT / 4);
+    localparam [31:0] FB_PIX2_FULL = 2 * FB_PIX_FULL;
+    localparam [31:0] FB_PIX2_HALF = 2 * FB_PIX_HALF;
+    localparam [31:0] FB_PIX2_QTR  = 2 * FB_PIX_QTR;
+    localparam [31:0] FB_PIX3_FULL = 3 * FB_PIX_FULL;
+    localparam [31:0] FB_PIX3_HALF = 3 * FB_PIX_HALF;
+    localparam [31:0] FB_PIX3_QTR  = 3 * FB_PIX_QTR;
+
+    function automatic [15:0] zoom_width(input [1:0] z);
+        case (z)
+            2'd1: zoom_width = FB_W_HALF;
+            2'd2: zoom_width = FB_W_QTR;
+            default: zoom_width = FB_W_FULL;
+        endcase
+    endfunction
+    function automatic [15:0] zoom_height(input [1:0] z);
+        case (z)
+            2'd1: zoom_height = FB_H_HALF;
+            2'd2: zoom_height = FB_H_QTR;
+            default: zoom_height = FB_H_FULL;
+        endcase
+    endfunction
+    function automatic [31:0] zoom_pixels(input [1:0] z);
+        case (z)
+            2'd1: zoom_pixels = FB_PIX_HALF;
+            2'd2: zoom_pixels = FB_PIX_QTR;
+            default: zoom_pixels = FB_PIX_FULL;
+        endcase
+    endfunction
+    function automatic [31:0] zoom_pixels2(input [1:0] z);
+        case (z)
+            2'd1: zoom_pixels2 = FB_PIX2_HALF;
+            2'd2: zoom_pixels2 = FB_PIX2_QTR;
+            default: zoom_pixels2 = FB_PIX2_FULL;
+        endcase
+    endfunction
+    function automatic [31:0] zoom_pixels3(input [1:0] z);
+        case (z)
+            2'd1: zoom_pixels3 = FB_PIX3_HALF;
+            2'd2: zoom_pixels3 = FB_PIX3_QTR;
+            default: zoom_pixels3 = FB_PIX3_FULL;
+        endcase
+    endfunction
+
+    wire [31:0] screen_pixels = zoom_pixels(zoom_q);
 
     // Screen-sized clears use the elaborated product. Power-of-two viewports
     // (the shadow map) use a shift so this path does not infer a multiplier.
@@ -115,12 +174,16 @@ module graphite_command_processor #(
                 16'd1024: lh = 5'd10;
                 default:  lh = 5'd31;
             endcase
-            if (w == FB_WIDTH && h == FB_HEIGHT)
-                span_pixels = FB_WIDTH * FB_HEIGHT;
+            if (w == FB_W_FULL && h == FB_H_FULL)
+                span_pixels = FB_PIX_FULL;
+            else if (w == FB_W_HALF && h == FB_H_HALF)
+                span_pixels = FB_PIX_HALF;
+            else if (w == FB_W_QTR && h == FB_H_QTR)
+                span_pixels = FB_PIX_QTR;
             else if (lw != 5'd31 && lh != 5'd31)
                 span_pixels = 32'd1 << (lw + lh);
             else
-                span_pixels = FB_WIDTH * FB_HEIGHT;
+                span_pixels = screen_pixels;
         end
     endfunction
 
@@ -188,6 +251,7 @@ module graphite_command_processor #(
     assign shadow_height_scale_o = shadow_height_scale;
     assign shadow_bias_o = shadow_bias;
     assign depth_bias_o = depth_bias;
+    assign zoom_o = zoom_q;
 
     assign core_vram_sel_o = core_vram_sel;
     assign core_vram_wr_o = core_vram_wr;
@@ -203,15 +267,16 @@ module graphite_command_processor #(
             clear_o           <= 1'b0;
             fb_address        <= FB_ADDRESS;
             front_rel_address <= 32'h0;
-            back_rel_address  <= FB_WIDTH * FB_HEIGHT;
-            depth_address     <= FB_ADDRESS + 2 * FB_WIDTH * FB_HEIGHT;
-            shadow_address    <= FB_ADDRESS + 3 * FB_WIDTH * FB_HEIGHT;
-            viewport_width    <= FB_WIDTH;
-            viewport_height   <= FB_HEIGHT;
-            viewport_pixels   <= FB_WIDTH * FB_HEIGHT;
+            viewport_width    <= zoom_width(zoom_i);
+            viewport_height   <= zoom_height(zoom_i);
+            viewport_pixels   <= zoom_pixels(zoom_i);
+            back_rel_address  <= zoom_pixels(zoom_i);
+            depth_address     <= FB_ADDRESS + zoom_pixels2(zoom_i);
+            shadow_address    <= FB_ADDRESS + zoom_pixels3(zoom_i);
             // The sim and older command streams rely on this reset base. The
             // flight demo moves it past the shadow map with OP_SET_TEX_ADDR.
-            texture_address   <= FB_ADDRESS + 3 * FB_WIDTH * FB_HEIGHT;
+            texture_address   <= FB_ADDRESS + zoom_pixels3(zoom_i);
+            zoom_q            <= zoom_i;
             state             <= WAIT_COMMAND;
             texture_width_scale  <= 3'd0;
             texture_height_scale <= 3'd0;
@@ -226,6 +291,21 @@ module graphite_command_processor #(
             raster_start_o    <= 1'b0;
         end else if (ce_i) begin
             raster_start_o <= 1'b0;
+            // Apply a zoom change only while idle, so a triangle in flight
+            // keeps the stride it started with. Texture base moves only when
+            // it still sits on the previous default, next to the shadow map.
+            if (state == WAIT_COMMAND && !raster_busy_i && zoom_i != zoom_q) begin
+                zoom_q <= zoom_i;
+                front_rel_address <= 32'h0;
+                back_rel_address  <= zoom_pixels(zoom_i);
+                depth_address     <= fb_address + zoom_pixels2(zoom_i);
+                shadow_address    <= fb_address + zoom_pixels3(zoom_i);
+                viewport_width    <= zoom_width(zoom_i);
+                viewport_height   <= zoom_height(zoom_i);
+                viewport_pixels   <= zoom_pixels(zoom_i);
+                if (texture_address == fb_address + zoom_pixels3(zoom_q))
+                    texture_address <= fb_address + zoom_pixels3(zoom_i);
+            end
             case (state)
                 WAIT_COMMAND: begin
                 swap_o <= 1'b0;
@@ -435,7 +515,7 @@ module graphite_command_processor #(
                         else
                             fb_address[15:0] <= cmd_axis_tdata_i[15:0];
                         front_rel_address <= 32'h0;
-                        back_rel_address  <= cmd_axis_tdata_i[17] ? 32'h0 : FB_WIDTH * FB_HEIGHT;
+                        back_rel_address  <= cmd_axis_tdata_i[17] ? 32'h0 : screen_pixels;
                         state <= WAIT_COMMAND;
                     end
                     OP_SET_START_SU: begin
@@ -521,7 +601,7 @@ module graphite_command_processor #(
             end
 
             CLEAR_FB0: begin
-                if (core_vram_addr < fb_address + back_rel_address + FB_WIDTH * FB_HEIGHT - 1)
+                if (core_vram_addr < fb_address + back_rel_address + screen_pixels - 1)
                     core_vram_addr <= core_vram_addr + 1;
                 else begin
                     clear_o       <= 1'b0;
